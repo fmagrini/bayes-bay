@@ -7,6 +7,16 @@ import numpy as np
 cimport numpy as np
 
 
+@boundscheck(False)
+@wraparound(False) 
+cpdef _is_sorted(long[:] argsort_indices):
+    cdef long i
+    cdef ssize_t size = argsort_indices.shape[0]
+    for i in range(size):
+        if argsort_indices[i] != i:
+            return False
+    return True
+
 
 @boundscheck(False)
 @wraparound(False) 
