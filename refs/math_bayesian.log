@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2023.6.1)  24 AUG 2023 10:14
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2023.6.1)  29 AUG 2023 09:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -603,7 +603,7 @@ ts/type1/public/lm/lmr8.pfb></usr/share/texmf/fonts/type1/public/lm/lmri10.pfb>
 /public/lm/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy6.pfb></usr/s
 hare/texmf/fonts/type1/public/lm/lmsy8.pfb></usr/share/texlive/texmf-dist/fonts
 /type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on math_bayesian.pdf (10 pages, 324138 bytes).
+Output written on math_bayesian.pdf (10 pages, 324224 bytes).
 PDF statistics:
  132 PDF objects out of 1000 (max. 8388607)
  99 compressed objects within 1 object stream

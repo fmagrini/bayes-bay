@@ -10,6 +10,8 @@ __pycache__/
 # Setuptools/distutils distribution folder.
 dist/
 build/
+refs/*.log
+refs/*.pdf
 
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
