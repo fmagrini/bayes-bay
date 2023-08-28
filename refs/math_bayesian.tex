@@ -1,0 +1,395 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{latexsym,float,amsmath,alltt,amssymb,graphicx}
+\usepackage{relsize}
+\usepackage{xcolor}
+\usepackage[square]{natbib}
+\usepackage{siunitx}
+\usepackage{authblk}
+\usepackage{lineno}
+\usepackage{enumerate}
+\usepackage{mathrsfs}
+\usepackage{units}
+\usepackage{url}
+\usepackage{bm}
+\usepackage{setspace}
+\usepackage{placeins}
+\usepackage[title]{appendix}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+%\pagestyle{empty} 
+\oddsidemargin0.5cm \topmargin-1.5cm \textheight25.5cm
+
+\textwidth15.5cm \flushbottom
+
+\renewcommand{\baselinestretch}{1.2}
+\newcommand\blankpage{%
+    \null
+    \thispagestyle{empty}%
+    \addtocounter{page}{-1}%
+    \newpage}
+\linenumbers
+
+\begin{document}
+\title{Math in Transdimensional Bayesian Inversions: a Rigorous Formulation}
+
+
+\author[1]{Fabrizio Magrini}
+\author[2]{Giovanni Diaferia}
+\author[1]{Luca De Siena}
+
+\affil[1]{Institute of Geosciences, Johannes Gutenberg University, Mainz, Germany}
+\affil[2]{INGV}
+
+
+\maketitle
+
+\section{Classical, Isotropic Transdimensional Inversion}
+The proposed algorithm aims to find
+\begin{equation} \label{eq:posterior}
+  \underbrace{p({\bf m} \mid {\bf d}_{obs})}_{\text{posterior}} \propto
+  \underbrace{p({\bf d}_{obs} \mid {\bf m})}_{\text{likelihood}} \times
+  \underbrace{p({\bf m})}_{\text{prior}},
+\end{equation}
+by means of a reversible-jump Markov chain Monte Carlo sampling. 
+
+\subsection{Free parameters}
+For simplicity, assume the data variance is known, i.e. the $n \times n$ matrix ${\bf C}_e$ can be computed before the inversion. Then, following \cite{bodin12}, we only have three free parameters in the inversion; these are
+\begin{enumerate}
+  \item number of layers $k$;
+  \item isotropic velocity $\bf v$, corresponding to $V_S$, of the $k$ Voronoi cells;
+  \item position (depth) $\bf c$ of the $k$ Voronoi cells.
+\end{enumerate}
+
+\subsection{Likelihood: $p({\bf d}_{obs} \mid {\bf m})$}
+The general formula for the likelihood reads
+\begin{equation} \label{eq:likelihood}
+p({\bf d}_{obs} \mid {\bf m}) = \frac{1}{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}} \ \mbox{exp} \Bigg \lbrace \frac{-{\bf \Phi(m)}}{2} \Bigg \rbrace,
+\end{equation}
+where ${\bf \Phi(m)} = \big ({\bf g(m) - d}_{obs} \big )^T \cdot {\bf C}_e^{-1} \cdot \big ({\bf g(m) - d}_{obs} \big)$ denotes the misfit between the observed (${\bf d}_{obs}$) and modeled (${\bf g(m)}$) data, and $T$ transposition. As we will see in the following, since ${\bf C}_e$ is fixed, the multiplicative factor on the left of the exponential will cancel out.
+
+\subsection{Prior probability: $p(\bf m)$}
+The prior probability 
+\begin{equation} \label{eq:prior}
+p({\bf m}) = p({\bf c, v} \mid k) \ p(k),
+\end{equation}
+is a function of the number of layers $k$. Assuming $\bf c$ and $\bf v$ are independent from each other, we can write
+\begin{equation} \label{eq:conditional_v}
+p({\bf v} \mid k) = \prod_{i=1}^{k} \frac{1}{\Delta v} = \frac{1}{\left( \Delta v \right)^k},
+\end{equation}
+where $\Delta v = v_{max} - v_{min}$ denotes the span of the velocity range, and
+\begin{equation} \label{eq:conditional_c}
+p({\bf c} \mid k) = \frac{k! \left(N - k \right)!}{N!},
+\end{equation}
+where $N$ denotes the number of possible positions that can be occupied by the Voronoi cells. (Expression (\ref{eq:conditional_c}) implies that the Voronoi cells can only be placed in a discrete number of positions. We will see in the following, however, that $N$ will cancel out in the definition of the acceptance probability, thus allowing for a uniform sampling of the depth range considered in the parameterization.)
+
+Similar to expression (\ref{eq:conditional_v}), the prior probability of having $k$ layers 
+\begin{equation} \label{eq:prior_k}
+p(k) = \frac{1}{\Delta k},
+\end{equation}
+where $\Delta k = k_{max} - k_{min}$. Substituting (\ref{eq:conditional_v}), (\ref{eq:conditional_c}), (\ref{eq:prior_k}) into equation (\ref{eq:prior}), we get
+\begin{equation} \label{eq:prior_2}
+p({\bf m}) = \frac{k! \left(N - k \right)!}{N! \ \Delta k \ \left( \Delta v \right)^k}.
+\end{equation}
+
+\subsection{Acceptance probability: $\alpha({\bf m' \mid m})$} \label{sec:acceptance_prob}
+In the inverse problem described thus far, a given model ${\bf m'}$ is preferred over the current model ${\bf m}$ if and only if its acceptance probability $\alpha({\bf m' \mid m}) \geq r$, where $0\leq r <1$ denotes a random number. It has been shown \citep{green03} that the chain of sampled models will converge to the transdimensional posterior distribution $p({\bf m} \mid {\bf d}_{obs})$ if
+\begin{equation} \label{eq:acceptance_prob}
+\alpha({\bf m' \mid m}) = \mbox{min} \Bigg [ 1, \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} \ \underbrace{\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)}}_{\text{Likelihood ratio}} \ \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  \Bigg].
+\end{equation}
+It is the purpose of the following sections to robustly define each ratio in the right-hand side (RHS) of equation (\ref{eq:acceptance_prob}), so as to compute $\alpha({\bf m' \mid m})$ accurately at each iteration of the transdimensional inversion.
+
+In general, a new model is proposed based on a random perturbation of the current model. Since we are considering only three free parameters (i.e. $k$, ${\bf c}$, and $\bf v$), the proposed model can be obtained based on four different kinds of perturbations:
+\begin{enumerate}
+
+  \item \textbf{Change in velocity}. The velocity $v_i$ corresponding to a Voronoi cell is randomly changed to a new value $v'_i$ according to a Gaussian probability distribution centered onto $v_i$, i.e. the proposal probability distribution
+   \begin{equation} \label{eq:proposal_prob_v}
+    q_{1}(v'_i \mid v_i) = \frac{1}{\theta_1 \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( v'_i - v_i \right)^2}{2\theta_1^2} \Bigg \rbrace,
+    \end{equation}
+    where the standard deviation of the Gaussian $\theta_1$ should be chosen a priori and
+    \begin{equation} \label{eq:v'}
+    v'_i = v_i + u,
+    \end{equation}
+    with $u$ being a random deviate from the normal distribution $\mathcal{N}(0, \theta_1)$.
+  \item \textbf{Change in position (depth)}. The position $c_i$ of a Voronoi cell is randomly changed to a new value $c'_i$ according to a Gaussian probability distribution centered onto $c_i$, i.e.
+     \begin{equation} \label{eq:proposal_prob_c}
+    q_{2}(c'_i \mid c_i) = \frac{1}{\theta_2 \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( c'_i - c_i \right)^2}{2\theta_2^2} \Bigg \rbrace,
+    \end{equation}
+  \item \textbf{Birth}. A new Voronoi cell is created by choosing randomly its position from the $N-k$ options available. (As anticipated, this discretizations does not need to be done in practice: a new position is drawn by sampling uniformly the depth range considered.) Similar to expression (\ref{eq:proposal_prob_v}) a velocity $v'_{k+1}$ is assigned to the new Voronoi cell by sampling the Gaussian distribution
+    \begin{equation} \label{eq:proposal_prob_birth}
+    q_{3}(v'_{k+1} \mid v_i) = \frac{1}{\theta_3 \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} \Bigg \rbrace,
+    \end{equation}
+where, once again, $\theta_3$ should be chosen a priori.
+	
+	\item \textbf{Death}. Remove one layer by drawing a random integer between 0 and $k$.	
+\end{enumerate}	
+
+In general, the above perturbations can regrouped in three main categories, reported below, based on the dimension of $\bf m'$ with respect to $\bf m$. The only term in the RHS of equation (\ref{eq:acceptance_prob}) that does not depend on the belonging category is the ratio between the likelihood of the proposed model and that of the current model, and reads
+\begin{equation} \label{eq:likelihood_ratio}
+\begin{aligned}
+\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)} &=
+\frac{\mbox{exp} \bigg \lbrace \frac{-{\bf \Phi(m')}}{2} \bigg \rbrace}{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}} \frac{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}}{\mbox{exp} \bigg \lbrace \frac{-{\bf \Phi(m)}}{2} \bigg \rbrace} \\
+&= \mbox{exp} \Bigg \lbrace - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace.
+\end{aligned}
+\end{equation}
+
+
+
+\subsubsection{CASE 1 (change in velocity or position): ${\bf m', m} \in \mathbb{R}^k$} \label{sec:case1}
+When $\bf m'$ has the same dimension of $\bf m$, the calculation of the ratios at the RHS of equation (\ref{eq:acceptance_prob}) is straightforward. Since $\Delta v$ is a constant in expression (\ref{eq:prior_2}) and $k$ has not changed, $p\left({\bf m}\right) = p\left({\bf m'}\right)$ and $\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)} = 1$. Moreover, the proposal perturbations that do not involve a change of dimension have symmetrical probability distributions \citep{bodin12}, i.e.
+\begin{equation}
+\begin{aligned}
+q_{1}(v'_i \mid v_i) &= q_{1}(v_i \mid v'_i) \\
+q_{2}(c'_i \mid c_i) &= q_{2}(c_i \mid c'_i),
+\end{aligned}
+\end{equation}
+implying that $\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)} = 1$. 
+
+The acceptance probability therefore reduces to
+\begin{equation} \label{eq:acceptance_prob_1}
+\alpha({\bf m' \mid m}) = 
+\mbox{min} \Bigg [ 1,  \mbox{exp} \Bigg \lbrace - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg].
+\end{equation}
+
+\subsubsection{CASE 2 (birth): ${\bf m'} \in \mathbb{R}^{k+1}$, ${\bf m} \in \mathbb{R}^{k}$}
+Based on equation (\ref{eq:prior_2}), i.e. $p({\bf m}) = p({\bf c, v} \mid k) \ p(k)$, the ratio
+\begin{equation} \label{eq:prior_ratio_2}
+\begin{aligned} 
+\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)} &= \frac{p\left({\bf c'} \mid k+1\right) \ p\left({\bf v'} \mid k+1\right) \ p\left(k+1\right)}{p\left({\bf c} \mid k\right) \ p\left({\bf v} \mid k\right) \ p\left(k\right)} \\
+&= \frac{p\left({\bf c'} \mid k+1\right) \ p\left({\bf v'} \mid k+1\right)}{p\left({\bf c} \mid k\right) \ p\left({\bf v} \mid k\right)} \\
+&= 
+\frac{(k+1)! \left(N - (k+1) \right)!}{N! \ \left( \Delta v \right)^{(k+1)}} \ 
+\frac{N! \ \left( \Delta v \right)^k}{k! \left(N - k \right)!} \\
+&= \frac{(k+1)}{(N-k) \Delta v},
+\end{aligned}
+\end{equation}
+where we noticed that $p\left(k\right) = p\left(k+1\right) = \nicefrac{1}{\Delta k}$ and $\nicefrac{(a+1)!}{a!} = a+1$ $ \forall a \in \mathbb{N}$. 
+
+Following a similar reasoning, \cite{bodin12} derived the analytical expression for the proposal ratio
+\begin{equation} \label{eq:q_ratio_2}
+\begin{aligned} 
+\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+&= \frac{q\left({\bf c \mid m'}\right) \ q\left({\bf v \mid m'}\right)}{q\left({\bf c' \mid m}\right) \ q\left({\bf v' \mid m}\right)} \\
+&=
+\frac{N-k}{\left(k+1\right) q_{3}\left(v'_{k+1} \mid v_i\right)} \\
+&= \frac{N-k}{(k+1)} \ \theta_3 \sqrt{2 \pi} \ \mbox{exp}\Bigg \lbrace \frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} \Bigg \rbrace,
+\end{aligned}
+\end{equation}
+which, together with (\ref{eq:prior_ratio_2}), can be substituted into equation (\ref{eq:acceptance_prob}) to obtain, after some simplification, the acceptance probability
+\begin{equation} \label{eq:acceptance_prob_2}
+\alpha({\bf m' \mid m}) = 
+\mbox{min} \Bigg [ 1, \frac{\theta_3 \sqrt{2 \pi}}{\Delta v} \mbox{exp} \Bigg \lbrace \frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg].
+\end{equation}
+Note that the above expression does not depend on $N$, i.e., we are at liberty to generate the nuclei using a continuous distribution over the depth range considered, which is tantamount to $N \to \inf$.
+
+\subsubsection{CASE 3 (death): ${\bf m'} \in \mathbb{R}^{k-1}$, ${\bf m} \in \mathbb{R}^{k}$}
+For this last category of random perturbation, we can simply take the reciprocals of the RHS in equations (\ref{eq:prior_ratio_2}) and (\ref{eq:q_ratio_2}) and substitute them in (\ref{eq:acceptance_prob}). After some algebra,
+\begin{equation} \label{eq:acceptance_prob_2}
+\alpha({\bf m' \mid m}) = 
+\mbox{min} \Bigg [ 1, \frac{\Delta v}{\theta_3 \sqrt{2 \pi}} \mbox{exp} \Bigg \lbrace -\frac{\left( v'_{k-1} - v_i \right)^2}{2\theta_3^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg].
+\end{equation}
+
+\section{On the effects of additional free parameters (uniformly distributed)}
+The previous section provides an all-around framework for writing a reversible-jump Markov chain Monte Carlo algorithm, but what happens when additional free parameters are added to the problem? To investigate this matter, let us define a general parameter, say $\bf x$, which is a function of position $\bf c$ in the model $\bf m$. ($\bf x$ may represent, for example, the ratio $\nicefrac{V_P}{V_S}$ or the density of a given layer in our Earth model.) In general, $\bf x$ will be allowed to vary within a range defined by $\Delta x = x_{max} - x_{min}$. 
+
+\subsection{Prior probability: $p(\bf m)$}
+Under this working assumption, we shall redefine the prior probability $p\left(\bf m \right)$ so as to take into account the probability of sampling $\bf x$ uniformly within its belonging range. This is done by modifying equation (\ref{eq:prior}), i.e.
+\begin{equation} \label{eq:prior_alpha}
+p({\bf m}) = p({\bf c, v, x} \mid k) \ p(k).
+\end{equation}
+Similar to the previous section, we can consider $\bf c$, $\bf v$, and $\bf x$ to be independent from each other, resulting in
+\begin{equation} \label{eq:prior_alpha}
+p({\bf m}) = p({\bf c} \mid k) \ p({\bf v} \mid k) \ p({\bf x} \mid k) \ p(k).
+\end{equation}
+Analogous to equation (\ref{eq:conditional_v}), the conditional probability $p({\bf x} \mid k) = \nicefrac{1}{\left(\Delta x\right)^k}$, and 
+\begin{equation} \label{eq:prior_2_alpha}
+p({\bf m}) = \frac{k! \left(N - k \right)!}{N! \ \Delta k \ \left( \Delta v \right)^k \ \left( \Delta x \right)^k},
+\end{equation}
+i.e., the prior probability should be multiplied by a factor $\nicefrac{1}{\left(\Delta x\right)^k}$. In the more general case where $n$ parameters ${\bf x}_1, {\bf x}_2, \ldots, {\bf x}_n$ that are only function of position $\bf c$ are inverted for, the above reads
+\begin{equation} \label{eq:prior_2_general}
+p({\bf m}) = \frac{k! \left(N - k \right)!}{N! \ \Delta k \ \left( \Delta x_1 \right)^k \ \left( \Delta x_2 \right)^k \ldots \left( \Delta x_n \right)^k},
+\end{equation}
+
+\subsection{Acceptance probability: $\alpha({\bf m' \mid m})$}
+We should now evaluate the acceptance probability inherent to a proposed model $\bf m'$. As in the previous section, it is convenient to subdivide the possible random perturbations in three different categories.
+
+\subsubsection{CASE 1 (change in velocity, position, or $\bf x$): ${\bf m', m} \in \mathbb{R}^k$} \label{sec:case1}
+
+As in Section \ref{sec:case1}, the only term in the RHS of equation (\ref{eq:acceptance_prob}) different than one is the ratio between the likelihood of the proposed model and of the current model. The acceptance probability, in this case, therefore coincides with that in equation (\ref{eq:acceptance_prob_1}).
+
+\subsubsection{CASE 2 (birth): ${\bf m'} \in \mathbb{R}^{k+1}$, ${\bf m} \in \mathbb{R}^{k}$}
+In this case, while the presence of an additional parameter $\bf x$ does not contribute to modifying equation (\ref{eq:q_ratio_2}), it should be taken into account in (\ref{eq:prior_ratio_2}) and (\ref{eq:acceptance_prob_2}). Similar to equations (\ref{eq:proposal_prob_v}) and (\ref{eq:proposal_prob_c}), the proposal probability for the value $x_i$ associated with the newly introduced layer reads
+\begin{equation} \label{eq:proposal_prob_x}
+    q_{4}(x'_i \mid x_i) = \frac{1}{\theta_4 \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( x'_i - x_i \right)^2}{2\theta_4^2} \Bigg \rbrace,
+\end{equation}
+and 
+\begin{equation} \label{eq:q_ratio_alpha}
+\begin{aligned} 
+\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+&= \frac{q\left({\bf c \mid m'}\right) \ q\left({\bf v \mid m'}\right) \ q\left({\bf x \mid m'}\right)}{q\left({\bf c' \mid m}\right) \ q\left({\bf v' \mid m}\right) \ q\left({\bf x' \mid m}\right)} \\
+&=
+\frac{N-k}{\left(k+1\right) q_{3}\left(v'_{k+1} \mid v_i\right) q_{4}\left(x'_{k+1} \mid x_i\right)} \\
+&= \frac{N-k}{(k+1)} \ \theta_3 \sqrt{2 \pi} \ \mbox{exp}\Bigg \lbrace \frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} \Bigg \rbrace  \ \theta_4 \sqrt{2 \pi} \ \mbox{exp}\Bigg \lbrace \frac{\left( x'_{k+1} - x_i \right)^2}{2\theta_4^2} \Bigg \rbrace \\
+&= \frac{N-k}{(k+1)} \ 2 \pi \theta_3 \theta_4 \mbox{exp}\Bigg \lbrace \frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} + \frac{\left( x'_{k+1} - x_i \right)^2}{2\theta_4^2} \Bigg \rbrace.
+\end{aligned}
+\end{equation}
+Generalizing to the case of $n$ independent free parameters, the above can be rewritten
+\begin{equation}
+\begin{aligned} \label{eq:q_ratio_alpha_general}
+\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)} &=
+\frac{N-k}{(k+1)} \ (2 \pi)^{\frac{n}{2}} \theta_{x_1} \theta_{x_2} \ldots \theta_{x_n} \times \\
+&\times \mbox{exp}\Bigg \lbrace \frac{\left( x'_{1_{k+1}} - x_{1_i} \right)^2}{2\theta_{x_1}^2} + \frac{\left( x'_{2_{k+1}} - x_{2_i} \right)^2}{2\theta_{x_2}^2} + \ldots + \frac{\left( x'_{n_{k+1}} - x_{n_i} \right)^2}{2\theta_{x_n}^2} \Bigg \rbrace,
+\end{aligned}
+\end{equation}
+where $\theta_{x_1}$, $\theta_{x_2}$, $\ldots$, $\theta_{x_n}$ denote the a-priori standard deviations of the Gaussians used to perturb the $n$ free parameters.
+
+It follows that
+\begin{equation}
+\begin{aligned} \label{eq:acceptance_prob_2_alpha}
+\alpha({\bf m' \mid m}) &= 
+\mbox{min} \Bigg [ 1, \frac{(2 \pi)^{\frac{n}{2}} \theta_{x_1} \ldots \theta_{x_n}}{\Delta x_1 \ldots \Delta x_n} \times \\
+&\times \mbox{exp} \Bigg \lbrace \frac{\left( x'_{1_{k+1}} - x_{1_i} \right)^2}{2\theta_{x_1}^2} + \ldots + \frac{\left( x'_{n_{k+1}} - x_{n_i} \right)^2}{2\theta_{x_n}^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg].
+\end{aligned}
+\end{equation}
+
+\subsubsection{CASE 3 (death): ${\bf m'} \in \mathbb{R}^{k-1}$, ${\bf m} \in \mathbb{R}^{k}$}
+As in the previous sections, the relevant formulas can be easily obtained by taking the reciprocal of the above equations, and
+\begin{equation}
+\begin{aligned} \label{eq:acceptance_prob_2_alpha}
+\alpha({\bf m' \mid m}) &= 
+\mbox{min} \Bigg [ 1, \frac{\Delta x_1 \ldots \Delta x_n}{(2 \pi)^{\frac{n}{2}} \theta_{x_1} \ldots \theta_{x_n}} \times \\
+&\times \mbox{exp} \Bigg \lbrace -\frac{\left( x'_{1_{k+1}} - x_{1_i} \right)^2}{2\theta_{x_1}^2} - \ldots - \frac{\left( x'_{n_{k+1}} - x_{n_i} \right)^2}{2\theta_{x_n}^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg].
+\end{aligned}
+\end{equation}
+
+
+\section{Introduction of a normally-distributed additional free parameters}
+Let us consider now the introduction of a free parameter, say $\boldsymbol{\xi}$, whose probability of occurrence is described by a normal distribution $\mathcal{N}(\mu_{\xi}, \sigma_{\xi})$ which is independent from position/depth. Then
+\begin{equation} \label{eq:prior_gaussian}
+p(\boldsymbol{\xi} \mid k) = \prod_{i=1}^{k} \frac{1}{\sigma_{\xi} \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( \xi_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Bigg \rbrace,
+\end{equation}
+and
+
+\begin{equation} \label{eq:prior_3}
+\begin{aligned}
+p({\bf m}) &= p({\bf c}, {\bf x}_1, {\bf x}_2, \ldots, {\bf x}_n, \boldsymbol{\xi} \mid k) \ p(k) \\
+&= p({\bf c} \mid k) \ p(\boldsymbol{\xi} \mid k) \ p(k) \ \prod_{l=1}^{n} p({\bf x}_l \mid k) \\
+&= \frac{k! \left(N - k \right)! \ \prod_{i=1}^{k} \frac{1}{\sigma_{\xi} \sqrt{2 \pi}} \ \mbox{exp}\Big \lbrace -\frac{\left( \xi_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace}{N! \ \Delta k \ \prod_{l=1}^{n} \left( \Delta x_l \right)^k} \\
+&= \frac{k! \left(N - k \right)! \ \prod_{i=1}^{k}\ \mbox{exp}\Big \lbrace -\frac{\left( \xi_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace}{N! \ \Delta k \ \left(\sigma_{\xi} \sqrt{2 \pi}\right)^k \ \prod_{l=1}^{n} \left( \Delta x_l \right)^k}
+\end{aligned}
+\end{equation}
+where, as in the previous section, ${\bf x}_1$, ${\bf x}_2$, $\ldots$, ${\bf x}_n$ are free parameters described by a uniform probability of occurrence within their belonging ranges.
+
+\subsection{CASE 1 (change in $\boldsymbol{\xi}$): ${\bf m', m} \in \mathbb{R}^k$} \label{sec:case1}
+Similar to the previous sections, if any of the uniformly-distributed free parameters ${\bf x}_1$, ${\bf x}_2$, $\ldots$, ${\bf x}_n$ are perturbed, the prior ratio $\frac{p({\bf m'})}{p({\bf m})} = 1$. However, this is not the case when $\boldsymbol{\xi}$ is perturbed. If we assume that only the $j$th element of $\boldsymbol{\xi}$ has changed in the proposed model $p({\bf m'})$,
+\begin{equation} \label{eq:prior_ratio_xi}
+\begin{aligned}
+\frac{p({\bf m'})}{p({\bf m})} = \frac{p(\boldsymbol{\xi}' \mid k)}{p(\boldsymbol{\xi} \mid k)} &= \frac{\mbox{exp}\Big \lbrace -\frac{\left( \xi'_j - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace}{\mbox{exp}\Big \lbrace -\frac{\left( \xi_j - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace} \ \prod_{\substack{i=1 \\ i \neq j}}^{k} \frac{\mbox{exp}\Big \lbrace -\frac{\left( \xi_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace}{\mbox{exp}\Big \lbrace -\frac{\left( \xi_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace} \\
+&= \mbox{exp}\Bigg \lbrace \frac{\left( \xi_j - \mu_{\xi} \right)^2 - \left( \xi'_j - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Bigg \rbrace.
+\end{aligned}
+\end{equation}
+
+If we now define the proposal probability
+\begin{equation} \label{eq:proposal_prob_xi}
+q_{\xi}(\xi'_i \mid \xi_i) = \frac{1}{\theta_{\xi} \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( \xi'_i - \xi_i \right)^2}{2\theta_{\xi}^2} \Bigg \rbrace,
+\end{equation}
+and notice that $q_{\xi}(\xi'_i \mid \xi_i) = q_{\xi}(\xi_i \mid \xi'_i)$, the acceptance probability reads
+\begin{equation} \label{eq:acceptance_prob_1_xi}
+\begin{aligned}
+\alpha({\bf m' \mid m}) &= \mbox{min} \Bigg [ 1,\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)} \ \frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)} \ \frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)} \Bigg] \\
+&= \mbox{min} \Bigg [ 1,  \mbox{exp} \Bigg \lbrace - \frac{{\bf \Phi(m') - \Phi(m)}}{2} + \frac{\left( \xi_j - \mu_{\xi} \right)^2 - \left( \xi'_j - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Bigg \rbrace \Bigg].
+\end{aligned}
+\end{equation}
+Note that, in the above equations, $\sigma_{\xi}$ defines the standard deviation of the normal distribution associated with our prior knowledge of $\boldsymbol{\xi}$, while $\theta_{\xi}$, as in the previous sections, is the standard deviation of the Gaussian used to perturb the model $\bf m$ by randomly changing one element of $\boldsymbol{\xi}$. (Both $\sigma_{\xi}$ and $\theta_{\xi}$ should be chosen a priori.)
+
+\subsection{CASE 2 (birth): ${\bf m'} \in \mathbb{R}^{k+1}$, ${\bf m} \in \mathbb{R}^{k}$}
+Based on equation (\ref{eq:prior_3}),
+\begin{equation} \label{eq:prior_ratio_2_xi}
+\begin{aligned}
+\frac{p({\bf m}')}{p({\bf m})} &= 
+\frac{p({\bf c}' \mid k+1) \ p(\boldsymbol{\xi}' \mid k+1) \ p(k+1) \ \prod_{l=1}^{n} p({\bf x}_l \mid k+1)}{p({\bf c} \mid k) \ p(\boldsymbol{\xi} \mid k) \ p(k) \ \prod_{l=1}^{n} p({\bf x}_l \mid k)} \\
+&= \frac{(k+1) \ \left(\sigma_{\xi} \sqrt{2 \pi}\right)^{k}}{(N-k) \left(\sigma_{\xi} \sqrt{2 \pi}\right)^{k+1} \prod_{l=1}^{n} \Delta x_l} \ \frac{\prod_{i=1}^{k+1}\ \mbox{exp}\Big \lbrace -\frac{\left( \xi'_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace}{\prod_{i=1}^{k}\ \mbox{exp}\Big \lbrace -\frac{\left( \xi_i - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Big \rbrace} \\
+&= \frac{(k+1)}{(N-k) \left(\sigma_{\xi} \sqrt{2 \pi}\right) \prod_{l=1}^{n} \Delta x_l} \ \mbox{exp}\Bigg \lbrace -\frac{\left( \xi'_{k+1} - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} \Bigg \rbrace,
+\end{aligned}
+\end{equation}
+where we noticed that only one element of $\boldsymbol{\xi}'$ does not belong to $\boldsymbol{\xi}$, i.e. the newly born $\xi'_{k+1}$.
+
+Merging equations (\ref{eq:q_ratio_alpha_general}) and (\ref{eq:proposal_prob_xi}), the proposal ratio
+\begin{equation}
+\begin{aligned} \label{eq:q_ratio_xi}
+\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+&= \frac{q\left({\bf c \mid m'}\right) \ q\left({{\bf x}_1 \mid {\bf m}'}\right) \ q\left({{\bf x}_2 \mid {\bf m}'}\right) \ldots \ q\left({{\bf x}_n \mid {\bf m}'}\right)}{q\left({\bf c' \mid m}\right) \ q\left({{\bf x}'_1 \mid {\bf m}}\right) \ q\left({{\bf x}'_2 \mid {\bf m}}\right) \ \ldots \ q\left({{\bf x}'_n \mid {\bf m}}\right)} \frac{q\left({\bf \boldsymbol{\xi} \mid m'}\right)}{q\left({\bf \boldsymbol{\xi}' \mid m}\right)} \\
+&= \frac{N-k}{\left(k+1\right) \ q_{\xi}(\xi'_i \mid \xi_i) \ \prod_{l=1}^n q_{l}\left(x'_{l_{k+1}} \mid x_{l_i}\right)} \\
+&= \frac{N-k}{(k+1)} \ \theta_{\xi} \sqrt{2 \pi} \ \mbox{exp}\Bigg \lbrace \frac{\left( \xi'_{k+1} - \xi_i \right)^2}{2\theta_{\xi}^2} \Bigg \rbrace \ (2 \pi)^{\frac{n}{2}} \prod_{l=1}^n \theta_{x_l} \ \mbox{exp}\Bigg \lbrace \frac{\left( x'_{l_{k+1}} - x_{l_i} \right)^2}{2\theta_{x_l}^2} \Bigg \rbrace \\
+&= \frac{N-k}{(k+1)} \ \theta_{\xi} \ (2 \pi)^{\frac{n+1}{2}} \ \mbox{exp}\Bigg \lbrace \frac{\left( \xi'_{k+1} - \xi_i \right)^2}{2\theta_{\xi}^2} + \sum_{l=1}^n \frac{\left( x'_{l_{k+1}} - x_{l_i} \right)^2}{2\theta_{x_l}^2} \Bigg \rbrace \ \prod_{l=1}^n \theta_{x_l}.
+\end{aligned}
+\end{equation}
+The acceptance probability then reads
+\begin{equation}
+\begin{aligned} \label{eq:acceptance_prob_2_xi}
+\alpha({\bf m' \mid m}) &= \mbox{min} \Bigg [ 1, \frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)} \ \frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)} \ \frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)} \Bigg] \\
+&= \Bigg (\prod_{l=1}^n \frac{\theta_{x_l}}{\Delta x_l} \Bigg ) \frac{\theta_{\xi} (2 \pi)^{\nicefrac{n}{2}}}{\sigma_{\xi}} \ \times \\
+&\times \mbox{exp}\Bigg \lbrace \frac{\left( \xi'_{k+1} - \xi_i \right)^2}{2\theta_{\xi}^2} - \frac{\left( \xi'_{k+1} - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} + \sum_{l=1}^n \frac{\left( x'_{l_{k+1}} - x_{l_i} \right)^2}{2\theta_{x_l}^2} \Bigg \rbrace
+\end{aligned}
+\end{equation}
+
+\subsection{CASE 3 (death): ${\bf m'} \in \mathbb{R}^{k-1}$, ${\bf m} \in \mathbb{R}^{k}$}
+\begin{equation}
+\begin{aligned} \label{eq:acceptance_prob_2_xi}
+\alpha({\bf m' \mid m}) &= \Bigg (\prod_{l=1}^n \frac{\Delta x_l}{\theta_{x_l}} \Bigg ) \frac{\sigma_{\xi}}{\theta_{\xi} (2 \pi)^{\nicefrac{n}{2}}} \ \times \\
+&\times \mbox{exp}\Bigg \lbrace -\frac{\left( \xi'_{k+1} - \xi_i \right)^2}{2\theta_{\xi}^2} + \frac{\left( \xi'_{k+1} - \mu_{\xi} \right)^2}{2\sigma_{\xi}^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} - \sum_{l=1}^n \frac{\left( x'_{l_{k+1}} - x_{l_i} \right)^2}{2\theta_{x_l}^2} \Bigg \rbrace
+\end{aligned}
+\end{equation}
+
+\section{Depth-dependent parameters, uniformly distributed at each depth}
+
+Let us consider the parameter $\bf x$, whose probability distribution is dependent on depth and uniform at each depth. In a 1-D parameterization consisting of $k$ layers, its prior probability then reads
+\begin{equation} \label{eq:prior_unif_depth_depend}
+p({\bf m}) = \frac{k! \left(N - k \right)!}{N! \ \Delta k \ \prod_{i=1}^k (\Delta x)_i},
+\end{equation}
+where $(\Delta x)_i$ denotes the range of possible values spanned by $\bf x$ in the $i$th layer.
+
+\subsection{CASE 1: DEPTH PERTURBATION, ${\bf m', m} \in \mathbb{R}^k$}
+Similar to Sections 1 and 2, a perturbation in the value of $\bf x$ in an arbitrary layer is associated with a prior ratio $\frac{p({\bf m}')}{p({\bf m})} = 1$. \textbf{When the perturbation involves the position of the $j$th Voronoi cell}, however, the above ratio reads
+\begin{equation} \label{eq:prior_ratio_unif_depth_depend}
+\begin{aligned}
+\frac{p({\bf m}')}{p({\bf m})} &= 
+\frac{k! \left(N - k \right)!}{N! \ \Delta k \ (\Delta x)_{j'} \ \prod_{i=1}^{k-1} (\Delta x)_i} \frac{N! \ \Delta k \ (\Delta x)_j \ \prod_{i=1}^{k-1} (\Delta x)_i}{k! \left(N - k \right)!} \\
+&= \frac{(\Delta x)_j}{(\Delta x)_{j'}},
+\end{aligned}
+\end{equation}
+where $(\Delta x)_j$ denotes the range spanned by $\bf x$ at the depth associated with the $j$th layer and $j'$ the layer corresponding to the perturbed Voronoi cell. The acceptance ratio then reads
+
+\begin{equation} \label{eq:acceptance_1_unif_depth_dep}
+\alpha({\bf m' \mid m}) = 
+\mbox{min} \Bigg [ 1,  \frac{(\Delta x)_j}{(\Delta x)_{j'}} \ \mbox{exp} \Bigg \lbrace - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg].
+\end{equation}
+
+\subsection{CASE 2 (birth): ${\bf m'} \in \mathbb{R}^{k+1}$, ${\bf m} \in \mathbb{R}^{k}$}
+\begin{equation} \label{eq:acceptance_2_unif_depth_dep}
+\alpha({\bf m' \mid m}) = 
+\mbox{min} \Bigg [ 1, \frac{\theta_3 \sqrt{2 \pi}}{(\Delta v)_j} \mbox{exp} \Bigg \lbrace \frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace \Bigg],
+\end{equation}
+where $j$ is the newly added layer.
+
+\section{Hierarchical Bayesian Inversion}
+In the previous sections, we assumed that the data noise covariance ${\bf C}_e$ is known. When this is not the case, it is possible to modify the above transdimensional scheme so as to treat the noise as a free parameter of the inversion. As shown by \cite{bodin12}, this is done by introducing an hyperparameter ${\bf h} = [\sigma, r]$, where $\sigma$ denotes (period-independent) standard deviation and the correlation between two adjacent samples in the dispersion curve. Then, the determinant
+\begin{equation}
+\mid {\bf C}_e \mid \ = \sigma^{2n} (1 - r^2)^{n-1}
+\end{equation}
+can be perturbed along the Markov chain and used to calculate the likelihood ratio
+\begin{equation} \label{eq:likelihood_ratio_hierarchical}
+\begin{aligned}
+\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)} &=
+\frac{\mbox{exp} \bigg \lbrace \frac{-{\bf \Phi(m')}}{2} \bigg \rbrace}{\sqrt{\left(2\pi\right)^n \vert {\bf C}'_e \vert}} \frac{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}}{\mbox{exp} \bigg \lbrace \frac{-{\bf \Phi(m)}}{2} \bigg \rbrace} \\
+&= \sqrt{\frac{\mid {\bf C}_e \mid}{\mid {\bf C}'_e \mid}}  \mbox{exp} \Bigg \lbrace - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace.
+\end{aligned}
+\end{equation}
+
+
+\FloatBarrier
+\bibliographystyle{agufull}
+\bibliography{./bibfile}
+\end{document}

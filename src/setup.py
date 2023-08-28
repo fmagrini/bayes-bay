@@ -9,7 +9,7 @@ Created on Sun Feb 17 23:05:58 2019
 
 On terminal:
     
-    python setup_all.py build_ext --inplace
+    python setup.py build_ext --inplace
 
 for html:
     cython -a example_cython.pyx
