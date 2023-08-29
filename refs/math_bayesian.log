@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2023.6.1)  29 AUG 2023 09:56
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2023.6.1)  29 AUG 2023 15:00
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -585,7 +585,7 @@ Here is how much of TeX's memory you used:
  22940 multiletter control sequences out of 15000+600000
  611817 words of font info for 91 fonts, out of 8000000 for 9000
  81 hyphenation exceptions out of 8191
- 35i,12n,40p,584b,382s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 35i,13n,40p,584b,382s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texmf/fonts/enc/dvips/lm/lm-rm.enc}{/usr/share/texmf/fonts/enc/dv
 ips/lm/lm-mathit.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/s
 hare/texmf/fonts/enc/dvips/lm/lm-ec.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm
@@ -603,7 +603,7 @@ ts/type1/public/lm/lmr8.pfb></usr/share/texmf/fonts/type1/public/lm/lmri10.pfb>
 /public/lm/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy6.pfb></usr/s
 hare/texmf/fonts/type1/public/lm/lmsy8.pfb></usr/share/texlive/texmf-dist/fonts
 /type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on math_bayesian.pdf (10 pages, 324224 bytes).
+Output written on math_bayesian.pdf (10 pages, 324161 bytes).
 PDF statistics:
  132 PDF objects out of 1000 (max. 8388607)
  99 compressed objects within 1 object stream
