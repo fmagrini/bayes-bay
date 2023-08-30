@@ -17,6 +17,9 @@ from _utils_bayes import interpolate_linear_1d, nearest_index
 from _utils_bayes import _get_thickness, _is_sorted
 
 
+TWO_PI = 2 * math.pi
+SQRT_TWO_PI = math.sqrt(TWO_PI)
+
 class Model:
     
     def __init__(self, n_voronoi_cells, voronoi_sites):
@@ -30,8 +33,8 @@ class Model:
         self._finalize_dict = dict(
             site=self._finalize_site_perturbation,
             free_param=self._finalize_free_param_perturbation, 
-            birth=self._finalize_birth_perturbation, 
-            death=self._finalize_death_perturbation, 
+            birth=self._finalize_birth_death_perturbation, 
+            death=self._finalize_birth_death_perturbation, 
         )
 
 
@@ -82,7 +85,6 @@ class Model:
                 self.proposed_state['voronoi_sites']        
                 )
         self._current_perturbation['type'] = 'death'
-        pass  # TODO
         
     
     def finalize_perturbation(self, accepted):
@@ -107,12 +109,14 @@ class Model:
         idx = self._current_perturbation['idx']
         rejected_state[name][idx] = accepted_state[name][idx]
     
-    def _finalize_birth_perturbation(self, accepted_state, rejected_state):
-        pass    # TODO
-        
-    def _finalize_death_perturbation(self, accepted_state, rejected_state):
-        pass    # TODO
-
+    
+    def _finalize_birth_death_perturbation(self, accepted_state, rejected_state):
+        for k, v in accepted_state.items():
+            if isinstance(v, int):
+                rejected_state[k] = v
+            else:
+                rejected_state[k] = v.copy()
+            
             
     def _sort_proposed_state(self):
         isort = np.argsort(self.proposed_state['voronoi_sites'])
@@ -206,34 +210,65 @@ class Parameterization1D(Parameterization):
         old_sites = self.model.proposed_state['voronoi_sites']
         while True:
             lb, ub = self.voronoi_site_bounds
-            new_site = np.random.uniform(lb, ub)
+            new_site = random.uniform(lb, ub)
             if np.any(np.abs(new_site - old_sites) < 1e-2):
                 continue
             break
         
         self.model.proposed_state['voronoi_sites'] = \
             np.append(old_sites, new_site)
+            
+        isite = nearest_index(xp=new_site, 
+                              x=old_sites, 
+                              xlen=old_sites.size)
+        prob_ratio = 0
         for param_name, param in self.free_params.items():
             old_values = self.model.current_state[param_name]
-            isite = nearest_index(xp=new_site, 
-                                  x=old_sites, 
-                                  xlen=old_sites.size)
+            old_value = old_values[isite]
             
-            new_value = param.perturb_value(old_sites[isite], 
-                                            old_values[isite])
-            
+            new_value = param.perturb_value(new_site, 
+                                            old_value)
+            prob_ratio += self.probability_ratio_birth_death_perturbation(
+                param, new_site, old_value, new_value
+                )
             self.model.proposed_state[param_name] = \
                 np.append(old_values, new_value)
  
         self.model.propose_birth_perturbation()
+        return prob_ratio
+        
             
         
     def perturbation_death(self):
-        raise NotImplementedError  # TODO
+        n_cells = self.model.current_state['n_voronoi_cells']
+        isite = random.randint(0, n_cells-1)
+        site_to_remove = self.model.current_state['voronoi_sites'][isite]
+        old_sites = self.model.current_state['voronoi_sites']
+        new_sites = np.delete(old_sites, isite)
+        self.model.proposed_state['voronoi_sites'] = new_sites
+        
+        iclosest = nearest_index(xp=site_to_remove, 
+                                 x=new_sites, 
+                                 xlen=new_sites.size)
+        prob_ratio = 0
+        for param_name, param in self.free_params.items():
+            old_values = self.model.current_state[param_name]
+            new_values = np.delete(old_values, isite)
+            self.model.proposed_state[param_name] = new_values
+            old_value = old_values[isite]
+            new_value = new_values[iclosest]
+            
+            prob_ratio -= self.probability_ratio_birth_death_perturbation(
+                param, site_to_remove, old_value, new_value
+                )
+ 
+        self.model.propose_death_perturbation()
+        return prob_ratio
+
     
     
     def perturbation_voronoi_site(self):
-        isite = np.random.randint(0, self.n_voronoi_cells)
+        isite = random.randint(0, self.n_voronoi_cells-1)
         old_site = self.voronoi_sites[isite]
         site_min, site_max = self.voronoi_site_bounds
         std = self.get_voronoi_site_perturb_std(old_site)
@@ -251,7 +286,7 @@ class Parameterization1D(Parameterization):
 
 
     def perturbation_free_param(self, param_name):
-        isite = np.random.randint(0, self.n_voronoi_cells)
+        isite = random.randint(0, self.n_voronoi_cells-1)
         site = self.voronoi_sites[isite]
         old_value = self.model.current_state[param_name][isite]
         new_value = self.free_params[param_name].perturb_value(site, old_value)
@@ -263,14 +298,20 @@ class Parameterization1D(Parameterization):
         self.model.finalize_perturbation(accepted)
 
 
-    def probability_ratio_birth_perturbation(self):
-        raise NotImplementedError   # TODO
-        # We need old_site, new_site, old_value, new_value. Modify perturbation_birth
-    
-    
-    def probability_ratio_death_perturbation(self, TODO):
-        raise NotImplementedError   # TODO    
-
+    def probability_ratio_birth_death_perturbation(self, 
+                                                   param,
+                                                   perturbed_site, 
+                                                   value, 
+                                                   perturbed_value):
+        """
+        Returns probability ratio associated with a single free parameter
+        """
+        std_perturb = param.get_perturb_std(perturbed_site)
+        delta = param.get_delta(perturbed_site)
+        term1 = math.log(SQRT_TWO_PI * std_perturb / delta)
+        term2 = (perturbed_value - value)**2 / (2 * std_perturb**2)
+        return term1 + term2
+        
 
     def probability_ratio_site_perturbation(self, old_site, new_site):
         proposal_ratio = self._proposal_ratio_site_perturbation(old_site, 
@@ -303,91 +344,6 @@ class Parameterization1D(Parameterization):
         return prob_ratio
 
 
-# class UniformParameter:
-    
-#     def __init__(self, name, vmin, vmax, std_perturb, starting_model=None):
-#         """
-
-#         Parameters
-#         ----------
-#         name : str
-        
-#         vmin, vmax : float
-#             Boundaries defining the uniform probability distribution
-            
-#         std_perturb : float
-#             Standard deviation of the Gaussians used to randomly perturb the
-#             parameter. It affects the probability of birth/depth of a layer
-            
-#         starting_model : func
-#             Function of depth, should return the values of the uniform parameter
-#             as at the given depths.
-#         """
-        
-#         self.name = name
-#         self.vmin = vmin
-#         self.vmax = vmax
-#         self.std_perturb = std_perturb
-#         if starting_model is not None:
-#             self.starting_model = starting_model
-    
-    
-#     def __repr__(self):
-#         string = 'UniformParam(%s, vmin=%s'%(self.name, self.vmin)
-#         string += ', vmax=%s std=%s)'%(self.vmax, self.std_perturb)
-#         if getattr(self, 'value', None) is not None:
-#             string += '\n%s'%repr(self.value)
-#         return string
-    
-    
-#     def __getitem__(self, index):
-#         return self.value[index]
-    
-    
-#     def __setitem__(self, index, value):
-#         self.value[index] = value
-    
-    
-#     def starting_model(self, depths):
-#         n_layers = len(depths)
-#         return np.sort(
-#                 np.random.choice(np.linspace(self.vmin, self.vmax), 
-#                                  n_layers,
-#                                  replace=False)
-#                                  )    
-                
-#     @property
-#     def std_perturb(self):
-#         return self._std_perturb
-    
-    
-#     @std_perturb.setter
-#     def std_perturb(self, value):
-#         self._std_perturb = value
-#         prob_uniform = self.vmax - self.vmin
-#         prob_std = value * sqrt(2 * pi)
-#         self._birth_prob = prob_std / prob_uniform
-        
-    
-#     @property
-#     def birth_probability(self, *args, **kwargs):
-#         return self._birth_prob
-    
-           
-#     def random_perturbation(self, n_layers, layer=None):
-#         layer = layer if layer is not None else random.randint(0, n_layers-1)
-#         while True:
-#             random_change = random.normalvariate(0, self.std_perturb)
-#             new_param = self.value[layer, 1] + random_change
-#             if self.vmin <= new_param <= self.vmax:
-#                 self.value[layer, 1] = new_param
-#                 return 0, n_layers, self.name
-            
-    
-#     def prob_change_dimension(self, vold, vnew):
-#         return (vnew - vold)**2 / (2 * self.std_perturb**2)
-        
-
 
 class Parameter:
     
@@ -414,8 +370,6 @@ class Parameter:
                              new_value):
         raise NotImplementedError
 
-        
-        
         
     
 class PositionDependendentUniformParam(Parameter):
@@ -497,7 +451,7 @@ class PositionDependendentUniformParam(Parameter):
     
     def generate_random_values(self, positions, is_init=False):
         vmin, vmax = self.get_vmin_vmax(positions)
-        values = np.random.uniform(vmin, vmax)
+        values = random.uniform(vmin, vmax)
         if is_init and self.init_sorted:
             return np.sort(values)
         return values
@@ -532,177 +486,57 @@ class PositionDependendentUniformParam(Parameter):
     
     
     
-# class UniformParam():
-    
-#     error_depth = '`depth` must not be None when `vmin`, `vmax`, '
-#     error_depth += 'or `std_perturb` are iterables.'
-#     error_dim_v = 'Incompatible dimensions of `vmin`/`vmax` and `depth`'
-#     error_dim_std = 'Incompatible dimensions of `std_perturb` and `depth`'
-    
-#     def __init__(self, 
-#                   name, 
-#                   vmin, 
-#                   vmax,
-#                   std_perturb,
-#                   depth=None, 
-#                   starting_model=None):
-#         """
+        
 
-#         Parameters
-#         ----------
-#         name : str
-        
-#         vmin, vmax : float
-#             Boundaries defining the uniform probability distribution
-            
-#         std_perturb : float
-#             Standard deviation of the Gaussians used to randomly perturb the
-#             parameter. It affects the probability of birth/depth of a layer
-            
-#         starting_model : func
-#             Function of depth, should return the values of the uniform parameter
-#             as at the given depths.
-#         """
-        
-#         self.name = name
-#         self.vmin = vmin if np.isscalar(vmin) else np.array(vmin)
-#         self.vmax = vmax if np.isscalar(vmax) else np.array(vmax)
-#         self.delta = self.vmax - self.vmin
-#         self.is_scalar_std = np.isscalar(std_perturb)
-#         self.is_scalar_delta = np.isscalar(self.delta)
-#         self.std_perturb = std_perturb if self.is_scalar_std else np.array(std_perturb)
-#         self.depth = depth if not isinstance(depth, Iterable) else np.array(depth)
-        
-#         if depth is None:
-#             if not self.is_scalar_delta or not self.is_scalar_std:
-#                 raise Exception(self.error_depth)
-#         elif isinstance(depth, Iterable):
-#             if not (self.is_scalar_delta or len(self.delta)==len(depth)):
-#                 raise Exception(self.error_dim_v)
-#             if not (self.is_scalar_std or len(std_perturb)==len(depth)):
-#                 raise Exception(self.error_dim_std)
-        
-#         cond_delta = self.is_scalar_delta or np.allclose(self.delta, self.delta[0])
-#         if cond_delta and not np.isscalar(self.delta):
-#             self.delta = self.delta[0]
-#         cond_std = self.is_scalar_std or np.allclose(std_perturb, std_perturb[0])
-#         if cond_std and not np.isscalar(self.std_perturb):
-#             self.std_perturb = self.std_perturb[0]
-#         self.depth_dependent = False if cond_delta and cond_std else True
-#         if starting_model is not None:
-#             self.starting_model = starting_model
-            
-            
-#     def __repr__(self):
-#         string = 'UniformParam(%s, vmin=%s,'%(self.name, self.vmin)
-#         string += ' vmax=%s, std=%s'%(self.vmax, self.std_perturb)
-#         if self.depth_dependent:
-#             string += ', depth=%s)'%self.depth
-#         else:
-#             string += ')'
-#         if getattr(self, 'value', None) is not None:
-#             string += '\n%s'%repr(self.value)
-#         return string
-    
-    
-#     def __getitem__(self, index):
-#         return self.value[index]
-    
-    
-#     def __setitem__(self, index, value):
-#         self.value[index] = value
-
-    
-#     def get_std_perturb(self, depth):
-#         if self.is_scalar_std:
-#             return self.std_perturb
-#         return interpolate_linear_1d(depth, self.depth, self.std_perturb)
-    
-    
-#     def get_delta(self, depth):
-#         if self.is_scalar_delta:
-#             return self.delta
-#         return interpolate_linear_1d(depth, self.depth, self.delta)
-    
-    
-#     def prior_ratio(self, old_depth, new_depth):
-#         if not self.depth_dependent:
-#             return 1
-#         delta_old = self.get_delta(old_depth)
-#         delta_new = self.get_delta(new_depth)
-#         return delta_old / delta_new
-    
-    
-#     def random_perturbation(self, n_layers, layer=None):
-#         layer = layer if layer is not None else random.randint(0, n_layers-1)
-#         while True:
-#             random_change = random.normalvariate(0, self.std_perturb)
-#             new_param = self.value[layer, 1] + random_change
-#             if self.vmin <= new_param <= self.vmax:
-#                 self.value[layer, 1] = new_param
-#                 return 0, n_layers, self.name    
-    
-    
-#     def generate_random_value(self):
-#         return np.random.uniform(self.vmin, self.vmax)
-        
-    
-#     def perturb_value(self, position, value):
-#         vmin, vmax = self.get_vmin_vmax(position)
-#         std = self.get_perturb_std(position)
-#         while True:
-#             random_deviate = random.normalvariate(0, std)
-#             new_value = value + random_deviate
-#             if not (new_value<vmin or new_value>vmax): 
-#                 return new_value       
-        
-    
-class Target:
-
-    def __init__(self, name, x, y, std, **kwargs):
-        self.name = name
-        self.x = x
-        self.y = y
-        self.std = std
-        self.shape = y.shape
-        self.__dict__.update(kwargs)
-        self.hierarchical = True if std is None else False
     
     
 #%%
 
-param = Parameterization1D(n_voronoi_cells=5, 
-                           voronoi_site_bounds=(0, 10), 
-                           voronoi_site_perturb_std=[[1, 10], [1, 10]])
-p = PositionDependendentUniformParam('vs', 
-                                     position=[1, 10], 
-                                     vmin=[1, 2], 
-                                     vmax=3, 
-                                     perturb_std=0.1)
-param.add_free_parameter(p)
+# param = Parameterization1D(n_voronoi_cells=5, 
+#                            voronoi_site_bounds=(0, 10), 
+#                            voronoi_site_perturb_std=[[1, 10], [1, 10]])
+# p = PositionDependendentUniformParam('vs', 
+#                                      position=[1, 10], 
+#                                      vmin=[1, 2], 
+#                                      vmax=3, 
+#                                      perturb_std=0.1)
+# param.add_free_parameter(p)
 
-print('VS')
-param.perturbation_free_param('vs')
-print(param.model.current_state)
-print(param.model.proposed_state)
-print('-'*15)
-param.finalize_perturbation(True)
-print(param.model.current_state)
-print(param.model.proposed_state)
-print('-'*15)
+# print('VS')
+# param.perturbation_free_param('vs')
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
 
-print('SITE')
-param.perturbation_voronoi_site()
-print(param.model.current_state)
-print(param.model.proposed_state)
-print('-'*15)
-param.finalize_perturbation(True)
-print(param.model.current_state)
-print(param.model.proposed_state)
+# print('SITE')
+# param.perturbation_voronoi_site()
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
 
 
-print('BIRTH')
-param.perturbation_birth()
-print(param.model.current_state)
-print(param.model.proposed_state)
+# print('BIRTH')
+# param.perturbation_birth()
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
 
+
+# print('DEATH')
+# param.perturbation_death()
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)

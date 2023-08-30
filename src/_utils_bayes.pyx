@@ -9,7 +9,7 @@ cimport numpy as np
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef _is_sorted(long[:] argsort_indices):
+cpdef bool_cpp _is_sorted(long[:] argsort_indices):
     cdef long i
     cdef ssize_t size = argsort_indices.shape[0]
     for i in range(size):
@@ -20,7 +20,8 @@ cpdef _is_sorted(long[:] argsort_indices):
 
 @boundscheck(False)
 @wraparound(False) 
-def _get_thickness(double[:] depth):
+@cdivision(True)  
+cpdef double[:] _get_thickness(double[:] depth):
     cdef ssize_t size = depth.shape[0]
     cdef int i
     cdef double d1, d2
@@ -35,7 +36,7 @@ def _get_thickness(double[:] depth):
 
 @boundscheck(False)
 @wraparound(False) 
-def _closest_and_final_index(double[:] ndarray, double value):
+cpdef (int, int) _closest_and_final_index(double[:] ndarray, double value):
     cdef int closest_idx = 0 
     cdef int i
     cdef double vmin = fabs(ndarray[0] - value)
@@ -172,7 +173,7 @@ cdef int floor_index(double xp, double[:] x, ssize_t xlen):
 
 @boundscheck(False)
 @wraparound(False) 
-def interpolate_linear_1d(xp, double[:] x, double[:] y):
+cpdef interpolate_linear_1d(xp, double[:] x, double[:] y):
     """ Linear or nearest neighbour interpolation in 1-D
     Parameters
     ----------
@@ -201,7 +202,7 @@ def interpolate_linear_1d(xp, double[:] x, double[:] y):
 
 @boundscheck(False)
 @wraparound(False) 
-def interpolate_nearest_1d(xp, double[:] x, double[:] y):
+cpdef interpolate_nearest_1d(xp, double[:] x, double[:] y):
     """ Linear or nearest neighbour interpolation in 1-D
     Parameters
     ----------
@@ -228,6 +229,26 @@ def interpolate_nearest_1d(xp, double[:] x, double[:] y):
     return np.asarray(yp)
 
 
+@boundscheck(False)
+@wraparound(False) 
+@cdivision(True)
+cpdef double[:, ::1] inverse_covariance(double sigma, 
+                                        double r, 
+                                        Py_ssize_t n):
+    cdef Py_ssize_t i
+    cdef double factor = 1 / (sigma**2 * (1 - r**2))
+    cdef double[:, ::1] matrix = np.zeros((n, n), dtype=np.double)
+    
+    for i in range(1, n-1):
+        matrix[i, i] = (1 + r**2) * factor
+        matrix[i, i-1] = -r * factor
+        matrix[i-1, i] = -r * factor
+    matrix[0, 0] = factor
+    matrix[n-1, n-1] = factor
+    matrix[i+1, i] = -r * factor
+    matrix[i, i+1] = -r * factor
+    return matrix
+    
 
 
 
