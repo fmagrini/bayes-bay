@@ -21,7 +21,7 @@ cpdef bool_cpp _is_sorted(long[:] argsort_indices):
 @boundscheck(False)
 @wraparound(False) 
 @cdivision(True)  
-cpdef double[:] _get_thickness(double[:] depth):
+cpdef _get_thickness(double[:] depth):
     cdef ssize_t size = depth.shape[0]
     cdef int i
     cdef double d1, d2
@@ -232,7 +232,7 @@ cpdef interpolate_nearest_1d(xp, double[:] x, double[:] y):
 @boundscheck(False)
 @wraparound(False) 
 @cdivision(True)
-cpdef double[:, ::1] inverse_covariance(double sigma, 
+cpdef inverse_covariance(double sigma, 
                                         double r, 
                                         Py_ssize_t n):
     cdef Py_ssize_t i
@@ -247,7 +247,7 @@ cpdef double[:, ::1] inverse_covariance(double sigma,
     matrix[n-1, n-1] = factor
     matrix[i+1, i] = -r * factor
     matrix[i, i+1] = -r * factor
-    return matrix
+    return np.asarray(matrix)
     
 
 

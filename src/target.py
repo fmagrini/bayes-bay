@@ -63,6 +63,11 @@ class Target:
             self.dobs_covariance_mat = np.array(dobs_covariance_mat)
         
     
+    @property
+    def is_hierarchical(self):
+        return not hasattr(self, 'dobs_covariance_mat')
+    
+    
     def __repr__(self):
         string = '%s('%self.name
         string += 'dobs=%s, '%self.dobs

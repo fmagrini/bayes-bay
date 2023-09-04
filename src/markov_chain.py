@@ -7,14 +7,69 @@ Created on Sat Apr  9 15:07:01 2022
 
 """
 
+from copy import deepcopy
+from functools import partial
 import random
-from math import ceil
-from math import log
 import numpy as np
+from log_likelihood import LogLikelihood
 from _utils_bayes import _get_thickness, _closest_and_final_index
 from _utils_bayes import interpolate_nearest_1d
 
    
+
+class MarkovChain:
+    
+    def __init__(self, 
+                 parameterization, 
+                 targets, 
+                 forward_functions):
+        self.parameterization = parameterization
+        self.log_likelihood = LogLikelihood(model=parameterization.model, 
+                                            targets=targets, 
+                                            forward_functions=forward_functions)
+        perturb_voronoi = [self.parameterization.perturbation_voronoi_site]
+        if self.parameterization.trans_d:
+            perturb_voronoi += [self.parameterization.perturbation_birth,
+                                self.parameterization.perturbation_death]
+        perturb_free_params = [
+            partial(self.parameterization.perturbation_free_param, 
+                    param_name=name) \
+                for name in self.parameterization.free_params
+            ]
+        
+        self.perturbations = perturb_voronoi + perturb_free_params
+        perturb_targets = []
+        for target in targets:
+            if target.is_hierarchical:
+                perturb_targets.append(target.perturb_covariance)
+        self.perturbations += perturb_targets
+        
+
+
+
+
+class BayesianInversion:
+    
+    def __init__(self, parameterization, targets, fwd_functions):
+        self.parameterization = parameterization
+        self.targets = targets
+        self.fwd_functions = fwd_functions
+        
+    def run(self, 
+            n_chains=10, 
+            n_cpus=10, 
+            n_iterations=1000,  
+            save_n_models=100):
+        self.chains = [
+            MarkovChain(deepcopy(self.parameterization, 
+                                 self.targets, 
+                                 self.fwd_functions)
+                        ) for _ in range(n_cpus)
+            ]
+        
+
+
+
 class MarkovChain1D:
     
     def __init__(self, 

@@ -492,15 +492,15 @@ class PositionDependendentUniformParam(Parameter):
     
 #%%
 
-# param = Parameterization1D(n_voronoi_cells=5, 
-#                            voronoi_site_bounds=(0, 10), 
-#                            voronoi_site_perturb_std=[[1, 10], [1, 10]])
-# p = PositionDependendentUniformParam('vs', 
-#                                      position=[1, 10], 
-#                                      vmin=[1, 2], 
-#                                      vmax=3, 
-#                                      perturb_std=0.1)
-# param.add_free_parameter(p)
+param = Parameterization1D(n_voronoi_cells=5, 
+                            voronoi_site_bounds=(0, 10), 
+                            voronoi_site_perturb_std=[[1., 10], [1., 10]])
+p = PositionDependendentUniformParam('vs', 
+                                      position=[1, 10], 
+                                      vmin=[1, 2], 
+                                      vmax=3, 
+                                      perturb_std=0.1)
+param.add_free_parameter(p)
 
 # print('VS')
 # param.perturbation_free_param('vs')
