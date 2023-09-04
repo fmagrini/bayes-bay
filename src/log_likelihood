@@ -6,6 +6,7 @@ Created on Wed Aug 30 15:04:42 2023
 @author: fabrizio
 """
 
+import math
 
 class LogLikelihood:
     
@@ -33,5 +34,5 @@ class LogLikelihood:
         for target in self.targets:
             det_old = target._current_state['determinant_covariance']
             det_new = target.determinant_covariance()
-            factor += log(sqrt(det_old / det_new))
+            factor += math.log(math.sqrt(det_old / det_new))
         return factor + (old_misfit - new_misfit) / (2 * temperature)
