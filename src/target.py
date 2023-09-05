@@ -91,6 +91,8 @@ class Target:
             new_value = value + random_deviate
             if not (new_value<vmin or new_value>vmax): 
                 self._proposed_state[name] = new_value
+                break
+        return 0
     
     
     def finalize_perturbation(self, accepted):
