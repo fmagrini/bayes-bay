@@ -282,10 +282,12 @@ class BayesianInversion:
                                                temperature_max,
                                                chains_with_unit_temperature)
         
+        for i, chain in enumerate(self.chains):
+            chain.temperature = temperatures[i]
+        
         partial_iterations = swap_every if parallel_tempering else n_iterations
         func = partial(MarkovChain.advance_chain,
                        n_iterations=partial_iterations,
-                       burnin_iterations=burnin_iterations, 
                        save_n_models=save_n_models, 
                        verbose=verbose)
         i_iterations = 0
@@ -304,6 +306,11 @@ class BayesianInversion:
                 break
             if parallel_tempering:
                 self.swap_temperatures()
+            burnin_iterations = max(0, burnin_iterations - partial_iterations)
+            func = partial(MarkovChain.advance_chain,
+                           n_iterations=partial_iterations,
+                           save_n_models=save_n_models, 
+                           verbose=verbose)
 
 
     def swap_temperatures(self):
