@@ -17,6 +17,7 @@ class LogLikelihood:
         self.targets = targets
         self.forward_functions = forward_functions
         assert len(self.targets) == len(self.forward_functions)
+        self.proposed_dpred = {}
         
 
     def data_misfit(self):
@@ -26,6 +27,7 @@ class LogLikelihood:
             dobs = target.dobs
             residual = dpred - dobs
             misfit += residual @ target.covariance_times_vector(residual)
+            self.proposed_dpred[target.name] = dpred
         return misfit
     
     

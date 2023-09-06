@@ -43,7 +43,7 @@ class Target:
                 'perturb_std': sigma_perturb_std
                 }
             self._current_state = {
-                'variance': random.uniform(sigma_min, sigma_max)
+                'sigma': random.uniform(sigma_min, sigma_max)
                 }
             self._perturbations = [self.sigma]
             if noise_is_correlated:
@@ -72,7 +72,7 @@ class Target:
         string = '%s('%self.name
         string += 'dobs=%s, '%self.dobs
         if self.sigma is not None:
-            string += 'variance=%s, '%self.sigma
+            string += 'sigma=%s, '%self.sigma
             if self.noise_is_correlated:
                 string += 'correlation=%s'%self.correlation
         else:
