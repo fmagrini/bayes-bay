@@ -8,10 +8,8 @@ Created on Wed Dec 21 15:56:00 2022
 
 import random
 from functools import partial
-from copy import copy, deepcopy
+from copy import deepcopy
 import math
-from math import pi, sqrt, log
-from collections import Iterable
 import numpy as np
 from _utils_bayes import interpolate_linear_1d, nearest_index
 from _utils_bayes import _get_thickness, _is_sorted
@@ -238,7 +236,6 @@ class Parameterization1D(Parameterization):
         return prob_ratio
         
             
-        
     def perturbation_death(self):
         n_cells = self.model.current_state['n_voronoi_cells']
         isite = random.randint(0, n_cells-1)
@@ -265,7 +262,6 @@ class Parameterization1D(Parameterization):
         self.model.propose_death_perturbation()
         return prob_ratio
 
-    
     
     def perturbation_voronoi_site(self):
         isite = random.randint(0, self.n_voronoi_cells-1)
@@ -492,15 +488,15 @@ class PositionDependendentUniformParam(Parameter):
     
 #%%
 
-param = Parameterization1D(n_voronoi_cells=5, 
-                            voronoi_site_bounds=(0, 10), 
-                            voronoi_site_perturb_std=[[1., 10], [1., 10]])
-p = PositionDependendentUniformParam('vs', 
-                                      position=[1, 10], 
-                                      vmin=[1, 2], 
-                                      vmax=3, 
-                                      perturb_std=0.1)
-param.add_free_parameter(p)
+# param = Parameterization1D(n_voronoi_cells=5, 
+#                             voronoi_site_bounds=(0, 10), 
+#                             voronoi_site_perturb_std=[[1., 10], [1., 10]])
+# p = PositionDependendentUniformParam('vs', 
+#                                       position=[1, 10], 
+#                                       vmin=[1, 2], 
+#                                       vmax=3, 
+#                                       perturb_std=0.1)
+# param.add_free_parameter(p)
 
 # print('VS')
 # param.perturbation_free_param('vs')

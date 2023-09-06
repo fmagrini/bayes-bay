@@ -10,6 +10,7 @@ Created on Sat Apr  9 15:07:01 2022
 from copy import deepcopy
 from functools import partial
 import random
+import math
 import numpy as np
 from log_likelihood import LogLikelihood
 from _utils_bayes import _get_thickness, _closest_and_final_index
@@ -23,28 +24,96 @@ class MarkovChain:
                  parameterization, 
                  targets, 
                  forward_functions):
+        # TODO temperature
         self.parameterization = parameterization
         self.log_likelihood = LogLikelihood(model=parameterization.model, 
                                             targets=targets, 
                                             forward_functions=forward_functions)
+        self._init_perturbations()
+        self._init_statistics()
+        
+    
+    def _init_perturbation_funcs(self):
         perturb_voronoi = [self.parameterization.perturbation_voronoi_site]
+        finalize_voronoi = [self.parameterization.finalize_perturbation]
+        perturb_types = ["VoronoiSite"]
         if self.parameterization.trans_d:
             perturb_voronoi += [self.parameterization.perturbation_birth,
                                 self.parameterization.perturbation_death]
-        perturb_free_params = [
-            partial(self.parameterization.perturbation_free_param, 
-                    param_name=name) \
-                for name in self.parameterization.free_params
-            ]
+            finalize_voronoi += [self.parameterization.finalize_perturbation,
+                                 self.parameterization.finalize_perturbation]
+            perturb_types += ["Birth", "Death"]
         
-        self.perturbations = perturb_voronoi + perturb_free_params
+        perturb_free_params = []
+        perturb_free_params_types = []
+        finalize_free_params = []
+        for name in self.parameterization.free_params:
+            perturb_free_params.append(
+                partial(self.parameterization.perturbation_free_param, 
+                    param_name=name)
+            )
+            perturb_free_params_types.append("Param - " + name)
+            finalize_free_params.append(self.parameterization.finalize_perturbation)
+
         perturb_targets = []
-        for target in targets:
+        perturb_targets_types = []
+        fianlize_targets = []
+        for target in self.log_likelihood.targets:
             if target.is_hierarchical:
                 perturb_targets.append(target.perturb_covariance)
-        self.perturbations += perturb_targets
+                perturb_targets_types.append("Target - " + target.name)
+                fianlize_targets.append(target.finalize_perturbation)
         
+        self.perturbations = perturb_voronoi + perturb_free_params + perturb_targets
+        self.perturbation_types = perturb_types + perturb_free_params_types + \
+                                    perturb_targets_types
+        self.finalizations = finalize_voronoi + finalize_free_params + fianlize_targets
+        
+        assert len(self.perturbations) == len(self.perturbation_types)
+        assert len(self.perturbations) == len(self.finalizations)
+    
+    
+    def _init_saved_samples(self):  # TODO
+        raise NotImplementedError
+    
+    
+    def _init_statistics(self):
+        self._last_misfit = float("inf")
+        self._perturb_type_counts = {}
+        self._proposed_models = 0
+        self._accepted_models = 0
+    
+    
+    def next_iteration(self):
+        # choose one perturbation function and type
+        perturb_i = random.choice(len(self.perturbations))
+        
+        # propose new model and calculate probability ratios
+        log_prob_ratio = self.perturbations[perturb_i]()
+        log_likelihood_ratio, self._last_misfit = \
+            self.log_likelihood(self._last_misfit)  # TODO temperature
+        
+        # decide whether to accept
+        accepted = log_prob_ratio + log_likelihood_ratio > math.log(random.random())
+        
+        # finalize perturbation based whether it's accepted
+        self.finalizations[self.finalizations[perturb_i]](accepted)
 
+        # save statistics
+        perturb_type = self.perturbation_types[perturb_i]
+        if perturb_type not in self._perturb_type_counts:
+            self._perturb_type_counts[perturb_type] = 0
+        self._perturb_type_counts += 1
+        self._proposed_models += 1
+        self._accepted_models += 1 if accepted else 0
+        
+    
+    def advance_chain(self, iterations=500, verbose=True):  # TODO
+        for i in range(iterations):
+            self.next_iteration()
+        if verbose:
+            print("TODO print statistics")
+        return self
 
 
 

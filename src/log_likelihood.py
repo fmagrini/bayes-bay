@@ -7,6 +7,7 @@ Created on Wed Aug 30 15:04:42 2023
 """
 
 import math
+from typing import Any
 
 class LogLikelihood:
     
@@ -28,11 +29,16 @@ class LogLikelihood:
         return misfit
     
     
-    def log_likelihood(self, old_misfit, temperature):
+    def log_likelihood_ratio(self, old_misfit, temperature):
         new_misfit = self.data_misfit()
         factor = 0
         for target in self.targets:
             det_old = target._current_state['determinant_covariance']
             det_new = target.determinant_covariance()
             factor += math.log(math.sqrt(det_old / det_new))
-        return factor + (old_misfit - new_misfit) / (2 * temperature)
+        new_log_likelihood_ratio = factor + (old_misfit - new_misfit) / (2 * temperature)
+        return new_log_likelihood_ratio, new_misfit
+
+
+    def __call__(self, old_misfit, temperature) -> Any:
+        return self.log_likelihood(old_misfit, temperature)
