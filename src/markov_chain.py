@@ -288,6 +288,7 @@ class BayesianInversion:
         partial_iterations = swap_every if parallel_tempering else n_iterations
         func = partial(MarkovChain.advance_chain,
                        n_iterations=partial_iterations,
+                       burnin_iterations=burnin_iterations,
                        save_n_models=save_n_models, 
                        verbose=verbose)
         i_iterations = 0
@@ -309,6 +310,7 @@ class BayesianInversion:
             burnin_iterations = max(0, burnin_iterations - partial_iterations)
             func = partial(MarkovChain.advance_chain,
                            n_iterations=partial_iterations,
+                           burnin_iterations=burnin_iterations,
                            save_n_models=save_n_models, 
                            verbose=verbose)
 
