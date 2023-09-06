@@ -313,6 +313,7 @@ class BayesianInversion:
                            burnin_iterations=burnin_iterations,
                            save_n_models=save_n_models, 
                            verbose=verbose)
+            #TODO: save saved_models and saved_targets before next iteration
 
 
     def swap_temperatures(self):
