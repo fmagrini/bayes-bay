@@ -7,15 +7,13 @@ Created on Wed Aug 30 12:03:11 2023
 """
 
 import random
-import math
 from copy import deepcopy
 import numpy as np
 from _utils_bayes import inverse_covariance
 
 
 
-class Target:
-    
+class Target: 
     
     def __init__(self, 
                  name,
@@ -58,7 +56,10 @@ class Target:
                                                   correlation_max)
                     })
                 self._perturbations.append(self.correlation)
+            else:
+                self._current_state['correlation'] = 0
             self._proposed_state = deepcopy(self._current_state)
+            self._current_state['determinant_covariance'] = self.determinant_covariance()
         else:
             self.dobs_covariance_mat = np.array(dobs_covariance_mat)
         
@@ -98,17 +99,17 @@ class Target:
     def finalize_perturbation(self, accepted):
         accepted_state = self._proposed_state if accepted else self._current_state
         rejected_state = self._current_state if accepted else self._proposed_state
-        for k, v in accepted_state:
+        for k, v in accepted_state.items():
             rejected_state[k] = v
     
     
     def covariance_times_vector(self, vector):
-        if self.dobs_covariance_mat is not None:
+        if hasattr(self, 'dobs_covariance_mat'):
             if np.isscalar(self.dobs_covariance_mat):
                 return self.dobs_covariance_mat * vector
             else:
                 return self.dobs_covariance_mat @ vector
-        elif self.correlation() is None:
+        elif self.correlation is None:
             return 1/self._proposed_state["sigma"]**2 * vector
         else:
             sigma = self._proposed_state["sigma"]
@@ -121,7 +122,7 @@ class Target:
     def determinant_covariance(self):
         sigma = self._proposed_state["sigma"]
         r = self._proposed_state["correlation"]
-        n = self.data.size
+        n = self.dobs.size
         det = sigma**(2*n) * (1 - r**2)**(n-1)
         self._proposed_state["determinant_covariance"] = det
         return det
