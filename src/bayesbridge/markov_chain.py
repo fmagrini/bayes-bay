@@ -15,7 +15,7 @@ import random
 import math
 import numpy as np
 from .log_likelihood import LogLikelihood
-from .exceptions import ForwardException
+from .exceptions import ForwardException, DimensionalityException
 from ._utils_bayes import _get_thickness, _closest_and_final_index
 from ._utils_bayes import interpolate_nearest_1d
 
@@ -187,7 +187,7 @@ class MarkovChain:
             (self._accepted_counts_total, self._proposed_counts_total, acceptance_rate)
         print(head)
         print('PARTIAL ACCEPTANCE RATES:')
-        for perturb_type in self._proposed_counts:
+        for perturb_type in sorted(self._proposed_counts):
             proposed = self._proposed_counts[perturb_type]
             accepted = self._accepted_counts[perturb_type]
             acceptance_rate = accepted / proposed * 100
@@ -202,8 +202,12 @@ class MarkovChain:
             # choose one perturbation function and type
             perturb_i = random.randint(0, len(self.perturbations) - 1)
             
-            # propose new model and calculate probability ratios
-            log_prob_ratio = self.perturbations[perturb_i]()
+            try:
+                # propose new model and calculate probability ratios
+                log_prob_ratio = self.perturbations[perturb_i]()
+            except DimensionalityException:
+                continue
+                
             
             try:
                 log_likelihood_ratio, misfit = \

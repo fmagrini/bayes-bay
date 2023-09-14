@@ -122,6 +122,8 @@ cdef double _interpolate_nearest_1d(double xp, double[:] x, double[:] y):
 cpdef int nearest_index(double xp, double[:] x, ssize_t xlen):
     cdef int i
     cdef double x0, x1
+    if xlen == 0:
+        return 0
     for i in range(xlen - 1):
         x0 = x[i]
         x1 = x[i + 1]

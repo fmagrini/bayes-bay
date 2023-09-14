@@ -11,7 +11,7 @@ from functools import partial
 from copy import deepcopy
 import math
 import numpy as np
-from .exceptions import InitException
+from .exceptions import InitException, DimensionalityException
 from ._utils_bayes import interpolate_linear_1d, nearest_index
 from ._utils_bayes import _get_thickness, _is_sorted
 
@@ -157,6 +157,7 @@ class Parameterization1D(Parameterization):
     def __init__(self, 
                  voronoi_site_bounds,
                  voronoi_site_perturb_std,
+                 position=None,
                  n_voronoi_cells=None, 
                  free_params=None,
                  n_voronoi_cells_min=None, 
@@ -165,7 +166,8 @@ class Parameterization1D(Parameterization):
         
         self.voronoi_site_bounds = voronoi_site_bounds
         self._voronoi_site_perturb_std = \
-            self._init_voronoi_site_perturb_std(voronoi_site_perturb_std)
+            self._init_voronoi_site_perturb_std(voronoi_site_perturb_std, 
+                                                position)
             
         self._trans_d = n_voronoi_cells is None
         self._n_voronoi_cells = n_voronoi_cells
@@ -239,11 +241,17 @@ class Parameterization1D(Parameterization):
         return np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
                
         
-    def _init_voronoi_site_perturb_std(self, std):
+    def _init_voronoi_site_perturb_std(self, std, position):
         if np.isscalar(std):
             return std
+        assert position is not None, \
+            ("`position` should not be None if `voronoi_site_perturb_std` is"
+             " not a scalar")
+        assert len(position) == len(std), \
+            "`position` should have the same lenght as `voronoi_site_perturb_std`"
         std = np.array(std, dtype=float)
-        return partial(interpolate_linear_1d, x=std[:,0], y=std[:,1]) 
+        position = np.array(position, dtype=float)
+        return partial(interpolate_linear_1d, x=position, y=std) 
 
 
     def get_voronoi_site_perturb_std(self, site):
@@ -253,6 +261,9 @@ class Parameterization1D(Parameterization):
     
     
     def perturbation_birth(self):
+        n_cells = self.model.current_state['n_voronoi_cells']
+        if n_cells == self.n_voronoi_cells_max:
+            raise DimensionalityException('Birth')
         old_sites = self.model.proposed_state['voronoi_sites']
         while True:
             lb, ub = self.voronoi_site_bounds
@@ -286,6 +297,8 @@ class Parameterization1D(Parameterization):
             
     def perturbation_death(self):
         n_cells = self.model.current_state['n_voronoi_cells']
+        if n_cells == self.n_voronoi_cells_min:
+            raise DimensionalityException('Death')
         isite = random.randint(0, n_cells-1)
         site_to_remove = self.model.current_state['voronoi_sites'][isite]
         old_sites = self.model.current_state['voronoi_sites']

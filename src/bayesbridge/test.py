@@ -18,8 +18,8 @@ from pysurf96 import surf96
 
 RAYLEIGH_STD = 0.02
 LOVE_STD = 0.02
-LAYERS_MIN = 2
-LAYERS_MAX = 5
+LAYERS_MIN = 3
+LAYERS_MAX = 7
 
 
 
@@ -102,8 +102,8 @@ free_parameters = ([
     ])
 
 
-parameterization = Parameterization1D(voronoi_site_bounds=(0, 10), 
-                                      voronoi_site_perturb_std=[[1., 10], [1., 10]],
+parameterization = Parameterization1D(voronoi_site_bounds=(0, 70), 
+                                      voronoi_site_perturb_std=3,
                                       n_voronoi_cells=None,
                                       n_voronoi_cells_min=LAYERS_MIN,
                                       n_voronoi_cells_max=LAYERS_MAX,
