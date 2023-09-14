@@ -11,9 +11,8 @@ from functools import partial
 from copy import deepcopy
 import math
 import numpy as np
-from .exceptions import InitException
-from ._utils_bayes import interpolate_linear_1d, nearest_index
-from ._utils_bayes import _get_thickness, _is_sorted
+from _utils_bayes import interpolate_linear_1d, nearest_index
+from _utils_bayes import _get_thickness, _is_sorted
 
 
 TWO_PI = 2 * math.pi
@@ -153,72 +152,35 @@ class Parameterization:
 class Parameterization1D(Parameterization):
     
     def __init__(self, 
+                 n_voronoi_cells, 
                  voronoi_site_bounds,
                  voronoi_site_perturb_std,
-                 n_voronoi_cells=None, 
                  free_params=None,
+                 trans_d=False, 
                  n_voronoi_cells_min=None, 
                  n_voronoi_cells_max=None):        
         
+        self.n_voronoi_cells = n_voronoi_cells
         self.voronoi_site_bounds = voronoi_site_bounds
         self._voronoi_site_perturb_std = \
             self._init_voronoi_site_perturb_std(voronoi_site_perturb_std)
+                   
+        self.trans_d = trans_d
+        if trans_d:
+            self.n_voronoi_cells_min = n_voronoi_cells_min
+            self.n_voronoi_cells_max = n_voronoi_cells_max
+        self.voronoi_sites = self._init_voronoi_sites()
             
-        self._trans_d = n_voronoi_cells is None
-        self.n_voronoi_cells = n_voronoi_cells
-        self.n_voronoi_cells_min = n_voronoi_cells_min
-        self.n_voronoi_cells_max = n_voronoi_cells_max
-        
-        self._initialized = False
-        
+        self.model = Model(self.n_voronoi_cells, self.voronoi_sites)
+            
         self.free_params = {}
         if free_params is not None:
             for param in free_params:
                 self.add_free_parameter(param)
-                
-        
 
-    
-    @property
-    def trans_d(self):
-        return self._trans_d
-    
-    
-    @property
-    def initialized(self):
-        return self._initialized
-
-
-    def initialize(self):
-        
-        if self.trans_d:
-            self.n_voronoi_cells = random.randint(self.n_voronoi_cells_min, 
-                                                  self.n_voronoi_cells_max)
-        self.voronoi_sites = self._init_voronoi_sites()
-        self.model = Model(self.n_voronoi_cells, self.voronoi_sites)
-        for free_param in self.free_params.values():
-            self._init_free_parameter(free_param)
-        self._initialized = True
-
-
-    def __getattr__(self, attr):
-        valid_attr = attr in ['n_voronoi_cells', 'voronoi_sites', 'model']
-        if valid_attr and not self.initialized: 
-            message = f'The {self.__class__.__name__} instance has not been'
-            message +=  ' initialized yet. Run `.initialize()` or pass it'
-            message +=  ' to `BayesianInversion`.'
-            raise InitException(message)
-        else:
-            return self.__getattribute__(attr)
-
-
+            
     def add_free_parameter(self, free_param):
         self.free_params[free_param.name] = free_param
-        if self.initialized:
-            self._init_free_parameter(free_param)
-        
-        
-    def _init_free_parameter(self, free_param):
         values = free_param.generate_random_values(self.voronoi_sites, 
                                                    is_init=True)
         self.model.add_free_parameter(free_param.name, values)
@@ -406,15 +368,9 @@ class Parameter:
 
         
     
-class UniformParameter(Parameter):
+class PositionDependendentUniformParam(Parameter):
     
-    def __init__(self, 
-                 name, 
-                 vmin, 
-                 vmax, 
-                 perturb_std, 
-                 position=None, 
-                 init_sorted=False):
+    def __init__(self, name, position, vmin, vmax, perturb_std, init_sorted=False):
         self.init_params = {'name': name,
                             'position': position,
                             'vmin': vmin,
@@ -422,21 +378,7 @@ class UniformParameter(Parameter):
                             'perturb_std': perturb_std,
                             'init_sorted': init_sorted}
         self.name = name
-        self.position = \
-            position if position is None else np.array(position, dtype=float)
-        if position is None:
-            message = 'should be a scalar when `position is None`'
-            assert np.isscalar(vmin), '`vmin` ' + message
-            assert np.isscalar(vmax), '`vmax` ' + message 
-            assert np.isscalar(perturb_std), '`perturb_std` ' + message
-        else:
-            message = 'should either be a scaler or have the same length as `position`'
-            assert np.isscalar(vmin) or vmin.size==position.size, \
-                '`vmin` ' + message
-            assert np.isscalar(vmax) or vmax.size==position.size, \
-                '`vmax` ' + message
-            assert np.isscalar(perturb_std) or perturb_std.size==position.size, \
-                '`perturb_std` ' + message
+        self.position = np.array(position, dtype=float)
         self._vmin, self._vmax = self._init_vmin_vmax(vmin, vmax)
         self._delta = self._init_delta(vmin, vmax) # Either a scalar or interpolator
         self._perturb_std = self._init_perturb_std(perturb_std)
@@ -505,7 +447,7 @@ class UniformParameter(Parameter):
     
     def generate_random_values(self, positions, is_init=False):
         vmin, vmax = self.get_vmin_vmax(positions)
-        values = np.random.uniform(vmin, vmax, positions.size)
+        values = random.uniform(vmin, vmax)
         if is_init and self.init_sorted:
             return np.sort(values)
         return values
@@ -546,57 +488,56 @@ class UniformParameter(Parameter):
     
 #%%
 
-if __name__ == '__main__':
-    param = Parameterization1D(n_voronoi_cells=5, 
-                                voronoi_site_bounds=(0, 10), 
-                                voronoi_site_perturb_std=[[1., 10], [1., 10]])
-    p = UniformParameter('vs', 
-                                          position=[1, 10], 
-                                          vmin=[1, 2], 
-                                          vmax=3, 
-                                          perturb_std=0.1)
-    param.add_free_parameter(p)
-    p = UniformParameter('vp', 
-                                          position=[1, 10], 
-                                          vmin=[1, 2], 
-                                          vmax=3, 
-                                          perturb_std=0.1)
-    param.add_free_parameter(p)
-    # print('VS')
-    # param.perturbation_free_param('vs')
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    # print('-'*15)
-    # param.finalize_perturbation(True)
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    # print('-'*15)
-    
-    # print('SITE')
-    # param.perturbation_voronoi_site()
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    # print('-'*15)
-    # param.finalize_perturbation(True)
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    
-    
-    # print('BIRTH')
-    # param.perturbation_birth()
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    # print('-'*15)
-    # param.finalize_perturbation(True)
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    
-    
-    # print('DEATH')
-    # param.perturbation_death()
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
-    # print('-'*15)
-    # param.finalize_perturbation(True)
-    # print(param.model.current_state)
-    # print(param.model.proposed_state)
+param = Parameterization1D(n_voronoi_cells=5, 
+                            voronoi_site_bounds=(0, 10), 
+                            voronoi_site_perturb_std=[[1., 10], [1., 10]])
+p = PositionDependendentUniformParam('vs', 
+                                      position=[1, 10], 
+                                      vmin=[1, 2], 
+                                      vmax=3, 
+                                      perturb_std=0.1)
+param.add_free_parameter(p)
+p = PositionDependendentUniformParam('vp', 
+                                      position=[1, 10], 
+                                      vmin=[1, 2], 
+                                      vmax=3, 
+                                      perturb_std=0.1)
+param.add_free_parameter(p)
+# print('VS')
+# param.perturbation_free_param('vs')
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+
+# print('SITE')
+# param.perturbation_voronoi_site()
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+
+
+# print('BIRTH')
+# param.perturbation_birth()
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+
+
+# print('DEATH')
+# param.perturbation_death()
+# print(param.model.current_state)
+# print(param.model.proposed_state)
+# print('-'*15)
+# param.finalize_perturbation(True)
+# print(param.model.current_state)
+# print(param.model.proposed_state)
