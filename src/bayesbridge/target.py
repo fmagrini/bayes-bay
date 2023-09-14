@@ -9,7 +9,7 @@ Created on Wed Aug 30 12:03:11 2023
 import random
 from copy import deepcopy
 import numpy as np
-from _utils_bayes import inverse_covariance
+from ._utils_bayes import inverse_covariance
 
 
 
@@ -61,7 +61,10 @@ class Target:
             self._proposed_state = deepcopy(self._current_state)
             self._current_state['determinant_covariance'] = self.determinant_covariance()
         else:
-            self.dobs_covariance_mat = np.array(dobs_covariance_mat)
+            if np.isscalar(dobs_covariance_mat):
+                self.dobs_covariance_mat = dobs_covariance_mat
+            else:
+                self.dobs_covariance_mat = np.array(dobs_covariance_mat)
         
     
     @property
@@ -126,4 +129,3 @@ class Target:
         det = sigma**(2*n) * (1 - r**2)**(n-1)
         self._proposed_state["determinant_covariance"] = det
         return det
-

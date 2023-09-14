@@ -44,3 +44,4 @@ class LogLikelihood:
 
     def __call__(self, old_misfit, temperature) -> Any:
         return self.log_likelihood_ratio(old_misfit, temperature)
+    

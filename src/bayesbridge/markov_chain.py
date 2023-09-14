@@ -14,9 +14,9 @@ import multiprocessing
 import random
 import math
 import numpy as np
-from log_likelihood import LogLikelihood
-from _utils_bayes import _get_thickness, _closest_and_final_index
-from _utils_bayes import interpolate_nearest_1d
+from .log_likelihood import LogLikelihood
+from ._utils_bayes import _get_thickness, _closest_and_final_index
+from ._utils_bayes import interpolate_nearest_1d
 
    
 
@@ -28,6 +28,7 @@ class MarkovChain:
                  forward_functions,
                  temperature):
         self.parameterization = parameterization
+        self.parameterization.initialize()
         self.log_likelihood = LogLikelihood(model=parameterization.model, 
                                             targets=targets, 
                                             forward_functions=forward_functions)
@@ -44,6 +45,7 @@ class MarkovChain:
     @temperature.setter
     def temperature(self, value):
         self._temperature = value
+        
         
     @property
     def saved_models(self):
@@ -63,12 +65,14 @@ class MarkovChain:
         """
         return getattr(self, "_saved_models", None)
 
+
     @property
     def saved_targets(self):
         """targets that are saved in current chain; intialized everytime 
         `advance_chain` is called
         """
         return getattr(self, "_saved_targets", None)
+    
     
     def _init_perturbation_funcs(self):
         perturb_voronoi = [self.parameterization.perturbation_voronoi_site]
@@ -247,16 +251,18 @@ class BayesianInversion:
                  targets, 
                  fwd_functions, 
                  n_chains=10, 
-                 n_cpus=10):
+                 n_cpus=10,
+                 ):
         self.parameterization = parameterization
         self.targets = targets
         self.fwd_functions = fwd_functions
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self.chains = [
-            MarkovChain(deepcopy(self.parameterization, 
-                                 self.targets, 
-                                 self.fwd_functions)
+            MarkovChain(deepcopy(self.parameterization),
+                        deepcopy(self.targets), 
+                        self.fwd_functions,
+                        temperature=1
                         ) for _ in range(n_chains)
             ]
 
@@ -321,6 +327,7 @@ class BayesianInversion:
                            save_n_models=save_n_models, 
                            verbose=verbose)
             #TODO: save saved_models and saved_targets before next iteration
+            #TODO RETURN SOMETHING
 
 
     def swap_temperatures(self):
@@ -332,3 +339,4 @@ class BayesianInversion:
             if prob > math.log(random.random()):
                 chain1.temperature = T2
                 chain2.temperature = T1
+                
