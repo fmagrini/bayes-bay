@@ -9,6 +9,7 @@ Created on Sat Apr  9 15:07:01 2022
 
 from collections import defaultdict
 from copy import deepcopy
+import itertools
 from functools import partial
 import multiprocessing
 import random
@@ -197,18 +198,17 @@ class MarkovChain:
 
     
     def _next_iteration(self, save_model):
-        
         while True:
             # choose one perturbation function and type
             perturb_i = random.randint(0, len(self.perturbations) - 1)
             
+            # propose new model and calculate probability ratios
             try:
-                # propose new model and calculate probability ratios
                 log_prob_ratio = self.perturbations[perturb_i]()
             except DimensionalityException:
                 continue
                 
-            
+            # calculate the forward and evaluate log_likelihood
             try:
                 log_likelihood_ratio, misfit = \
                     self.log_likelihood(self._current_misfit, self.temperature)
@@ -230,7 +230,6 @@ class MarkovChain:
             # save statistics
             self._save_statistics(perturb_i, accepted)
             return
-        
            
     
     def advance_chain(self, 
@@ -269,7 +268,7 @@ class BayesianInversion:
         self.fwd_functions = fwd_functions
         self.n_chains = n_chains
         self.n_cpus = n_cpus
-        self.chains = [
+        self._chains = [
             MarkovChain(deepcopy(self.parameterization),
                         deepcopy(self.targets), 
                         self.fwd_functions,
@@ -292,6 +291,11 @@ class BayesianInversion:
                                    np.geomspace(1, temperature_max, size)))
         return np.ones(self.n_chains)
 
+
+    @property
+    def chains(self):
+        return self._chains
+
         
     def run(self, 
             n_iterations=1000, 
@@ -307,7 +311,7 @@ class BayesianInversion:
                                                temperature_max,
                                                chains_with_unit_temperature)
         
-        for i, chain in enumerate(self.chains):
+        for i, chain in enumerate(self._chains):
             chain.temperature = temperatures[i]
         
         partial_iterations = swap_every if parallel_tempering else n_iterations
@@ -322,11 +326,11 @@ class BayesianInversion:
         while True:
             if self.n_cpus > 1:
                 pool = multiprocessing.Pool(self.n_cpus)
-                self.chains = pool.map(func, self.chains)
+                self._chains = pool.map(func, self._chains)
                 pool.close()
                 pool.join()
             else:
-                self.chains = [func(chain) for chain in self.chains]
+                self._chains = [func(chain) for chain in self._chains]
             
             i_iterations += partial_iterations
             if i_iterations >= n_iterations:
@@ -340,7 +344,25 @@ class BayesianInversion:
                            save_n_models=save_n_models, 
                            verbose=verbose)
 
-            #TODO RETURN SOMETHING
+
+    def get_results(self, concatenate_chains=False):
+        results = defaultdict(list)
+        for chain in self.chains:
+            for key, saved_values in chain.saved_models.items():
+                k = "model_%s" % key
+                if concatenate_chains:
+                    results[k].extend(saved_values)
+                else:
+                    results[k].append(saved_values)
+            for key, target in chain.saved_targets.items():
+                k_prefix = "target_%s" % key
+                for key2, saved_values in target.items():
+                    k = "%s_%s" % (k_prefix, key2)
+                    if concatenate_chains:
+                        results[k].extend(saved_values)
+                    else:
+                        results[k].append(saved_values)
+        return results
 
 
     def swap_temperatures(self):
@@ -352,4 +374,3 @@ class BayesianInversion:
             if prob > math.log(random.random()):
                 chain1.temperature = T2
                 chain2.temperature = T1
-                
