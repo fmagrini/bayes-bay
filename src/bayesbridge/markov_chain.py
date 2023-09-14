@@ -15,6 +15,7 @@ import random
 import math
 import numpy as np
 from .log_likelihood import LogLikelihood
+from .exceptions import ForwardException
 from ._utils_bayes import _get_thickness, _closest_and_final_index
 from ._utils_bayes import interpolate_nearest_1d
 
@@ -35,6 +36,9 @@ class MarkovChain:
         self._init_perturbation_funcs()
         self._init_statistics()
         self._temperature = temperature
+        self._init_saved_models()
+        self._init_saved_targets()
+        
         
         
     @property
@@ -114,29 +118,23 @@ class MarkovChain:
         assert len(self.perturbations) == len(self.finalizations)
     
     
-    def _init_saved_models(self, save_models):
-        nsites = getattr(self.parameterization, 
-                         'n_voronoi_cells_max', 
-                         len(self.parameterization.voronoi_sites))
-        saved_models = {k: np.full((save_models, nsites), np.nan) \
-                        for k in self.parameterization.model.current_state \
-                            if k != 'n_voronoi_cells'}
-        saved_models['n_voronoi_cells'] = \
-            nsites if not self.parameterization.trans_d else np.full(save_models, np.nan)
+    def _init_saved_models(self):
+        trans_d = self.parameterization.trans_d
+        saved_models = {k: [] for k in self.parameterization.model.current_state \
+                        if k != 'n_voronoi_cells'}
+        saved_models['n_voronoi_cells'] = [] if trans_d else \
+            self.parameterization.n_voronoi_cells
         self._saved_models = saved_models
 
     
-    def _init_saved_targets(self, save_models):
+    def _init_saved_targets(self):
         saved_targets = {}
         for target in self.log_likelihood.targets:
-            saved_targets[target.name] = {}
-            saved_targets[target.name]['dpred'] = \
-                np.full((save_models, target.dobs.size), np.nan)
+            saved_targets[target.name] = {'dpred': []}
             if target.is_hierarchical:
-                saved_targets[target.name]['sigma'] = np.full(save_models, np.nan)
+                saved_targets[target.name]['sigma'] = []
                 if target.noise_is_correlated:
-                    saved_targets[target.name]['correlation'] = \
-                        np.full(save_models, np.nan)       
+                    saved_targets[target.name]['correlation'] = []    
         self._saved_targets = saved_targets
 
     
@@ -148,29 +146,31 @@ class MarkovChain:
         self._accepted_counts_total = 0
     
     
-    def _save_model(self, save_model_idx):
+    def _save_model(self):
         for key, value in self.parameterization.model.proposed_state.items():
             if key == 'n_voronoi_cells':
                 if isinstance(self.saved_models['n_voronoi_cells'], int):
                     continue
                 else:
-                    self.saved_models['n_voronoi_cells'][save_model_idx] = value
+                    self.saved_models['n_voronoi_cells'].append(value)
             else:
-                print(key, save_model_idx, value.size, self.saved_models[key].shape)
-                self.saved_models[key][save_model_idx, :value.size] = value
+                self.saved_models[key].append(value)
     
     
-    def _save_target(self, save_model_idx):
+    def _save_target(self):
         for target in self.log_likelihood.targets:
-            self.saved_targets[target.name]['dpred'][save_model_idx] = \
+            self.saved_targets[target.name]['dpred'].append(
                 self.log_likelihood.proposed_dpred[target.name]
+                )
             if target.is_hierarchical:
-                self.saved_targets[target.name]['sigma'][save_model_idx] = \
+                self.saved_targets[target.name]['sigma'].append(
                     target._proposed_state['sigma']
+                    )
                 if target.noise_is_correlated:
-                    self.saved_targets[target.name]['correlation'][save_model_idx] = \
+                    self.saved_targets[target.name]['correlation'].append(
                         target._proposed_state['correlation']
-                        
+                        )
+                    
 
     def _save_statistics(self, perturb_i, accepted):
         perturb_type = self.perturbation_types[perturb_i]
@@ -182,7 +182,7 @@ class MarkovChain:
     
     def _print_statistics(self):
         head = 'EXPLORED MODELS: %s - ' % self._proposed_counts_total
-        acceptance_rate = self._accepted_counts_total / self._proposed_counts_total
+        acceptance_rate = self._accepted_counts_total / self._proposed_counts_total  * 100
         head += 'ACCEPTANCE RATE: %d/%d (%.2f %%)' % \
             (self._accepted_counts_total, self._proposed_counts_total, acceptance_rate)
         print(head)
@@ -197,49 +197,56 @@ class MarkovChain:
 
     
     def _next_iteration(self, save_model):
-        # choose one perturbation function and type
-        perturb_i = random.randint(0, len(self.perturbations) - 1)
         
-        # propose new model and calculate probability ratios
-        log_prob_ratio = self.perturbations[perturb_i]()
-
-        log_likelihood_ratio, misfit = \
-            self.log_likelihood(self._current_misfit, self.temperature)
+        while True:
+            # choose one perturbation function and type
+            perturb_i = random.randint(0, len(self.perturbations) - 1)
+            
+            # propose new model and calculate probability ratios
+            log_prob_ratio = self.perturbations[perturb_i]()
+            
+            try:
+                log_likelihood_ratio, misfit = \
+                    self.log_likelihood(self._current_misfit, self.temperature)
+            except ForwardException:
+                self.finalizations[perturb_i](False)
+                continue
+            
+            # decide whether to accept
+            accepted = log_prob_ratio + log_likelihood_ratio > math.log(random.random())
         
-        # decide whether to accept
-        accepted = log_prob_ratio + log_likelihood_ratio > math.log(random.random())
+            if save_model and self.temperature == 1:
+                self._save_model()
+                self._save_target()
+            
+            # finalize perturbation based whether it's accepted
+            self.finalizations[perturb_i](accepted)
+            self._current_misfit = misfit if accepted else self._current_misfit
+    
+            # save statistics
+            self._save_statistics(perturb_i, accepted)
+            return
         
-        if save_model is not None and self.temperature == 1:
-            self._save_model(save_model)
-            self._save_target(save_model)
-        
-        # finalize perturbation based whether it's accepted
-        self.finalizations[perturb_i](accepted)
-        self._current_misfit = misfit if accepted else self._current_misfit
-
-        # save statistics
-        self._save_statistics(perturb_i, accepted)
            
     
     def advance_chain(self, 
                       n_iterations=1000, 
                       burnin_iterations=0, 
                       save_n_models=2, 
-                      verbose=True):
-        self._init_saved_models(save_n_models)
-        self._init_saved_targets(save_n_models)
+                      verbose=True,
+                      print_every=100):
         
-        save_every = (n_iterations-burnin_iterations) // save_n_models + 1
+        save_every = (n_iterations-burnin_iterations) // save_n_models
         for i in range(1, n_iterations + 1):
             if i <= burnin_iterations:
-                save_model = None
+                save_model = False
             else:
-                idiff = i - burnin_iterations
-                save_model = None if idiff % save_every else idiff // save_every
-            self._next_iteration(save_model)
+                save_model = not (i - burnin_iterations) % save_every
             
-        if verbose:
-            self._print_statistics()
+            self._next_iteration(save_model)
+            if verbose and not i % print_every:
+                self._print_statistics()
+            
         return self
 
 
@@ -290,7 +297,8 @@ class BayesianInversion:
             temperature_max=5,
             chains_with_unit_temperature=0.4,
             swap_every=500, 
-            verbose=True):
+            verbose=True,
+            print_every=100):
         temperatures = self._init_temperatures(parallel_tempering,
                                                temperature_max,
                                                chains_with_unit_temperature)
@@ -303,7 +311,8 @@ class BayesianInversion:
                        n_iterations=partial_iterations,
                        burnin_iterations=burnin_iterations,
                        save_n_models=save_n_models, 
-                       verbose=verbose)
+                       verbose=verbose,
+                       print_every=print_every)
         i_iterations = 0
 
         while True:
@@ -326,7 +335,7 @@ class BayesianInversion:
                            burnin_iterations=burnin_iterations,
                            save_n_models=save_n_models, 
                            verbose=verbose)
-            #TODO: save saved_models and saved_targets before next iteration
+
             #TODO RETURN SOMETHING
 
 

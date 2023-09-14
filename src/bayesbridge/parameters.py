@@ -22,11 +22,10 @@ SQRT_TWO_PI = math.sqrt(TWO_PI)
 class Model:
     
     def __init__(self, n_voronoi_cells, voronoi_sites):
-        self.n_voronoi_cells = n_voronoi_cells
-        self.voronoi_sites = voronoi_sites
-        self.voronoi_cell_extents = \
-            self._get_voronoi_cell_extents(self.voronoi_sites)
-        self.current_state = self._init_current_state()
+        voronoi_cell_extents = self._get_voronoi_cell_extents(voronoi_sites)
+        self.current_state = self._init_current_state(n_voronoi_cells, 
+                                                      voronoi_sites,
+                                                      voronoi_cell_extents)
         self.proposed_state = deepcopy(self.current_state)
         self._current_perturbation = {}
         self._finalize_dict = dict(
@@ -42,11 +41,14 @@ class Model:
         return self._current_perturbation
     
     
-    def _init_current_state(self):
+    def _init_current_state(self, 
+                            n_voronoi_cells, 
+                            voronoi_sites,
+                            voronoi_cell_extents):
         current_state = {}
-        current_state['n_voronoi_cells'] = self.n_voronoi_cells
-        current_state['voronoi_sites'] = self.voronoi_sites
-        current_state['voronoi_cell_extents'] = self.voronoi_cell_extents
+        current_state['n_voronoi_cells'] = n_voronoi_cells
+        current_state['voronoi_sites'] = voronoi_sites
+        current_state['voronoi_cell_extents'] = voronoi_cell_extents
         return current_state
     
     
@@ -158,18 +160,20 @@ class Parameterization1D(Parameterization):
                  n_voronoi_cells=None, 
                  free_params=None,
                  n_voronoi_cells_min=None, 
-                 n_voronoi_cells_max=None):        
+                 n_voronoi_cells_max=None,
+                 voronoi_cells_init_range=0.2):        
         
         self.voronoi_site_bounds = voronoi_site_bounds
         self._voronoi_site_perturb_std = \
             self._init_voronoi_site_perturb_std(voronoi_site_perturb_std)
             
         self._trans_d = n_voronoi_cells is None
-        self.n_voronoi_cells = n_voronoi_cells
+        self._n_voronoi_cells = n_voronoi_cells
         self.n_voronoi_cells_min = n_voronoi_cells_min
         self.n_voronoi_cells_max = n_voronoi_cells_max
         
         self._initialized = False
+        self._voronoi_cells_init_range = voronoi_cells_init_range
         
         self.free_params = {}
         if free_params is not None:
@@ -192,12 +196,18 @@ class Parameterization1D(Parameterization):
     def initialize(self):
         
         if self.trans_d:
-            self.n_voronoi_cells = random.randint(self.n_voronoi_cells_min, 
-                                                  self.n_voronoi_cells_max)
-        self.voronoi_sites = self._init_voronoi_sites()
-        self.model = Model(self.n_voronoi_cells, self.voronoi_sites)
+            cells_range = self._voronoi_cells_init_range
+            cells_min = self.n_voronoi_cells_min
+            cells_max = self.n_voronoi_cells_max
+            init_max = int((cells_max - cells_min) * cells_range + cells_min)
+            n_voronoi_cells = random.randint(cells_min, init_max)
+        else:
+            n_voronoi_cells = self._n_voronoi_cells    
+        voronoi_sites = self._init_voronoi_sites(n_voronoi_cells)
+        self.model = Model(n_voronoi_cells, voronoi_sites)
         for free_param in self.free_params.values():
-            self._init_free_parameter(free_param)
+            self._init_free_parameter(free_param, voronoi_sites)
+        del self._n_voronoi_cells
         self._initialized = True
 
 
@@ -218,15 +228,15 @@ class Parameterization1D(Parameterization):
             self._init_free_parameter(free_param)
         
         
-    def _init_free_parameter(self, free_param):
-        values = free_param.generate_random_values(self.voronoi_sites, 
+    def _init_free_parameter(self, free_param, voronoi_sites):
+        values = free_param.generate_random_values(voronoi_sites, 
                                                    is_init=True)
         self.model.add_free_parameter(free_param.name, values)
 
         
-    def _init_voronoi_sites(self):
+    def _init_voronoi_sites(self, n_voronoi_cells):
         lb, ub = self.voronoi_site_bounds
-        return np.sort(np.random.uniform(lb, ub, self.n_voronoi_cells))
+        return np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
                
         
     def _init_voronoi_site_perturb_std(self, std):
@@ -302,8 +312,10 @@ class Parameterization1D(Parameterization):
 
     
     def perturbation_voronoi_site(self):
-        isite = random.randint(0, self.n_voronoi_cells-1)
-        old_site = self.voronoi_sites[isite]
+        nsites = self.model.current_state['n_voronoi_cells']
+        isite = random.randint(0, nsites - 1)
+        voronoi_sites = self.model.current_state['voronoi_sites']
+        old_site = voronoi_sites[isite]
         site_min, site_max = self.voronoi_site_bounds
         std = self.get_voronoi_site_perturb_std(old_site)
         
@@ -312,7 +324,7 @@ class Parameterization1D(Parameterization):
             new_site = old_site + random_deviate
             if new_site<site_min or new_site>site_max: 
                 continue
-            if np.any(np.abs(new_site - self.voronoi_sites) < 1e-2):
+            if np.any(np.abs(new_site - voronoi_sites) < 1e-2):
                 continue
             break
         self.model.propose_site_perturbation(isite, new_site)
@@ -320,8 +332,9 @@ class Parameterization1D(Parameterization):
 
 
     def perturbation_free_param(self, param_name):
-        isite = random.randint(0, self.n_voronoi_cells-1)
-        site = self.voronoi_sites[isite]
+        nsites = self.model.current_state['n_voronoi_cells']
+        isite = random.randint(0, nsites - 1)
+        site = self.model.current_state['voronoi_sites'][isite]
         old_value = self.model.current_state[param_name][isite]
         new_value = self.free_params[param_name].perturb_value(site, old_value)
         self.model.propose_free_param_perturbation(param_name, isite, new_value)

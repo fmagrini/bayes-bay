@@ -8,7 +8,7 @@ Created on Wed Sep 13 11:45:52 2023
 
 
 import sys
-sys.path.append('/home/fabrizio/Documents/GitHub/bayesbridge/src')
+sys.path.append('/home/fabrizio/Documents/GitHub/bayes-bridge/src')
 import numpy as np
 from bayesbridge.markov_chain import BayesianInversion
 from bayesbridge.parameters import UniformParameter, Parameterization1D
@@ -19,7 +19,7 @@ from pysurf96 import surf96
 RAYLEIGH_STD = 0.02
 LOVE_STD = 0.02
 LAYERS_MIN = 2
-LAYERS_MAX = 10
+LAYERS_MAX = 5
 
 
 
@@ -113,9 +113,14 @@ parameterization = Parameterization1D(voronoi_site_bounds=(0, 10),
 
 inversion = BayesianInversion(parameterization, 
                               targets, 
-                              fwd_functions=fwd_functions)
+                              fwd_functions=fwd_functions,
+                              n_cpus=1,
+                              n_chains=1)
 
-inversion.run(n_iterations=50000, burnin_iterations=10000, save_n_models=100)
+inversion.run(n_iterations=250_000, 
+              burnin_iterations=50_000, 
+              save_n_models=100,
+              print_every=25_000)
 
 
 

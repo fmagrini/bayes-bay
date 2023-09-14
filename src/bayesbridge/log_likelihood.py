@@ -8,6 +8,7 @@ Created on Wed Aug 30 15:04:42 2023
 
 import math
 from typing import Any
+from .exceptions import ForwardException
 
 class LogLikelihood:
     
@@ -23,7 +24,13 @@ class LogLikelihood:
     def data_misfit(self):
         misfit = 0
         for (target, fwd_func) in zip(self.targets, self.forward_functions):
-            dpred = fwd_func(self.model.proposed_state)
+            try:
+                dpred = fwd_func(self.model.proposed_state)
+            except Exception as e:
+                raise ForwardException(e)
+                # print("oops" + str(e))
+            # dpred = fwd_func(self.model.proposed_state)
+                
             dobs = target.dobs
             residual = dpred - dobs
             misfit += residual @ target.covariance_times_vector(residual)
@@ -35,9 +42,10 @@ class LogLikelihood:
         new_misfit = self.data_misfit()
         factor = 0
         for target in self.targets:
-            det_old = target._current_state['determinant_covariance']
-            det_new = target.determinant_covariance()
-            factor += math.log(math.sqrt(det_old / det_new))
+            if target.is_hierarchical:
+                det_old = target._current_state['determinant_covariance']
+                det_new = target.determinant_covariance()
+                factor += math.log(math.sqrt(det_old / det_new))
         new_log_likelihood_ratio = factor + (old_misfit - new_misfit) / (2 * temperature)
         return new_log_likelihood_ratio, new_misfit
 
