@@ -8,7 +8,8 @@ Created on Wed Sep 13 11:45:52 2023
 
 
 import sys
-sys.path.append('/home/fabrizio/Documents/GitHub/bayes-bridge/src')
+# sys.path.append('/home/fabrizio/Documents/GitHub/bayes-bridge/src')
+sys.path.append('/home/jiawen/bayes-bridge/src')
 import numpy as np
 from bayesbridge.markov_chain import BayesianInversion
 from bayesbridge.parameters import UniformParameter, Parameterization1D
@@ -114,14 +115,11 @@ parameterization = Parameterization1D(voronoi_site_bounds=(0, 70),
 inversion = BayesianInversion(parameterization, 
                               targets, 
                               fwd_functions=fwd_functions,
-                              n_cpus=1,
-                              n_chains=1)
+                              n_cpus=2,
+                              n_chains=2)
 
-inversion.run(n_iterations=250_000, 
-              burnin_iterations=50_000, 
-              save_n_models=100,
-              print_every=25_000)
-
-
-
-
+inversion.run(n_iterations=2500, 
+              burnin_iterations=500, 
+              save_n_models=10,
+              print_every=250)
+saved_results = inversion.get_results(True)

@@ -11,6 +11,7 @@ from functools import partial
 from copy import deepcopy
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 from .exceptions import InitException, DimensionalityException
 from ._utils_bayes import interpolate_linear_1d, nearest_index
 from ._utils_bayes import _get_thickness, _is_sorted
@@ -182,8 +183,6 @@ class Parameterization1D(Parameterization):
             for param in free_params:
                 self.add_free_parameter(param)
                 
-        
-
     
     @property
     def trans_d(self):
@@ -196,7 +195,6 @@ class Parameterization1D(Parameterization):
 
 
     def initialize(self):
-        
         if self.trans_d:
             cells_range = self._voronoi_cells_init_range
             cells_min = self.n_voronoi_cells_min
@@ -402,6 +400,146 @@ class Parameterization1D(Parameterization):
             prob_ratio += \
                 param.prior_ratio_position_perturbation(old_site, new_site)
         return prob_ratio
+    
+    
+    def plot_param_current(self, param_name, ax=None, **kwargs):
+        """Plot the 1D Earth model given a param_name.
+        
+        Parameters
+        ----------
+        param_name: str
+            name of the free parameter to plot values
+        ax: matplotlib.axes.Axes, optional
+            An optional Axes object to plot on
+        kwargs: dict, optional
+            Additional keyword arguments to pass to ax.step
+        
+        Returns
+        -------
+        ax
+            The Axes object containing the plot
+        """
+        if param_name not in self.free_params:
+            raise ValueError(
+                "%s is not in the free parameters list: %s" % \
+                    (param_name, list(self.free_params.keys()))
+            )
+        current = self.model.current_state
+        values = current[param_name]
+        thicknesses = np.array(current['voronoi_cell_extents'])
+        thicknesses[-1] = 20
+        y = np.insert(np.cumsum(thicknesses), 0, 0)
+        x = np.insert(values, 0, values[0])
+        
+        # plotting
+        if ax is None:
+            _, ax = plt.subplots()
+        ax.step(x, y, where='post', **kwargs)
+        ax.invert_yaxis()
+        ax.set_xlabel('Velocity (km/s)')
+        ax.set_ylabel('Depth (km)')
+        return ax
+    
+
+    @staticmethod
+    def plot_param_samples(samples_voronoi_cell_extents, samples_param_values, ax=None, **kwargs):
+        """Plot multiple 1D Earth models based on sampled parameters.
+    
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : ndarray
+            A 2D numpy array where each row represents a sample of thicknesses (or Voronoi cell extents)
+            
+        samples_param_values : ndarray
+            A 2D numpy array where each row represents a sample of parameter values (e.g., velocities)
+        
+        ax : Axes, optional
+            An optional Axes object to plot on
+            
+        kwargs : dict, optional
+            Additional keyword arguments to pass to ax.step
+        
+        Returns
+        -------
+        ax : Axes
+            The Axes object containing the plot
+        """
+        if ax is None:
+            _, ax = plt.subplots()
+
+        # Default plotting style for samples
+        sample_style = {
+            'linewidth': 0.5, 
+            'alpha': 0.2, 
+            'color': 'blue'  # Fixed color for the sample lines
+        }
+        sample_style.update(kwargs)  # Override with any provided kwargs
+
+        for thicknesses, values in zip(samples_voronoi_cell_extents, samples_param_values):
+            thicknesses[-1] = 20
+            y = np.insert(np.cumsum(thicknesses), 0, 0)
+            x = np.insert(values, 0, values[0])
+            ax.step(x, y, where='post', **sample_style)
+
+        ax.invert_yaxis()
+        ax.set_xlabel('Velocity (km/s)')
+        ax.set_ylabel('Depth (km)')
+        
+        return ax
+
+
+    @staticmethod
+    def plot_hist_n_voronoi_cells(samples_n_voronoi_cells, ax=None, **kwargs):
+        """
+        Plot a histogram of the distribution of the number of Voronoi cells.
+        
+        Parameters
+        ----------
+        samples_n_voronoi_cells : list or ndarray
+            List or array containing the number of Voronoi cells in each sample
+        
+        ax : Axes, optional
+            An optional Axes object to plot on
+            
+        kwargs : dict, optional
+            Additional keyword arguments to pass to ax.hist
+        
+        Returns
+        -------
+        ax : Axes
+            The Axes object containing the plot
+        """
+        # create a new plot if no ax is provided
+        if ax is None:
+            _, ax = plt.subplots()
+        
+        # determine bins aligned to integer values
+        min_val = np.min(samples_n_voronoi_cells)
+        max_val = np.max(samples_n_voronoi_cells)
+        bins = np.arange(min_val, max_val + 2) - 0.5  # bins between integers
+    
+        # default histogram style
+        hist_style = {
+            'bins': bins, 
+            'align': 'mid', 
+            'rwidth': 0.8, 
+            'color': 'blue', 
+            'alpha': 0.7
+        }
+        
+        # override or extend with any provided kwargs
+        hist_style.update(kwargs)
+        
+        # plotting the histogram
+        ax.hist(samples_n_voronoi_cells, **hist_style)
+        
+        # set plot details
+        ax.set_xlabel('Number of Voronoi Cells')
+        ax.set_ylabel('Frequency')
+        ax.set_title('Distribution of Number of Voronoi Cells')
+        ax.grid(True, axis='y')
+        
+        return ax
 
 
 
