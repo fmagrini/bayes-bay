@@ -345,7 +345,7 @@ class BayesianInversion:
                            verbose=verbose)
 
 
-    def get_results(self, concatenate_chains=False):
+    def get_results(self, concatenate_chains=True):
         results = defaultdict(list)
         for chain in self.chains:
             for key, saved_values in chain.saved_models.items():
