@@ -147,8 +147,8 @@ inversion = BayesianInversion(parameterization,
                               n_cpus=10,
                               n_chains=10)
 
-inversion.run(n_iterations=500_000, 
-              burnin_iterations=100_000, 
+inversion.run(n_iterations=750_000, 
+              burnin_iterations=300_000, 
               save_every=500,
               print_every=5_000)
 
