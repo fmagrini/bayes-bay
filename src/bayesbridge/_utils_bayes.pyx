@@ -71,7 +71,7 @@ cdef double _interpolate_linear_1d(double xp, double[:] x, double[:] y):
         Interpolated value
     """
     
-    cdef ssize_t xlen = x.shape[0]
+    cdef size_t xlen = x.shape[0]
     cdef int i
     cdef double x0, x1, y0, y1
     
@@ -143,6 +143,32 @@ cdef int floor_index(double xp, double[:] x, ssize_t xlen):
         if x[i] <= xp <= x[i+1]:
             return i
 
+
+@boundscheck(False)
+@wraparound(False) 
+cpdef _interpolate_result(double[:] x, double[:] y, double[:] x0):
+    cdef size_t ilayer = 0
+    cdef size_t i
+    cdef size_t x0_len = x0.shape[0]
+    cdef size_t x_len = x.shape[0]
+    cdef double interface_lower = 0
+    cdef double interface_upper = x[0]
+    cdef double x_i
+    cdef double[:] ynew = np.zeros(x0_len, dtype=np.double)
+    
+    
+    for i in range(x0_len):
+        x_i = x0[i]
+        while True:
+            if interface_lower <= x_i < interface_upper or \
+                ilayer + 1 >= x_len:
+                ynew[i] = y[ilayer]
+                break
+            else:
+                ilayer += 1
+                interface_lower = interface_upper
+                interface_upper += x[ilayer]
+    return np.asarray(ynew)
 
 #@boundscheck(False)
 #@wraparound(False) 
@@ -236,9 +262,9 @@ cpdef interpolate_nearest_1d(xp, double[:] x, double[:] y):
 @wraparound(False) 
 @cdivision(True)
 cpdef inverse_covariance(double sigma, 
-                                        double r, 
-                                        Py_ssize_t n):
-    cdef Py_ssize_t i
+                         double r, 
+                         size_t n):
+    cdef size_t i
     cdef double factor = 1 / (sigma**2 * (1 - r**2))
     cdef double[:, ::1] matrix = np.zeros((n, n), dtype=np.double)
     

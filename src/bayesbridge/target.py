@@ -18,7 +18,7 @@ class Target:
     def __init__(self, 
                  name,
                  dobs, 
-                 dobs_covariance_mat=None, 
+                 covariance_mat_inv=None, 
                  noise_is_correlated=False,
                  sigma_min=0.01,
                  sigma_max=1,
@@ -26,6 +26,7 @@ class Target:
                  correlation_min=0.01,
                  correlation_max=1,
                  correlation_perturb_std=0.1,
+                 save_dpred=True
                  ):
         
         self.name = name
@@ -33,7 +34,8 @@ class Target:
         self.noise_is_correlated = noise_is_correlated
         self.sigma = None
         self.correlation = None
-        if dobs_covariance_mat is None:
+        self._save_dpred = save_dpred
+        if covariance_mat_inv is None:
             self.sigma = {
                 'name': 'sigma',
                 'min': sigma_min,
@@ -61,15 +63,20 @@ class Target:
             self._proposed_state = deepcopy(self._current_state)
             self._current_state['determinant_covariance'] = self.determinant_covariance()
         else:
-            if np.isscalar(dobs_covariance_mat):
-                self.dobs_covariance_mat = dobs_covariance_mat
+            if np.isscalar(covariance_mat_inv):
+                self.covariance_mat_inv = covariance_mat_inv
             else:
-                self.dobs_covariance_mat = np.array(dobs_covariance_mat)
+                self.covariance_mat_inv = np.array(covariance_mat_inv)
         
     
     @property
     def is_hierarchical(self):
-        return not hasattr(self, 'dobs_covariance_mat')
+        return not hasattr(self, 'covariance_mat_inv')
+    
+    
+    @property
+    def save_dpred(self):
+        return self._save_dpred
     
     
     def __repr__(self):
@@ -80,7 +87,7 @@ class Target:
             if self.noise_is_correlated:
                 string += 'correlation=%s'%self.correlation
         else:
-            string += 'covariance=%s'%self.dobs_covariance_mat
+            string += 'covariance=%s'%self.covariance_mat_inv
         return string + ')'
         
     
@@ -107,11 +114,11 @@ class Target:
     
     
     def covariance_times_vector(self, vector):
-        if hasattr(self, 'dobs_covariance_mat'):
-            if np.isscalar(self.dobs_covariance_mat):
-                return self.dobs_covariance_mat * vector
+        if hasattr(self, 'covariance_mat_inv'):
+            if np.isscalar(self.covariance_mat_inv):
+                return self.covariance_mat_inv * vector
             else:
-                return self.dobs_covariance_mat @ vector
+                return self.covariance_mat_inv @ vector
         elif self.correlation is None:
             return 1/self._proposed_state["sigma"]**2 * vector
         else:

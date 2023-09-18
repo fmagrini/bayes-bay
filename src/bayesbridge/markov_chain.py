@@ -125,13 +125,15 @@ class MarkovChain:
                         if k != 'n_voronoi_cells'}
         saved_models['n_voronoi_cells'] = [] if trans_d else \
             self.parameterization.n_voronoi_cells
+        saved_models['misfits'] = []
         self._saved_models = saved_models
 
     
     def _init_saved_targets(self):
         saved_targets = {}
         for target in self.log_likelihood.targets:
-            saved_targets[target.name] = {'dpred': []}
+            if target.save_dpred:
+                saved_targets[target.name] = {'dpred': []}
             if target.is_hierarchical:
                 saved_targets[target.name]['sigma'] = []
                 if target.noise_is_correlated:
@@ -147,7 +149,8 @@ class MarkovChain:
         self._accepted_counts_total = 0
     
     
-    def _save_model(self):
+    def _save_model(self, misfit):
+        self.saved_models['misfits'].append(misfit)
         for key, value in self.parameterization.model.proposed_state.items():
             if key == 'n_voronoi_cells':
                 if isinstance(self.saved_models['n_voronoi_cells'], int):
@@ -160,9 +163,10 @@ class MarkovChain:
     
     def _save_target(self):
         for target in self.log_likelihood.targets:
-            self.saved_targets[target.name]['dpred'].append(
-                self.log_likelihood.proposed_dpred[target.name]
-                )
+            if target.save_dpred:
+                self.saved_targets[target.name]['dpred'].append(
+                    self.log_likelihood.proposed_dpred[target.name]
+                    )
             if target.is_hierarchical:
                 self.saved_targets[target.name]['sigma'].append(
                     target._proposed_state['sigma']
@@ -220,7 +224,7 @@ class MarkovChain:
             accepted = log_prob_ratio + log_likelihood_ratio > math.log(random.random())
         
             if save_model and self.temperature == 1:
-                self._save_model()
+                self._save_model(misfit)
                 self._save_target()
             
             # finalize perturbation based whether it's accepted
@@ -235,11 +239,10 @@ class MarkovChain:
     def advance_chain(self, 
                       n_iterations=1000, 
                       burnin_iterations=0, 
-                      save_n_models=2, 
+                      save_every=100, 
                       verbose=True,
                       print_every=100):
         
-        save_every = (n_iterations-burnin_iterations) // save_n_models
         for i in range(1, n_iterations + 1):
             if i <= burnin_iterations:
                 save_model = False
@@ -300,7 +303,7 @@ class BayesianInversion:
     def run(self, 
             n_iterations=1000, 
             burnin_iterations=0, 
-            save_n_models=100,
+            save_every=100,
             parallel_tempering=False,
             temperature_max=5,
             chains_with_unit_temperature=0.4,
@@ -318,7 +321,7 @@ class BayesianInversion:
         func = partial(MarkovChain.advance_chain,
                        n_iterations=partial_iterations,
                        burnin_iterations=burnin_iterations,
-                       save_n_models=save_n_models, 
+                       save_every=save_every, 
                        verbose=verbose,
                        print_every=print_every)
         i_iterations = 0
@@ -341,28 +344,28 @@ class BayesianInversion:
             func = partial(MarkovChain.advance_chain,
                            n_iterations=partial_iterations,
                            burnin_iterations=burnin_iterations,
-                           save_n_models=save_n_models, 
+                           save_every=save_every, 
                            verbose=verbose)
 
 
     def get_results(self, concatenate_chains=True):
-        results = defaultdict(list)
+        results_model = defaultdict(list)
+        results_targets = {}
+        for target_name in self.chains[0].saved_targets:
+            results_targets[target_name] = defaultdict(list)
         for chain in self.chains:
             for key, saved_values in chain.saved_models.items():
-                k = "model_%s" % key
                 if concatenate_chains:
-                    results[k].extend(saved_values)
+                    results_model[key].extend(saved_values)
                 else:
-                    results[k].append(saved_values)
-            for key, target in chain.saved_targets.items():
-                k_prefix = "target_%s" % key
-                for key2, saved_values in target.items():
-                    k = "%s_%s" % (k_prefix, key2)
+                    results_model[key].append(saved_values)
+            for target_name, target in chain.saved_targets.items():
+                for key, saved_values in target.items():
                     if concatenate_chains:
-                        results[k].extend(saved_values)
+                        results_targets[target_name][key].extend(saved_values)
                     else:
-                        results[k].append(saved_values)
-        return results
+                        results_targets[target_name][key].append(saved_values)
+        return results_model, results_targets
 
 
     def swap_temperatures(self):

@@ -12,7 +12,7 @@ On terminal:
     python setup.py build_ext --inplace
 
 for html:
-    cython -a example_cython.pyx
+    cython -a _utils_bayes.pyx
 
 """
 

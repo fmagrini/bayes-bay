@@ -14,8 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from .exceptions import InitException, DimensionalityException
 from ._utils_bayes import interpolate_linear_1d, nearest_index
-from ._utils_bayes import _get_thickness, _is_sorted
-
+from ._utils_bayes import _get_thickness, _is_sorted, _interpolate_result
 
 TWO_PI = 2 * math.pi
 SQRT_TWO_PI = math.sqrt(TWO_PI)
@@ -402,6 +401,78 @@ class Parameterization1D(Parameterization):
         return prob_ratio
     
     
+    @staticmethod
+    def get_ensemble_statistics(samples_voronoi_cell_extents,
+                   samples_param_values, 
+                   interp_positions,
+                   percentiles=(10,90)):
+        interp_params = Parameterization1D.interpolate_samples(
+            samples_voronoi_cell_extents,
+            samples_param_values,
+            interp_positions)
+        statistics = {
+            'mean': np.mean(interp_params, axis=0), 
+            'median': np.median(interp_params, axis=0), 
+            'std': np.std(interp_params, axis=0),
+            'percentiles': np.percentile(interp_params, percentiles, axis=0)
+        }
+        return statistics
+        
+    
+    @staticmethod
+    def interpolate_samples(samples_voronoi_cell_extents,
+                            samples_param_values,
+                            interp_positions):
+        interp_params = np.zeros((len(samples_param_values), 
+                                 len(interp_positions)))
+        for i, (sample_extents, sample_values) in enumerate(zip(
+                samples_voronoi_cell_extents, samples_param_values)):
+            interp_params[i,:] = _interpolate_result(np.array(sample_extents), 
+                                                     np.array(sample_values), 
+                                                     interp_positions)
+        return interp_params
+    
+    
+    # def _interpolate_result(x, y, x0):
+    #     ilayer = 0
+    #     interface_lower = 0
+    #     interface_upper = x[0]
+    #     ynew = np.zeros(len(x0))
+    #     for i, x_i in enumerate(x0):
+    #         while True:
+    #             if interface_lower <= x_i < interface_upper or \
+    #                 ilayer + 1 >= len(x):
+    #                 ynew[i] = y[ilayer]
+    #                 break
+    #             else:
+    #                 ilayer += 1
+    #                 interface_lower = interface_upper
+    #                 interface_upper += x[ilayer]
+    #     return ynew
+            
+    
+    
+            
+        
+        # if keep is not None and keep<results['misfit'].size:
+        #     idx = np.argsort(results['misfit'])[:keep]
+        #     param = results[param][:, idx]
+        #     thickness = results['thickness'][:, idx]
+        # else:
+        #     param = results[param]
+        #     thickness = results['thickness']
+        # models = np.zeros((param.shape[1], depths.size))
+        # for i in range(param.shape[1]):
+        #     idx = np.flatnonzero(thickness[:,i])
+        #     thickness_i = thickness[idx, i]
+        #     param_i = param[idx, i]
+        #     model = cls.get_step_model(thickness_i, 
+        #                                param_i)
+        
+        #     models[i] = interp1d(*model.T, bounds_error=False)(depths)
+        # return models    
+    
+    
     def plot_param_current(self, param_name, ax=None, **kwargs):
         """Plot the 1D Earth model given a param_name.
         
@@ -435,7 +506,8 @@ class Parameterization1D(Parameterization):
         if ax is None:
             _, ax = plt.subplots()
         ax.step(x, y, where='post', **kwargs)
-        ax.invert_yaxis()
+        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+            ax.invert_yaxis()
         ax.set_xlabel('Velocity (km/s)')
         ax.set_ylabel('Depth (km)')
         return ax
@@ -469,19 +541,20 @@ class Parameterization1D(Parameterization):
 
         # Default plotting style for samples
         sample_style = {
-            'linewidth': 0.5, 
+            'linewidth': kwargs.pop('linewidth', kwargs.pop('lw', 0.5)),
             'alpha': 0.2, 
-            'color': 'blue'  # Fixed color for the sample lines
+            'color': kwargs.pop('color', kwargs.pop('c', 'blue'))  # Fixed color for the sample lines
         }
         sample_style.update(kwargs)  # Override with any provided kwargs
 
         for thicknesses, values in zip(samples_voronoi_cell_extents, samples_param_values):
-            thicknesses[-1] = 20
+            thicknesses[-1] = 20 # TODO
             y = np.insert(np.cumsum(thicknesses), 0, 0)
             x = np.insert(values, 0, values[0])
             ax.step(x, y, where='post', **sample_style)
 
-        ax.invert_yaxis()
+        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+            ax.invert_yaxis()
         ax.set_xlabel('Velocity (km/s)')
         ax.set_ylabel('Depth (km)')
         
@@ -588,6 +661,8 @@ class UniformParameter(Parameter):
         self.name = name
         self.position = \
             position if position is None else np.array(position, dtype=float)
+        vmin = vmin if np.isscalar(vmin) else np.array(vmin, dtype=float)
+        vmax = vmax if np.isscalar(vmax) else np.array(vmax, dtype=float)
         if position is None:
             message = 'should be a scalar when `position is None`'
             assert np.isscalar(vmin), '`vmin` ' + message
@@ -595,11 +670,11 @@ class UniformParameter(Parameter):
             assert np.isscalar(perturb_std), '`perturb_std` ' + message
         else:
             message = 'should either be a scaler or have the same length as `position`'
-            assert np.isscalar(vmin) or vmin.size==position.size, \
+            assert np.isscalar(vmin) or vmin.size==self.position.size, \
                 '`vmin` ' + message
-            assert np.isscalar(vmax) or vmax.size==position.size, \
+            assert np.isscalar(vmax) or vmax.size==self.position.size, \
                 '`vmax` ' + message
-            assert np.isscalar(perturb_std) or perturb_std.size==position.size, \
+            assert np.isscalar(perturb_std) or perturb_std.size==self.position.size, \
                 '`perturb_std` ' + message
         self._vmin, self._vmax = self._init_vmin_vmax(vmin, vmax)
         self._delta = self._init_delta(vmin, vmax) # Either a scalar or interpolator
@@ -622,11 +697,9 @@ class UniformParameter(Parameter):
         if np.isscalar(vmin) and np.isscalar(vmax):
             return vmin, vmax
         if not np.isscalar(vmin):
-            vmin = np.array(vmin, dtype=float)
             vmin = np.full(self.position.size, vmin) if np.isscalar(vmin) else vmin
             vmin = partial(interpolate_linear_1d, x=self.position, y=vmin)
         if not np.isscalar(vmax):
-            vmax = np.array(vmax, dtype=float)
             vmax = np.full(self.position.size, vmax) if np.isscalar(vmax) else vmax
             vmax = partial(interpolate_linear_1d, x=self.position, y=vmax)
         return vmin, vmax
