@@ -432,47 +432,7 @@ class Parameterization1D(Parameterization):
                                                      interp_positions)
         return interp_params
     
-    
-    # def _interpolate_result(x, y, x0):
-    #     ilayer = 0
-    #     interface_lower = 0
-    #     interface_upper = x[0]
-    #     ynew = np.zeros(len(x0))
-    #     for i, x_i in enumerate(x0):
-    #         while True:
-    #             if interface_lower <= x_i < interface_upper or \
-    #                 ilayer + 1 >= len(x):
-    #                 ynew[i] = y[ilayer]
-    #                 break
-    #             else:
-    #                 ilayer += 1
-    #                 interface_lower = interface_upper
-    #                 interface_upper += x[ilayer]
-    #     return ynew
-            
-    
-    
-            
-        
-        # if keep is not None and keep<results['misfit'].size:
-        #     idx = np.argsort(results['misfit'])[:keep]
-        #     param = results[param][:, idx]
-        #     thickness = results['thickness'][:, idx]
-        # else:
-        #     param = results[param]
-        #     thickness = results['thickness']
-        # models = np.zeros((param.shape[1], depths.size))
-        # for i in range(param.shape[1]):
-        #     idx = np.flatnonzero(thickness[:,i])
-        #     thickness_i = thickness[idx, i]
-        #     param_i = param[idx, i]
-        #     model = cls.get_step_model(thickness_i, 
-        #                                param_i)
-        
-        #     models[i] = interp1d(*model.T, bounds_error=False)(depths)
-        # return models    
-    
-    
+
     def plot_param_current(self, param_name, ax=None, **kwargs):
         """Plot the 1D Earth model given a param_name.
         
@@ -548,7 +508,7 @@ class Parameterization1D(Parameterization):
         sample_style.update(kwargs)  # Override with any provided kwargs
 
         for thicknesses, values in zip(samples_voronoi_cell_extents, samples_param_values):
-            thicknesses[-1] = 20 # TODO
+            thicknesses = np.insert(thicknesses, -1, 20)
             y = np.insert(np.cumsum(thicknesses), 0, 0)
             x = np.insert(values, 0, values[0])
             ax.step(x, y, where='post', **sample_style)
@@ -596,8 +556,8 @@ class Parameterization1D(Parameterization):
             'bins': bins, 
             'align': 'mid', 
             'rwidth': 0.8, 
-            'color': 'blue', 
-            'alpha': 0.7
+            'alpha': 0.,
+            'color': kwargs.pop('color', kwargs.pop('c', 'blue'))  # Fixed color for the sample lines
         }
         
         # override or extend with any provided kwargs
