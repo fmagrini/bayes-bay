@@ -420,6 +420,34 @@ class Parameterization1D(Parameterization):
         
     
     @staticmethod
+    def plot_ensemble_statistics(samples_voronoi_cell_extents,
+                                 samples_param_values,
+                                 interp_positions,
+                                 percentiles=(10,90),
+                                 ax=None, 
+                                 **kwargs):
+        statistics = Parameterization1D.get_ensemble_statistics(
+            samples_voronoi_cell_extents,
+            samples_param_values,
+            interp_positions,
+            percentiles
+        )
+        mean = statistics['mean']
+        std = statistics['std']
+        percentiles = statistics['percentiles']
+        if ax is None:
+            _, ax = plt.subplots()
+        ax.plot(mean, interp_positions, color='b', label='Mean')
+        ax.plot(mean-std, interp_positions, 'b--')
+        ax.plot(mean+std, interp_positions, 'b--')
+        ax.plot(statistics['median'], interp_positions, color='orange', label='Median')
+        ax.plot(percentiles[0], interp_positions, color='orange', ls='--', )
+        ax.plot(percentiles[1], interp_positions, color='orange', ls='--', )
+        ax.legend()
+        return ax
+    
+    
+    @staticmethod
     def interpolate_samples(samples_voronoi_cell_extents,
                             samples_param_values,
                             interp_positions):
@@ -508,7 +536,7 @@ class Parameterization1D(Parameterization):
         sample_style.update(kwargs)  # Override with any provided kwargs
 
         for thicknesses, values in zip(samples_voronoi_cell_extents, samples_param_values):
-            thicknesses = np.insert(thicknesses, -1, 20)
+            thicknesses = np.insert(thicknesses[:-1], -1, 20)
             y = np.insert(np.cumsum(thicknesses), 0, 0)
             x = np.insert(values, 0, values[0])
             ax.step(x, y, where='post', **sample_style)
@@ -572,6 +600,56 @@ class Parameterization1D(Parameterization):
         ax.set_title('Distribution of Number of Voronoi Cells')
         ax.grid(True, axis='y')
         
+        return ax
+       
+
+    def plot_depth_profile(self, samples_voronoi_cell_extents, samples_param_values, bins=100, ax=None, **kwargs):
+        """
+        Plot a 2D histogram (depth profile) of points including the interfaces.
+        
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : ndarray
+            A 2D numpy array where each row represents a sample of thicknesses (or Voronoi cell extents)
+            
+        samples_param_values : ndarray
+            A 2D numpy array where each row represents a sample of parameter values (e.g., velocities)
+        
+        bins : int or [int, int], optional
+            The number of bins to use along each axis (default is 100). If you pass a single int, it will use that 
+            many bins for both axes. If you pass a list of two ints, it will use the first for the x-axis (velocity)
+            and the second for the y-axis (depth).
+        
+        ax : Axes, optional
+            An optional Axes object to plot on
+            
+        kwargs : dict, optional
+            Additional keyword arguments to pass to ax.hist2d
+        
+        Returns
+        -------
+        ax : Axes
+            The Axes object containing the plot
+        """
+        if ax is None:
+            _, ax = plt.subplots()
+        depths = []
+        velocities = []
+        for thicknesses, values in zip(samples_voronoi_cell_extents, samples_param_values):
+            thicknesses = np.array(thicknesses)
+            y_depth = np.insert(np.cumsum(thicknesses), 0, 0)
+            x_vel = np.insert(values, 0, values[0])
+            depths.extend(y_depth)
+            velocities.extend(x_vel)
+        # plotting the 2D histogram
+        cax = ax.hist2d(velocities, depths, bins=bins, **kwargs)
+        # colorbar (for the histogram density)
+        cbar = plt.colorbar(cax[3], ax=ax)
+        cbar.set_label('Density')
+        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+            ax.invert_yaxis()
+        ax.set_xlabel('Velocity (km/s)')
+        ax.set_ylabel('Depth (km)')
         return ax
 
 
