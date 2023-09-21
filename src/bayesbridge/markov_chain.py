@@ -124,7 +124,7 @@ class MarkovChain:
         saved_models = {k: [] for k in self.parameterization.model.current_state \
                         if k != 'n_voronoi_cells'}
         saved_models['n_voronoi_cells'] = [] if trans_d else \
-            self.parameterization.n_voronoi_cells
+            self.parameterization.model.current_state['n_voronoi_cells']
         saved_models['misfits'] = []
         self._saved_models = saved_models
 
