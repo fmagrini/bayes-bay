@@ -355,7 +355,7 @@ class BayesianInversion:
             results_targets[target_name] = defaultdict(list)
         for chain in self.chains:
             for key, saved_values in chain.saved_models.items():
-                if concatenate_chains:
+                if concatenate_chains and isinstance(saved_values, list):
                     results_model[key].extend(saved_values)
                 else:
                     results_model[key].append(saved_values)
