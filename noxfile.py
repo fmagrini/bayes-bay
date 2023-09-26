@@ -35,13 +35,8 @@ def black(session):
     session.install("black")
     session.run("black", "src", "tests")
 
-@nox.session(python="3.10")
-def docs(session):
-    session.install(".")
-    session.install("sphinx")
-    session.run("sphinx-build", "-b", "html", "docs/source", "docs/build")
-
-@nox.session
-def wheels(session):
-    session.install("wheel")
-    session.run("python", "setup.py", "bdist_wheel")
+# @nox.session(python="3.10")
+# def docs(session):
+#     session.install(".")
+#     session.install("sphinx")
+#     session.run("sphinx-build", "-b", "html", "docs/source", "docs/build")
