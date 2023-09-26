@@ -9,7 +9,6 @@ Created on Sat Apr  9 15:07:01 2022
 
 from collections import defaultdict
 from copy import deepcopy
-import itertools
 from functools import partial
 import multiprocessing
 import random
@@ -17,10 +16,7 @@ import math
 import numpy as np
 from .log_likelihood import LogLikelihood
 from .exceptions import ForwardException, DimensionalityException
-from ._utils_bayes import _get_thickness, _closest_and_final_index
-from ._utils_bayes import interpolate_nearest_1d
-
-   
+ 
 
 class MarkovChain:
     
