@@ -2,16 +2,24 @@
 
 Trans-dimensional McMC sampling implemented in Python and Cython.
 
-## Development environment
+## Development tips
 
-```console
-$ mamba env create -f envs/environment_dev.yml
-```
+- To set up development environment:
 
-or 
+    ```console
+    $ mamba env create -f envs/environment_dev.yml
+    ```
 
-```console
-$ python -m venv bayesbridge_dev
-$ source bayesbridge_dev/bin/activate
-$ pip install -r envs/requirements_dev.txt
-```
+    or 
+
+    ```console
+    $ python -m venv bayesbridge_dev
+    $ source bayesbridge_dev/bin/activate
+    $ pip install -r envs/requirements_dev.txt
+    ```
+
+- To install the package:
+
+    ```console
+    $ python -m pip install .
+    ```
