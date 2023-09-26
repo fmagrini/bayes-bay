@@ -10,8 +10,8 @@ Vs model from Fu et al. 2016, https://doi.org/10.1002/2016JB013305
 
 
 import sys
-sys.path.append('/home/fabrizio/Documents/GitHub/bayes-bridge/src')
-# sys.path.append('/home/jiawen/bayes-bridge/src')
+# sys.path.append('/home/fabrizio/Documents/GitHub/bayes-bridge/src')
+sys.path.append('/home/jiawen/bayes-bridge/src')
 import numpy as np
 import matplotlib.pyplot as plt
 from bayesbridge.markov_chain import BayesianInversion
@@ -106,22 +106,18 @@ plt.plot(periods, love, 'b--')
 fig, ax = plt.subplots(1, 1, figsize=(8, 10))
 Parameterization1D.plot_param_samples([thickness],  [vs], alpha=1, ax=ax)
 
-targets = [Target('rayleigh', rayleigh_noisy, covariance_mat_inv=1/RAYLEIGH_STD**2),
-           Target('love', love_noisy, covariance_mat_inv=1/LOVE_STD**2),
-           Target('rf', rf, covariance_mat_inv=1/RF_STD**2)]
+targets = [
+    Target('rayleigh', rayleigh_noisy, covariance_mat_inv=1/RAYLEIGH_STD**2),
+    Target('love', love_noisy, covariance_mat_inv=1/LOVE_STD**2),
+    Target('rf', rf, covariance_mat_inv=1/RF_STD**2)
+]
 
-fwd_functions = [forward_rayleigh, forward_love, forward_rf]
+fwd_functions = [
+    forward_rayleigh, 
+    forward_love, 
+    forward_rf
+]
 
-#%%
-
-# free_parameters = ([
-#     UniformParameter('vs', 
-#                      vmin=2.7, 
-#                      vmax=4.8, 
-#                      perturb_std=0.15, 
-#                      position=None,
-#                      init_sorted=True)
-#     ])
 free_parameters = ([
     UniformParameter('vs', 
                      vmin=[2.7, 3.2, 3.75], 
@@ -144,20 +140,16 @@ parameterization = Parameterization1D(voronoi_site_bounds=(0, 130),
 inversion = BayesianInversion(parameterization, 
                               targets, 
                               fwd_functions=fwd_functions,
-                              n_cpus=10,
-                              n_chains=10)
+                              n_cpus=48,
+                              n_chains=48)
 
-inversion.run(n_iterations=750_000, 
-              burnin_iterations=300_000, 
-              save_every=500,
-              print_every=5_000)
+inversion.run(n_iterations=1_000_000, 
+              burnin_iterations=400_000, 
+              save_every=1_000,
+              print_every=50_000)
 
 saved_models, saved_targets = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(130, dtype=float)
-statistics = Parameterization1D.get_ensemble_statistics(
-                    saved_models['voronoi_cell_extents'], 
-                    saved_models['vs'], 
-                    interp_depths)
 
 ax = Parameterization1D.plot_param_samples(saved_models['voronoi_cell_extents'], 
                                            saved_models['vs'], 
@@ -170,23 +162,19 @@ Parameterization1D.plot_param_samples([thickness],
                                       color='r',
                                       label='True')
 
-mean = statistics['mean']
-std  = statistics['std']
-percentiles = statistics['percentiles']
-ax.plot(mean, interp_depths, color='b', label='Mean')
-ax.plot(mean-std, interp_depths, 'b--')
-ax.plot(mean+std, interp_depths, 'b--')
-ax.plot(statistics['median'], interp_depths, color='orange', label='Median')
-ax.plot(percentiles[0], interp_depths, color='orange', ls='--', )
-ax.plot(percentiles[1], interp_depths, color='orange', ls='--', )
-ax.legend()
+Parameterization1D.plot_ensemble_statistics(
+    saved_models['voronoi_cell_extents'],
+    saved_models['vs'],
+    interp_depths, 
+    ax=ax
+)
+
+ax2 = parameterization.plot_depth_profile(saved_models['voronoi_cell_extents'], saved_models['vs'], vmax=500)
 
 
-
-
-# plt.plot(periods, np.mean(r, axis=0), 'r')
-# plt.plot(periods, np.mean(l, axis=0), 'b')
-
-
-
-
+# saving plots, models and targets
+prefix = "rayleigh_love_rf_1_000_000"
+ax.get_figure().savefig(f"{prefix}_samples")
+ax2.get_figure().savefig(f"{prefix}_density")
+np.save(f"{prefix}_saved_models", saved_models)
+np.save(f"{prefix}_saved_targets", saved_targets)
