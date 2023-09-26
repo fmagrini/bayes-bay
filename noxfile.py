@@ -2,9 +2,9 @@
 nox -s build
 nox -s tests
 nox -s lint
-nox -s black_check
+nox -s format_check
+nox -s format
 nox -s docs
-nox -s wheels
 """
 
 import nox
@@ -26,12 +26,12 @@ def lint(session):
     session.run("flake8", "src", "tests")
 
 @nox.session(python="3.10")
-def black_check(session):
+def format_check(session):
     session.install("black")
     session.run("black", "--check", "src", "tests")
     
 @nox.session(python="3.10")
-def black(session):
+def format(session):
     session.install("black")
     session.run("black", "src", "tests")
 
