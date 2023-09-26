@@ -4,7 +4,7 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from .exceptions import InitException, DimensionalityException
+from ._exceptions import InitException, DimensionalityException
 from ._utils_bayes import (
     _get_thickness, 
     _is_sorted, 

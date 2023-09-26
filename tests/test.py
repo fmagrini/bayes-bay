@@ -8,15 +8,14 @@ Created on Wed Sep 13 11:45:52 2023
 Vs model from Fu et al. 2016, https://doi.org/10.1002/2016JB013305
 """
 
-
-import sys
-# sys.path.append('/home/fabrizio/Documents/GitHub/bayes-bridge/src')
-sys.path.append('/home/jiawen/bayes-bridge/src')
 import numpy as np
 import matplotlib.pyplot as plt
-from bayesbridge.markov_chain import BayesianInversion
-from bayesbridge.parameters import UniformParameter, Parameterization1D
-from bayesbridge.target import Target
+from bayesbridge import (
+    UniformParameter,
+    Parameterization1D,
+    Target,
+    BayesianInversion
+)
 from pysurf96 import surf96
 from espresso import ReceiverFunctionInversion
 rf_module = ReceiverFunctionInversion().rf

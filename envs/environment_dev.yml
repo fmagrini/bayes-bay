@@ -1,0 +1,18 @@
+name: bayesbridge_dev
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10  # Change this if you want a different default version for development
+  - numpy>=1.22
+  - matplotlib>=3.0.0
+  - pip
+  - pip:
+    - nox
+    - sphinx
+    - flake8
+    - black
+    - wheel
+    - setuptools
+    - cython
+    - pytest

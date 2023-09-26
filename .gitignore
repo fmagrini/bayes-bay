@@ -6,7 +6,6 @@ __pycache__/
 *.cpp
 *.c
 
-
 # Setuptools/distutils distribution folder.
 dist/
 build/
@@ -28,3 +27,7 @@ cmake-build-debug/
 
 #linux
 .directory
+
+# Automation cache
+.nox
+.pytest_cache

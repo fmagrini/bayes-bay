@@ -8,7 +8,7 @@ Created on Wed Aug 30 15:04:42 2023
 
 import math
 from typing import Any
-from .exceptions import ForwardException
+from ._exceptions import ForwardException
 
 class LogLikelihood:
     

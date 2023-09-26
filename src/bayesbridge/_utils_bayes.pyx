@@ -1,4 +1,3 @@
-
 cimport cython
 from cython cimport cdivision, boundscheck, wraparound
 from libcpp cimport bool as bool_cpp

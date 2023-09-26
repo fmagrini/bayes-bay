@@ -1,0 +1,13 @@
+# Core dependencies from setup.py
+numpy>=1.22
+matplotlib>=3.0.0
+
+# Development tools
+nox
+sphinx
+flake8
+black
+wheel
+setuptools
+cython
+pytest

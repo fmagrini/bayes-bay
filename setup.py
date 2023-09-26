@@ -31,7 +31,7 @@ ext_modules = [
         sources=["src/bayesbridge/_utils_bayes.pyx"],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-        language="c"
+        language="c++"
     )
 ]
 

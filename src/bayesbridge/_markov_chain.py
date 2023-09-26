@@ -14,8 +14,8 @@ import multiprocessing
 import random
 import math
 import numpy as np
-from .log_likelihood import LogLikelihood
-from .exceptions import ForwardException, DimensionalityException
+from ._log_likelihood import LogLikelihood
+from ._exceptions import ForwardException, DimensionalityException
  
 
 class MarkovChain:
