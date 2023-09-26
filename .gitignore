@@ -6,7 +6,6 @@ __pycache__/
 *.cpp
 *.c
 
-
 # Setuptools/distutils distribution folder.
 dist/
 build/
@@ -14,8 +13,8 @@ refs/*.log
 refs/*.pdf
 
 # Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
-/*.egg
+*/*.egg-info
+*/*.egg
 
 # eclipse/PyDev
 .project
@@ -28,3 +27,7 @@ cmake-build-debug/
 
 #linux
 .directory
+
+# Automation cache
+.nox
+.pytest_cache
