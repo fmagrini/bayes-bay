@@ -16,3 +16,5 @@ dependencies:
     - setuptools
     - cython
     - pytest
+    - geo-espresso
+    - git+https://github.com/miili/pysurf96.git

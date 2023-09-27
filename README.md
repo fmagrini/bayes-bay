@@ -23,3 +23,5 @@ Trans-dimensional McMC sampling implemented in Python and Cython.
     ```console
     $ python -m pip install .
     ```
+
+- Look at [noxfile.py](noxfile.py) for building, testing, formatting and linting.

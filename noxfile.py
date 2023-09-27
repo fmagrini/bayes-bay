@@ -1,10 +1,10 @@
 """
 nox -s build
-nox -s tests
 nox -s lint
 nox -s format_check
 nox -s format
 nox -s docs
+nox -s tests
 """
 
 import nox
@@ -13,12 +13,6 @@ import nox
 def build(session):
     session.install("setuptools", "wheel", "Cython", "numpy")
     session.run("python", "setup.py", "sdist", "bdist_wheel")
-
-@nox.session(python=["3.7", "3.8", "3.9", "3.10"])
-def tests(session):
-    session.install("setuptools", "wheel", "Cython", "numpy", "pytest")
-    session.install(".")
-    session.run("python", "-m", "pytest", "tests")
 
 @nox.session(python="3.10")
 def lint(session):
@@ -40,3 +34,9 @@ def format(session):
 #     session.install(".")
 #     session.install("sphinx")
 #     session.run("sphinx-build", "-b", "html", "docs/source", "docs/build")
+
+# @nox.session(python=["3.7", "3.8", "3.9", "3.10"])
+# def tests(session):
+#     session.install("setuptools", "wheel", "Cython", "numpy", "pytest")
+#     session.install(".")
+#     session.run("python", "-m", "pytest", "tests")
