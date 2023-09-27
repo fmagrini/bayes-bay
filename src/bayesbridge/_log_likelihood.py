@@ -13,7 +13,7 @@ from ._exceptions import ForwardException
 
 class LogLikelihood:
     def __init__(self, model, targets, forward_functions):
-        # def forward(proposed_model: dict) -> numpy.ndarray
+        # def forward(proposed_model: State) -> numpy.ndarray
         self.model = model
         self.targets = targets
         self.forward_functions = forward_functions
@@ -27,9 +27,6 @@ class LogLikelihood:
                 dpred = fwd_func(self.model.proposed_state)
             except Exception as e:
                 raise ForwardException(e)
-                # print("oops" + str(e))
-            # dpred = fwd_func(self.model.proposed_state)
-
             dobs = target.dobs
             residual = dpred - dobs
             misfit += residual @ target.covariance_times_vector(residual)
