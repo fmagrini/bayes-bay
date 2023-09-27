@@ -10,7 +10,7 @@ Vs model from Fu et al. 2016, https://doi.org/10.1002/2016JB013305
 
 import numpy as np
 import matplotlib.pyplot as plt
-from bayesbridge import UniformParameter, Parameterization1D, Target, BayesianInversion
+from bayesbridge import UniformParameter, Parameterization1D, Target, BayesianInversion, State
 from pysurf96 import surf96
 from espresso import ReceiverFunctionInversion
 
@@ -25,8 +25,8 @@ LAYERS_MAX = 15
 
 
 def forward_rayleigh(proposed_state):
-    thickness = proposed_state["voronoi_cell_extents"]
-    vs = proposed_state["vs"]
+    thickness = proposed_state.voronoi_cell_extents
+    vs = proposed_state.vs
     vp = vs * 1.77
     rho = 0.32 * vp + 0.77
 
@@ -44,8 +44,8 @@ def forward_rayleigh(proposed_state):
 
 
 def forward_love(proposed_state):
-    thickness = proposed_state["voronoi_cell_extents"]
-    vs = proposed_state["vs"]
+    thickness = proposed_state.voronoi_cell_extents
+    vs = proposed_state.vs
     vp = vs * 1.77
     rho = 0.32 * vp + 0.77
 
@@ -63,8 +63,8 @@ def forward_love(proposed_state):
 
 
 def forward_rf(proposed_state):
-    vs = proposed_state["vs"]
-    thickness = proposed_state["voronoi_cell_extents"]
+    vs = proposed_state.vs
+    thickness = proposed_state.voronoi_cell_extents
     depths = np.cumsum(thickness)
     depths[-1] += 20
     ratio = np.full(vs.size, 1.77)
@@ -81,7 +81,8 @@ vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
 vp = vs * 1.77
 rho = 0.32 * vp + 0.77
 
-true_model = {"voronoi_cell_extents": thickness, "vs": vs}
+true_model = State(len(thickness), thickness, thickness)
+true_model.set_param_values("vs", vs)
 
 periods = np.linspace(4, 80, 20)
 
@@ -104,10 +105,12 @@ Parameterization1D.plot_param_samples([thickness], [vs], alpha=1, ax=ax)
 targets = [
     Target("rayleigh", rayleigh_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
     Target("love", love_noisy, covariance_mat_inv=1 / LOVE_STD**2),
-    Target("rf", rf, covariance_mat_inv=1 / RF_STD**2),
+    # Target("rf", rf, covariance_mat_inv=1 / RF_STD**2),
 ]
 
-fwd_functions = [forward_rayleigh, forward_love, forward_rf]
+fwd_functions = [forward_rayleigh, forward_love, 
+                #  forward_rf
+                 ]
 
 free_parameters = [
     UniformParameter(
