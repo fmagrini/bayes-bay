@@ -310,7 +310,8 @@ class Parameterization1D(Parameterization):
         self, param, perturbed_site, value, perturbed_value
     ):
         """
-        Returns probability ratio associated with a single free parameter
+        Returns probability ratio associated with a single free parameter.
+        We calculate Prior ratio times Proposal ratio
         """
         std_perturb = param.get_perturb_std(perturbed_site)
         delta = param.get_delta(perturbed_site)

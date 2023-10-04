@@ -143,3 +143,9 @@ class UniformParameter(Parameter):
 
     def proposal_ratio_value_perturbation(self):
         return 0
+
+
+class GaussianParameter(Parameter):
+    def __init__(self, name, mean, std, perturb_std, position=None, init_sorted=False):
+        pass
+
