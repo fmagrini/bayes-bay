@@ -1,0 +1,237 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{latexsym,float,amsmath,alltt,amssymb,graphicx}
+\usepackage{relsize}
+\usepackage{xcolor}
+\usepackage[square]{natbib}
+\usepackage{siunitx}
+\usepackage{authblk}
+\usepackage{lineno}
+\usepackage{enumerate}
+\usepackage{mathrsfs}
+\usepackage{units}
+\usepackage{url}
+\usepackage{bm}
+\usepackage{setspace}
+\usepackage{placeins}
+\usepackage[title]{appendix}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+%\pagestyle{empty} 
+\oddsidemargin0.5cm \topmargin-1.5cm \textheight25.5cm
+
+\textwidth15.5cm \flushbottom
+
+\renewcommand{\baselinestretch}{1.2}
+\newcommand\blankpage{%
+    \null
+    \thispagestyle{empty}%
+    \addtocounter{page}{-1}%
+    \newpage}
+\linenumbers
+
+\begin{document}
+\title{Math in Transdimensional Bayesian Inversions: a Rigorous Formulation}
+
+
+\author[1]{Fabrizio Magrini}
+\author[2]{Giovanni Diaferia}
+\author[1]{Luca De Siena}
+
+\affil[1]{Institute of Geosciences, Johannes Gutenberg University, Mainz, Germany}
+\affil[2]{INGV}
+
+
+\maketitle
+
+\section{Classical, Isotropic Transdimensional Inversion}
+The proposed algorithm aims to find
+\begin{equation} \label{eq:posterior}
+  \underbrace{p({\bf m} \mid {\bf d}_{obs})}_{\text{posterior}} \propto
+  \underbrace{p({\bf d}_{obs} \mid {\bf m})}_{\text{likelihood}} \times
+  \underbrace{p({\bf m})}_{\text{prior}},
+\end{equation}
+by means of a reversible-jump Markov chain Monte Carlo sampling. 
+
+\subsection{Free parameters}
+For simplicity, assume the data variance is known, i.e. the $n \times n$ matrix ${\bf C}_e$ can be computed before the inversion. Then, following \cite{bodin12}, we only have three free parameters in the inversion; these are
+\begin{enumerate}
+  \item number of layers $k$;
+  \item isotropic velocity $\bf v$, corresponding to $V_S$, of the $k$ Voronoi cells;
+  \item position (depth) $\bf c$ of the $k$ Voronoi cells.
+\end{enumerate}
+
+\subsection{Likelihood: $p({\bf d}_{obs} \mid {\bf m})$}
+The general formula for the likelihood reads
+\begin{equation} \label{eq:likelihood}
+p({\bf d}_{obs} \mid {\bf m}) = \frac{1}{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}} \ \mbox{exp} \Bigg \lbrace \frac{-{\bf \Phi(m)}}{2} \Bigg \rbrace,
+\end{equation}
+where ${\bf \Phi(m)} = \big ({\bf g(m) - d}_{obs} \big )^T \cdot {\bf C}_e^{-1} \cdot \big ({\bf g(m) - d}_{obs} \big)$ denotes the misfit between the observed (${\bf d}_{obs}$) and modeled (${\bf g(m)}$) data, and $T$ transposition. As we will see in the following, since ${\bf C}_e$ is fixed, the multiplicative factor on the left of the exponential will cancel out.
+
+\subsection{Prior probability: $p(\bf m)$}
+The prior probability 
+\begin{equation} \label{eq:prior}
+p({\bf m}) = p({\bf c, v} \mid k) \ p(k),
+\end{equation}
+is a function of the number of layers $k$. Assuming $\bf c$ and $\bf v$ are independent from each other, we can write
+\begin{equation} \label{eq:conditional_v}
+p({\bf v} \mid k) = \prod_{i=1}^{k} p(v_i|k),
+\end{equation}
+and the Dirichlet distribution as prior for the thicknesses
+\begin{equation} \label{eq:conditional_c}
+p({\bf c} \mid k) = p(h_1, ..., h_k) = \frac{1}{B({\bf \alpha})} \frac{1}{\Delta z} \prod_{i=1}^k h_i^{\alpha_i-1},
+\end{equation}
+where ${h_i}$ denotes the thickness of the $i$th Voronoi cell, $\Delta z = z_{max} - z_{min}$, and $\alpha$ denotes the concentration parameters in the Dirichlet distribution, and
+\begin{equation}
+B(y_1, ..., y_k) = \frac{\prod_{i=1}^k\Gamma(y_i)}{\Gamma(\sum_{i=1}^k y_i)}
+\end{equation}
+Similar to expression (\ref{eq:conditional_v}), the prior probability of having $k$ layers 
+\begin{equation} \label{eq:prior_k} 
+p(k) = \frac{1}{\Delta k},
+\end{equation}
+where $\Delta k = k_{max} - k_{min}$.
+
+\subsection{Acceptance probability: $\alpha({\bf m' \mid m})$} \label{sec:acceptance_prob}
+In the inverse problem described thus far, a given model ${\bf m'}$ is preferred over the current model ${\bf m}$ if and only if its acceptance probability $\alpha({\bf m' \mid m}) \geq r$, where $0\leq r <1$ denotes a random number. It has been shown \citep{green03} that the chain of sampled models will converge to the transdimensional posterior distribution $p({\bf m} \mid {\bf d}_{obs})$ if
+\begin{equation} \label{eq:acceptance_prob}
+\alpha({\bf m' \mid m}) = \mbox{min} \Bigg [ 1, \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} \ \underbrace{\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)}}_{\text{Likelihood ratio}} \ \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  \Bigg].
+\end{equation}
+It is the purpose of the following sections to robustly define each ratio in the right-hand side (RHS) of equation (\ref{eq:acceptance_prob}), so as to compute $\alpha({\bf m' \mid m})$ accurately at each iteration of the transdimensional inversion.
+
+\subsection{Perturbations}
+In general, a new model is proposed based on a random perturbation of the current model. Since we are considering only three free parameters (i.e. $k$, ${\bf c}$, and $\bf v$), the proposed model can be obtained based on four different kinds of perturbations:
+\begin{enumerate}
+
+  \item \textbf{Change in velocity}. The velocity $v_i$ corresponding to a Voronoi cell is randomly changed to a new value $v'_i$ according to a Gaussian probability distribution centered onto $v_i$, i.e. the proposal probability distribution
+   \begin{equation} \label{eq:proposal_prob_v}
+    q_{1}(v'_i \mid v_i) = \frac{1}{\theta_1 \sqrt{2 \pi}} \mbox{exp}\Bigg \lbrace -\frac{\left( v'_i - v_i \right)^2}{2\theta_1^2} \Bigg \rbrace,
+    \end{equation}
+    where the standard deviation of the Gaussian $\theta_1$ should be chosen a priori and can be dependent on depth of the Voronoi cell. And
+    \begin{equation} \label{eq:v'}
+    v'_i = v_i + u,
+    \end{equation}
+    with $u$ being a random deviate from the normal distribution $\mathcal{N}(0, \theta_1)$.
+  \item \textbf{Change in position (depth)}. The position $c_i$ of a Voronoi cell is randomly changed to a new value $c'_i$ according to a Gaussian probability distribution centered onto $c_i$, i.e.
+     \begin{equation} \label{eq:proposal_prob_c}
+    q_{2}(c'_i \mid c_i) = \frac{1}{\theta_2 \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( c'_i - c_i \right)^2}{2\theta_2^2} \Bigg \rbrace,
+    \end{equation}
+    where the standard deviation of the Gaussian $\theta_2$ is chosen a priori and can be depth dependent.
+  \item \textbf{Birth}. A new Voronoi cell is created by choosing randomly its position from the range $(z_{min}, z_{max})$. Similar to expression (\ref{eq:proposal_prob_v}) a velocity $v'_{k+1}$ is assigned to the new Voronoi cell by sampling the Gaussian distribution
+    \begin{equation} \label{eq:proposal_prob_birth}
+    q_{3}(v'_{k+1} \mid v_i) = \frac{1}{\theta_3 \sqrt{2 \pi}} \ \mbox{exp}\Bigg \lbrace -\frac{\left( v'_{k+1} - v_i \right)^2}{2\theta_3^2} \Bigg \rbrace,
+    \end{equation}
+where, once again, $\theta_3$ should be chosen a priori.
+	
+  \item \textbf{Death}. Remove one layer by drawing a random integer between 0 and $k$.
+\end{enumerate}	
+
+\section{Cases for acceptance probability}
+
+The above four perturbation types have different prior and proposal ratios reported below. In the RHS of equation (\ref{eq:acceptance_prob}), one term does not depend on the type of perturbations is the ratio between the likelihood of the proposed model and that of the current model, and reads
+\begin{equation} \label{eq:likelihood_ratio}
+\begin{aligned}
+\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)} &=
+\frac{\mbox{exp} \bigg \lbrace \frac{-{\bf \Phi(m')}}{2} \bigg \rbrace}{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}} \frac{\sqrt{\left(2\pi\right)^n \vert {\bf C}_e \vert}}{\mbox{exp} \bigg \lbrace \frac{-{\bf \Phi(m)}}{2} \bigg \rbrace} \\
+&= \mbox{exp} \Bigg \lbrace - \frac{{\bf \Phi(m') - \Phi(m)}}{2} \Bigg \rbrace.
+\end{aligned}
+\end{equation}
+The rest to evaluate is the product of prior ratio and proposal ratio
+\begin{equation} \label{eq:prior_proposal_ratio}
+\frac{p(m')}{p(m)}\frac{q(m\mid m')}{q(m'\mid m)}
+\end{equation}
+Given
+\begin{equation} \label{eq:proposal_prob}
+q({\bf m}\mid {\bf m'}) = q({\bf c} \mid {\bf m'}) q({\bf v} \mid {\bf m'})
+\end{equation}
+We expand equation (\ref{eq:prior_proposal_ratio}) according to perturbation types below.
+
+\subsection{Change in velocity}
+
+\subsubsection{Proposal ratio}
+
+When there is a change in the velocity, the calculation of the ratios at the RHS of equation (\ref{eq:acceptance_prob}) is straightforward. There is no change in the parameterization, and the proposal perturbations have symmetrical distributions \citep{bodin12}, i.e.
+\begin{equation} \label{eq:proposal_v_symmetric}
+	q_{1}(v'_i \mid v_i) = q_{1}(v_i \mid v'_i),
+\end{equation}
+Therefore,
+\begin{equation} \label{eq:proposal_ratio_v}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{q(\bf v\mid \bf v')}{q(\bf v'\mid \bf v)} = 1
+\end{equation}
+
+\subsubsection{Prior ratio}
+
+\begin{enumerate}
+	\item \textbf{Single uniform parameter}.
+	\item \textbf{Single Gaussian parameter}.
+	\item \textbf{Multiple uniform and Gaussian parameters}.
+\end{enumerate}
+
+\subsection{Change in position}
+
+\subsubsection{Proposal ratio}
+
+When there is a change in the Voronoi site position, we calculate the ratio based on equation (\ref{eq:proposal_prob_c}),
+\begin{equation} \label{eq:proposal_ratio_c}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{q(\bf c\mid \bf c')}{q(\bf c'\mid \bf c)} = \frac{\theta_2}{\theta_2'}  \mbox{exp}\Bigg \lbrace \frac{(\theta_2^2-\theta_2'^2)(c-c')^2}{2\theta_2'^2\theta_2^2} \Bigg \rbrace
+\end{equation}
+
+\subsubsection{Prior ratio}
+
+\begin{enumerate}
+	\item \textbf{Single uniform parameter}.
+	\item \textbf{Single Gaussian parameter}.
+	\item \textbf{Multiple uniform and Gaussian parameters}.
+\end{enumerate}
+
+\subsection{Birth}
+
+\subsubsection{Proposal ratio}
+
+Based on the following equations, 
+\begin{equation} \label{eq:proposal_ratio_birth_basis}
+\begin{aligned}
+	q({\bf c}\mid{\bf m'}) &= \frac{1}{k+1},\\
+	q({\bf v}\mid{\bf m'}) &= 1,\\
+	q({\bf c'}\mid{\bf m}) &= \frac{1}{\Delta z},\\
+	q({\bf v'}\mid{\bf m}) &= \frac{1}{\theta_3'^2\sqrt{2\pi}} \mbox{exp}\Bigg\lbrace-\frac{(v_{new}'-v_{new})^2}{2\theta_3'^2}\Bigg\rbrace,
+\end{aligned}
+\end{equation}
+where $v_{new}$ is the velocity for the new Voronoi cell before value perturbation, and $v_{new}'$ is the perturbed value for the new location. We then simplify the proposal ratio,
+\begin{equation} \label{eq:proposal_ratio_birth}
+\begin{aligned}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} &= \frac{q({\bf c}\mid {\bf m'})q({\bf v}\mid {\bf m'})}{q({\bf c'}\mid {\bf m})q({\bf v'}\mid {\bf m})}\\
+	&= \frac{\Delta z\theta_3^2\sqrt{2\pi}}{(k+1)\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{new}'-v_{new})^2}{2\theta_3'^2}\Bigg\rbrace}
+\end{aligned}
+\end{equation}
+
+\subsubsection{Prior ratio}
+
+\begin{enumerate}
+	\item \textbf{Single uniform parameter}.
+	\item \textbf{Single Gaussian parameter}.
+	\item \textbf{Multiple uniform and Gaussian parameters}.
+\end{enumerate}
+
+\subsection{Death}
+
+\subsubsection{Proposal ratio}
+
+For this last category of random perturbation, we can simply take the reciprocals of the RHS in equation (\ref{eq:proposal_ratio_birth}),
+\begin{equation} \label{eq:proposal_ratio_death}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{removed}'-v_{removed})^2}{2\theta_3'^2}\Bigg\rbrace}{\Delta z\theta_3^2\sqrt{2\pi}}
+\end{equation}
+
+\subsubsection{Prior ratio}
+
+\begin{enumerate}
+	\item \textbf{Single uniform parameter}.
+	\item \textbf{Single Gaussian parameter}.
+	\item \textbf{Multiple uniform and Gaussian parameters}.
+\end{enumerate}
+
+\FloatBarrier
+\bibliographystyle{agufull}
+\bibliography{./bibfile}
+\end{document}
