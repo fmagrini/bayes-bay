@@ -141,15 +141,23 @@ The rest to evaluate is the product of prior ratio and proposal ratio
 \begin{equation} \label{eq:prior_proposal_ratio}
 \frac{p(m')}{p(m)}\frac{q(m\mid m')}{q(m'\mid m)}
 \end{equation}
-Given
-\begin{equation} \label{eq:proposal_prob}
-q({\bf m}\mid {\bf m'}) = q({\bf c} \mid {\bf m'}) q({\bf v} \mid {\bf m'})
-\end{equation}
-We expand equation (\ref{eq:prior_proposal_ratio}) according to perturbation types below.
+We will expand equation (\ref{eq:prior_proposal_ratio}) below on the basis of the following:
+\begin{enumerate}
+	\item For proposal distribution:
+		\begin{equation} \label{eq:proposal_prob}
+       		q({\bf m}\mid {\bf m'}) = q({\bf c} \mid {\bf m'}) q({\bf v} \mid {\bf m'})
+		\end{equation}
+	\item For prior distribution, expanding equation (\ref{eq:prior}):
+		\begin{equation} \label{eq:prior_prob}
+			p({\bf m}) = p({\bf c}\mid {\bf k}) p({\bf v}\mid {\bf k}) p({\bf k})
+		\end{equation}
+		where $p({\bf c})$ is dependent on the types of perturbation, $p({\bf v})$ is dependent on the perturbation types and the prior distribution for the model parameters, and $p({\bf k})=\frac{1}{\Delta k}$.
+\end{enumerate}
+Therefore, we will discuss the prior and proposal ratio based on the four different perturbation types. Under each perturbation type, we discuss the proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$, the depth part of prior ratio $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$; the parameter part of prior ratio $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$ for each of the three sub-cases: uniform distribution parameter, Gaussian distribution parameter, and a more generic case where there are multiple uniform and Gaussian parameters.
 
-\subsection{Change in velocity}
+\subsection{Perturbation type 1: change in velocity}
 
-\subsubsection{Proposal ratio}
+\subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
 When there is a change in the velocity, the calculation of the ratios at the RHS of equation (\ref{eq:acceptance_prob}) is straightforward. There is no change in the parameterization, and the proposal perturbations have symmetrical distributions \citep{bodin12}, i.e.
 \begin{equation} \label{eq:proposal_v_symmetric}
@@ -160,7 +168,18 @@ Therefore,
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{q(\bf v\mid \bf v')}{q(\bf v'\mid \bf v)} = 1
 \end{equation}
 
-\subsubsection{Prior ratio}
+\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+
+When the change is in the parameter value instead of depth, the prior probability on the depth part doesn't change, i.e.
+\begin{equation} \label{eq:prior_depth_symmetric}
+	p({\bf c'}\mid {\bf k}) = p({\bf c}\mid {\bf k})
+\end{equation}
+Therefore,
+\begin{equation} \label{eq:prior_ratio_v}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = 1
+\end{equation}
+
+\subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
 \begin{enumerate}
 	\item \textbf{Single uniform parameter}.
@@ -170,14 +189,16 @@ Therefore,
 
 \subsection{Change in position}
 
-\subsubsection{Proposal ratio}
+\subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
 When there is a change in the Voronoi site position, we calculate the ratio based on equation (\ref{eq:proposal_prob_c}),
 \begin{equation} \label{eq:proposal_ratio_c}
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{q(\bf c\mid \bf c')}{q(\bf c'\mid \bf c)} = \frac{\theta_2}{\theta_2'}  \mbox{exp}\Bigg \lbrace \frac{(\theta_2^2-\theta_2'^2)(c-c')^2}{2\theta_2'^2\theta_2^2} \Bigg \rbrace
 \end{equation}
 
-\subsubsection{Prior ratio}
+\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+
+\subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
 \begin{enumerate}
 	\item \textbf{Single uniform parameter}.
@@ -187,7 +208,7 @@ When there is a change in the Voronoi site position, we calculate the ratio base
 
 \subsection{Birth}
 
-\subsubsection{Proposal ratio}
+\subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
 Based on the following equations, 
 \begin{equation} \label{eq:proposal_ratio_birth_basis}
@@ -206,7 +227,9 @@ where $v_{new}$ is the velocity for the new Voronoi cell before value perturbati
 \end{aligned}
 \end{equation}
 
-\subsubsection{Prior ratio}
+\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+
+\subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
 \begin{enumerate}
 	\item \textbf{Single uniform parameter}.
@@ -216,14 +239,16 @@ where $v_{new}$ is the velocity for the new Voronoi cell before value perturbati
 
 \subsection{Death}
 
-\subsubsection{Proposal ratio}
+\subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
 For this last category of random perturbation, we can simply take the reciprocals of the RHS in equation (\ref{eq:proposal_ratio_birth}),
 \begin{equation} \label{eq:proposal_ratio_death}
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{removed}'-v_{removed})^2}{2\theta_3'^2}\Bigg\rbrace}{\Delta z\theta_3^2\sqrt{2\pi}}
 \end{equation}
 
-\subsubsection{Prior ratio}
+\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+
+\subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
 \begin{enumerate}
 	\item \textbf{Single uniform parameter}.
