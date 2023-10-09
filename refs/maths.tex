@@ -152,7 +152,16 @@ We will expand equation (\ref{eq:prior_proposal_ratio}) below on the basis of th
 			p({\bf m}) = p({\bf c}\mid {\bf k}) p({\bf v}\mid {\bf k}) p({\bf k})
 		\end{equation}
 		where $p({\bf c})$ is dependent on the types of perturbation, $p({\bf v})$ is dependent on the perturbation types and the prior distribution for the model parameters, and $p({\bf k})=\frac{1}{\Delta k}$.
+	\item When a model parameter follows the depth-dependent uniform distribution as prior,
+		\begin{equation} \label{eq:prior_prob_uniform}
+			p({\bf v}\mid{\bf k}) = \prod_{i=1}^k \frac{1}{\Delta v_i}
+		\end{equation}
+	\item When a model parameter follows the depth-dependent Gaussian distribution as prior,
+		\begin{equation} \label{eq:prior_prob_gaussian}
+			p({\bf v}\mid{\bf k}) = \prod_{i=1}^k \frac{1}{\sigma_i\sqrt{2\pi}} \mbox{exp}\Big\lbrace{-\frac{1}{2}(\frac{v_i-\mu_i}{\sigma_i})^2}\Big\rbrace
+		\end{equation}
 \end{enumerate}
+
 Therefore, we will discuss the prior and proposal ratio based on the four different perturbation types. Under each perturbation type, we discuss the proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$, the depth part of prior ratio $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$; the parameter part of prior ratio $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$ for each of the three sub-cases: uniform distribution parameter, Gaussian distribution parameter, and a more generic case where there are multiple uniform and Gaussian parameters.
 
 \subsection{Perturbation type 1: change in velocity}
@@ -175,16 +184,26 @@ When the change is in the parameter value instead of depth, the prior probabilit
 	p({\bf c'}\mid {\bf k}) = p({\bf c}\mid {\bf k})
 \end{equation}
 Therefore,
-\begin{equation} \label{eq:prior_ratio_v}
+\begin{equation} \label{eq:prior_ratio_v_depth}
 	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = 1
 \end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
 \begin{enumerate}
-	\item \textbf{Single uniform parameter}.
+	\item \textbf{Single uniform parameter}. Assuming the velocity is perturbed at the
+		$q$th Voronoi cell,
+		\begin{equation} \label{eq:prior_ratio_v_param_single_uniform}
+			\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})} = 1
+		\end{equation}
 	\item \textbf{Single Gaussian parameter}.
-	\item \textbf{Multiple uniform and Gaussian parameters}.
+		\begin{equation} \label{eq:prior_ratio_v_param_single_gaussian}
+			\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})} = \mbox{exp}\Big\lbrace{\frac{(v_q-\mu_q)^2-(v_q'-\mu_q)^2}{2\sigma_q^2}}\Big\rbrace
+		\end{equation}
+	\item \textbf{Multiple uniform and Gaussian parameters}. Refer to equation (\ref{eq:prior_ratio_v_param_single_uniform})
+		when the perturbed parameter is a depth-dependent uniform parameter, and to
+		equation (\ref{eq:prior_ratio_v_param_single_gaussian}) when it's a 
+		depth-dependent Gaussian parameter.
 \end{enumerate}
 
 \subsection{Change in position}
@@ -197,6 +216,13 @@ When there is a change in the Voronoi site position, we calculate the ratio base
 \end{equation}
 
 \subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+\begin{equation} \label{eq:prior_ratio_c_depth}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = \frac{\Gamma(\alpha_q)\Gamma(\sum_{i=1}^k\alpha_i')}{\Gamma(\alpha_q')\Gamma(\sum_{i=1}^k\alpha_i)}\prod_{\substack{i\\{h_i\ne h_i'}}}\frac{h_i'^{\alpha_i'-1}}{h_i^{\alpha_i-1}}
+\end{equation}
+When $\alpha=1$, given that $p({\bf c}\mid {\bf k})=k!\frac{1}{\Delta z}$,
+\begin{equation} \label{eq:prior_ratio_c_depth_special_case}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = 1
+\end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
@@ -228,6 +254,13 @@ where $v_{new}$ is the velocity for the new Voronoi cell before value perturbati
 \end{equation}
 
 \subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+\begin{equation} \label{eq:prior_ratio_c_depth}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = \frac{\Gamma(\sum_{i=1}^{k+1}\alpha_i')h_{new}'^{\alpha_{new}'-1}}{\Gamma(\sum_{i=1}^k\alpha_i)\Gamma(\alpha_{new}')\Delta z}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i'^{\alpha_i'-1}}{h_i^{\alpha_i-1}}
+\end{equation}
+For the case when $\alpha=1$,
+\begin{equation} \label{eq:prior_ratio_c_depth_special_case}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = \frac{k+1}{\Delta z}
+\end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
@@ -247,6 +280,13 @@ For this last category of random perturbation, we can simply take the reciprocal
 \end{equation}
 
 \subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})}$}
+\begin{equation} \label{eq:prior_ratio_c_depth}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = \frac{\Gamma(\sum_{i=1}^{k-1}\alpha_i')\Gamma(\alpha_{removed})\Delta z}{\Gamma(\sum_{i=1}^k\alpha_i)h_{removed}^{\alpha_{removed}-1}}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i^{\alpha_i-1}}{h_i'^{\alpha_i'-1}}
+\end{equation}
+For the case when $\alpha=1$,
+\begin{equation} \label{eq:prior_ratio_c_depth_special_case}
+	\frac{p({\bf c'}\mid {\bf k})}{p({\bf c}\mid {\bf k})} = \frac{\Delta z}{k+1}
+\end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid {\bf k})}{p({\bf v}\mid {\bf k})}$}
 
