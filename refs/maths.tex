@@ -206,7 +206,7 @@ Therefore,
 		depth-dependent Gaussian parameter.
 \end{enumerate}
 
-\subsection{Change in position}
+\subsection{Perturbation type 2: change in position}
 
 \subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
@@ -233,15 +233,15 @@ When $\alpha=1$, given that $p({\bf c}\mid k)=k!\frac{1}{\Delta z}$,
 		\end{equation}
 	\item \textbf{Single Gaussian parameter}.
 		\begin{equation} \label{eq:prior_ratio_c_param_single_gaussian}
-			\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)} = \frac{\sigma_q}{\sigma_q'}\mbox{exp}\Big\lbrace{\frac{\sigma_q'^2(v_q-\mu_q)^2-\sigma_q^2(v_q-\mu_q')^2}{2\sigma_q^2\sigma_q^2'}}\Big\rbrace
+			\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)} = \frac{\sigma_q}{\sigma_q'}\mbox{exp}\Big\lbrace{\frac{\sigma_q'^2(v_q-\mu_q)^2-\sigma_q^2(v_q-\mu_q')^2}{2\sigma_q^2 \sigma_q^{'2}}}\Big\rbrace
 		\end{equation}
 	\item \textbf{Multiple uniform and Gaussian parameters}.
 		\begin{equation} \label{eq:prior_ratio_c_param_multiple}
-			\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)} = \prod_{j=1}^N\frac{\Delta v_{jq}}{\Delta v_{jq}'}\prod_{j=1}^M\frac{\sigma_{jq}}{\sigma_{jq}'}\mbox{exp}\Big\lbrace{\frac{\sigma_{jq}^2'(v_{jq}-\mu_{jq})^2-\sigma_{jq}^2(v_{jq}-\mu_{q}')^2}{2\sigma_q^2\sigma_q^2'}}\Big\rbrace
+			\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)} = (\prod_{j=1}^N\frac{\Delta v_{jq}}{\Delta v_{jq}'})(\prod_{j=1}^M\frac{\sigma_{jq}}{\sigma_{jq}'}\mbox{exp}\Big\lbrace{\frac{\sigma_{jq}^{'2}(v_{jq}-\mu_{jq})^2-\sigma_{jq}^2(v_{jq}-\mu_{q}')^2}{2\sigma_q^2\sigma_q^{'2}}}\Big\rbrace)
 		\end{equation}
 \end{enumerate}
 
-\subsection{Birth}
+\subsection{Perturbation type 3: Birth}
 
 \subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
@@ -264,7 +264,7 @@ where $v_{new}$ is the velocity for the new Voronoi cell before value perturbati
 
 \subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 \begin{equation} \label{eq:prior_ratio_birth_depth}
-	\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)} = \frac{\Gamma(\sum_{i=1}^{k+1}\alpha_i')h_{new}'^{\alpha_{new}'-1}}{\Gamma(\sum_{i=1}^k\alpha_i)\Gamma(\alpha_{new}')\Delta z}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i'^{\alpha_i'-1}}{h_i^{\alpha_i-1}}
+	\frac{p({\bf c'}\mid k+1)}{p({\bf c}\mid k)} = \frac{\Gamma(\sum_{i=1}^{k+1}\alpha_i')h_{new}'^{\alpha_{new}'-1}}{\Gamma(\sum_{i=1}^k\alpha_i)\Gamma(\alpha_{new}')\Delta z}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i'^{\alpha_i'-1}}{h_i^{\alpha_i-1}}
 \end{equation}
 For the case when $\alpha=1$,
 \begin{equation} \label{eq:prior_ratio_birth_depth_special_case}
@@ -288,7 +288,7 @@ For the case when $\alpha=1$,
 		\end{equation}
 \end{enumerate}
 
-\subsection{Death}
+\subsection{Perturbation type 4: Death}
 
 \subsubsection{Proposal ratio $\frac{q({\bf m}\mid{\bf m'})}{q({\bf m'}\mid{\bf m})}$}
 
@@ -299,7 +299,7 @@ For this last category of random perturbation, we can simply take the reciprocal
 
 \subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 \begin{equation} \label{eq:prior_ratio_c_depth}
-	\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)} = \frac{\Gamma(\sum_{i=1}^{k-1}\alpha_i')\Gamma(\alpha_{removed})\Delta z}{\Gamma(\sum_{i=1}^k\alpha_i)h_{removed}^{\alpha_{removed}-1}}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i^{\alpha_i-1}}{h_i'^{\alpha_i'-1}}
+	\frac{p({\bf c'}\mid k-1)}{p({\bf c}\mid k)} = \frac{\Gamma(\sum_{i=1}^{k-1}\alpha_i')\Gamma(\alpha_{removed})\Delta z}{\Gamma(\sum_{i=1}^k\alpha_i)h_{removed}^{\alpha_{removed}-1}}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i^{\alpha_i-1}}{h_i'^{\alpha_i'-1}}
 \end{equation}
 For the case when $\alpha=1$,
 \begin{equation} \label{eq:prior_ratio_c_depth_special_case}
