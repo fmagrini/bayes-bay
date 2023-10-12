@@ -258,7 +258,7 @@ where $v_{new}$ is the velocity for the new Voronoi cell before value perturbati
 \begin{equation} \label{eq:proposal_ratio_birth}
 \begin{aligned}
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} &= \frac{q({\bf c}\mid {\bf m'})q({\bf v}\mid {\bf m'})}{q({\bf c'}\mid {\bf m})q({\bf v'}\mid {\bf m})}\\
-	&= \frac{\Delta z\theta_3^2\sqrt{2\pi}}{(k+1)\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{new}'-v_{new})^2}{2\theta_3'^2}\Bigg\rbrace}
+	&= \frac{\Delta z\theta_3^{'2}\sqrt{2\pi}}{(k+1)\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{new}'-v_{new})^2}{2\theta_3'^2}\Bigg\rbrace}
 \end{aligned}
 \end{equation}
 
@@ -294,7 +294,7 @@ For the case when $\alpha=1$,
 
 For this last category of random perturbation, we can simply take the reciprocals of the RHS in equation (\ref{eq:proposal_ratio_birth}),
 \begin{equation} \label{eq:proposal_ratio_death}
-	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{removed}'-v_{removed})^2}{2\theta_3'^2}\Bigg\rbrace}{\Delta z\theta_3^2\sqrt{2\pi}}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{removed}-v_{nearest})^2}{2\theta_3^2}\Bigg\rbrace}{\Delta z\theta_3^2\sqrt{2\pi}}
 \end{equation}
 
 \subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
