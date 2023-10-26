@@ -134,9 +134,9 @@ for d in np.cumsum(thickness):
     axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
-# prefix = "rf_1_000_000"
-# prefix = "rayleigh_love_1_000_000"
-prefix = "rf_rayleigh_love_1_000_000"
+# prefix = "rf_uniform_1_000_000"
+# prefix = "sw_uniform_1_000_000"
+prefix = "rf_sw_uniform_1_000_000"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)
