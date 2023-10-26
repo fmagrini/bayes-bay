@@ -21,7 +21,7 @@ class Parameter:
     def __init__(self, **kwargs):
         self.init_params = kwargs
 
-    def generate_random_value(self, position):
+    def generate_random_values(self, position):
         raise NotImplementedError
 
     def perturb_value(self, position, value):
@@ -203,7 +203,7 @@ class GaussianParameter(Parameter):
     def get_perturb_std(self, position):
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
 
-    def generate_random_value(self, positions, is_init=False):
+    def generate_random_values(self, positions, is_init=False):
         mean = self.get_mean(positions)
         std = self.get_std(positions)
         values = np.random.normal(mean, std, positions.size)
