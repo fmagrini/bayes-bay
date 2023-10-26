@@ -284,12 +284,12 @@ where $v_{new}$ is the velocity for the new Voronoi cell before value perturbati
 
 For this last category of random perturbation, we can simply take the reciprocals of the RHS in equation (\ref{eq:proposal_ratio_birth}),
 \begin{equation} \label{eq:proposal_ratio_death}
-	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k+1}{(N-k+1)\prod_{i=1}^{N+M}\theta_i^{'2}\sqrt{2\pi}\mbox{exp}\Bigg\lbrace\frac{(v_{{new}_i}-v_{{nearest}_i})^2}{2\theta_i'^2}\Bigg\rbrace}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k}{(N-k+1)\prod_{i=1}^{N+M}\theta_i^{'2}\sqrt{2\pi}\mbox{exp}\Bigg\lbrace\frac{(v_{{new}_i}-v_{{nearest}_i})^2}{2\theta_i'^2}\Bigg\rbrace}
 \end{equation}
 
 \subsubsection{Prior ratio (Voronoi position part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 \begin{equation} \label{eq:prior_ratio_c_depth}
-	\frac{p({\bf c'}\mid k-1)}{p({\bf c}\mid k)} = \frac{N-k+1}{k+1}
+	\frac{p({\bf c'}\mid k-1)}{p({\bf c}\mid k)} = \frac{N-k+1}{k}
 \end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)}$}
