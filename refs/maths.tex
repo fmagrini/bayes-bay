@@ -79,9 +79,9 @@ is a function of the number of layers $k$. Assuming $\bf c$ and $\bf v$ are inde
 \begin{equation} \label{eq:conditional_v}
 p({\bf v} \mid k) = \prod_{i=1}^{k} p(v_i|k),
 \end{equation}
-and the Dirichlet distribution as prior for the thicknesses
+and
 \begin{equation} \label{eq:conditional_c}
-p({\bf c} \mid k) = p(h_1, ..., h_k) = \frac{1}{B({\bf \alpha})} \frac{1}{\Delta z} \prod_{i=1}^k h_i^{\alpha_i-1},
+p({\bf c} \mid k) = \frac{},
 \end{equation}
 where ${h_i}$ denotes the thickness of the $i$th Voronoi cell, $\Delta z = z_{max} - z_{min}$, and $\alpha$ denotes the concentration parameters in the Dirichlet distribution, and
 \begin{equation}
@@ -177,7 +177,7 @@ Therefore,
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{q(\bf v\mid \bf v')}{q(\bf v'\mid \bf v)} = 1
 \end{equation}
 
-\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
+\subsubsection{Prior ratio (Voronoi position part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 
 When the change is in the parameter value instead of depth, the prior probability on the depth part doesn't change, i.e.
 \begin{equation} \label{eq:prior_depth_symmetric}
@@ -215,12 +215,8 @@ When there is a change in the Voronoi site position, we calculate the ratio base
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{q(\bf c\mid \bf c')}{q(\bf c'\mid \bf c)} = \frac{\theta_2}{\theta_2'}  \mbox{exp}\Bigg \lbrace \frac{(\theta_2^2-\theta_2'^2)(c-c')^2}{2\theta_2'^2\theta_2^2} \Bigg \rbrace
 \end{equation}
 
-\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
+\subsubsection{Prior ratio (Voronoi position part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 \begin{equation} \label{eq:prior_ratio_c_depth}
-	\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)} = \frac{\Gamma(\alpha_q)\Gamma(\sum_{i=1}^k\alpha_i')}{\Gamma(\alpha_q')\Gamma(\sum_{i=1}^k\alpha_i)}\prod_{\substack{i\\{h_i\ne h_i'}}}\frac{h_i'^{\alpha_i'-1}}{h_i^{\alpha_i-1}}
-\end{equation}
-When $\alpha=1$, given that $p({\bf c}\mid k)=k!\frac{1}{\Delta z}$,
-\begin{equation} \label{eq:prior_ratio_c_depth_special_case}
 	\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)} = 1
 \end{equation}
 
@@ -250,25 +246,21 @@ Based on the following equations,
 \begin{aligned}
 	q({\bf c}\mid{\bf m'}) &= \frac{1}{k+1},\\
 	q({\bf v}\mid{\bf m'}) &= 1,\\
-	q({\bf c'}\mid{\bf m}) &= \frac{1}{\Delta z},\\
-	q({\bf v'}\mid{\bf m}) &= \frac{1}{\theta_3'^2\sqrt{2\pi}} \mbox{exp}\Bigg\lbrace-\frac{(v_{new}'-v_{new})^2}{2\theta_3'^2}\Bigg\rbrace,
+	q({\bf c'}\mid{\bf m}) &= \frac{1}{N-k},\\
+	q({\bf v'}\mid{\bf m}) &= \prod_{i=1}^{N+M}\frac{1}{\theta_i'\sqrt{2\pi}}\mbox{exp}\Bigg\lbrace-\frac{(v_{{new}_i}-v_{{nearest}_i})^2}{2\theta_i'^2}\Bigg\rbrace,
 \end{aligned}
 \end{equation}
 where $v_{new}$ is the velocity for the new Voronoi cell before value perturbation, and $v_{new}'$ is the perturbed value for the new location. We then simplify the proposal ratio,
 \begin{equation} \label{eq:proposal_ratio_birth}
 \begin{aligned}
 	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} &= \frac{q({\bf c}\mid {\bf m'})q({\bf v}\mid {\bf m'})}{q({\bf c'}\mid {\bf m})q({\bf v'}\mid {\bf m})}\\
-	&= \frac{\Delta z\theta_3^{'2}\sqrt{2\pi}}{(k+1)\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{new}'-v_{new})^2}{2\theta_3'^2}\Bigg\rbrace}
+	&= \frac{N-k}{k+1}\prod_{i=1}^{N+M}\theta_i^{'2}\sqrt{2\pi}\mbox{exp}\Bigg\lbrace\frac{(v_{{new}_i}-v_{{nearest}_i})^2}{2\theta_i'^2}\Bigg\rbrace
 \end{aligned}
 \end{equation}
 
-\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
+\subsubsection{Prior ratio (Voronoi position part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 \begin{equation} \label{eq:prior_ratio_birth_depth}
-	\frac{p({\bf c'}\mid k+1)}{p({\bf c}\mid k)} = \frac{\Gamma(\sum_{i=1}^{k+1}\alpha_i')h_{new}'^{\alpha_{new}'-1}}{\Gamma(\sum_{i=1}^k\alpha_i)\Gamma(\alpha_{new}')\Delta z}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i'^{\alpha_i'-1}}{h_i^{\alpha_i-1}}
-\end{equation}
-For the case when $\alpha=1$,
-\begin{equation} \label{eq:prior_ratio_birth_depth_special_case}
-	\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)} = \frac{k+1}{\Delta z}
+	\frac{p({\bf c'}\mid k+1)}{p({\bf c}\mid k)} = \frac{k+1}{N-k}
 \end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)}$}
@@ -284,7 +276,7 @@ For the case when $\alpha=1$,
 		\end{equation}
 	\item \textbf{Multiple uniform and Gaussian parameters}.
 		\begin{equation} \label{eq:prior_ratio_birth_param_multiple}
-			\frac{p({\bf v'}\mid k+1)}{p({\bf v}\mid k)} = TODO
+			\frac{p({\bf v'}\mid k+1)}{p({\bf v}\mid k)} = \prod_i^N{\frac{1}{\Delta v_{{new}_i}}} \prod_i^M{\frac{1}{\sigma_{{new}_i}\sqrt{2\pi}}\mbox{exp}\Big\lbrace{-\frac{(v_{{new}_i}-\mu_{{new}_i})^2}{2\sigma_{{new}_i}}}\Big\rbrace}
 		\end{equation}
 \end{enumerate}
 
@@ -294,16 +286,12 @@ For the case when $\alpha=1$,
 
 For this last category of random perturbation, we can simply take the reciprocals of the RHS in equation (\ref{eq:proposal_ratio_birth}),
 \begin{equation} \label{eq:proposal_ratio_death}
-	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k\cdot\mbox{exp}\Bigg\lbrace-\frac{(v_{removed}-v_{nearest})^2}{2\theta_3^2}\Bigg\rbrace}{\Delta z\theta_3^2\sqrt{2\pi}}
+	\frac{q(\bf m\mid \bf m')}{q(\bf m'\mid \bf m)} = \frac{k+1}{(N-k+1)\prod_{i=1}^{N+M}\theta_i^{'2}\sqrt{2\pi}\mbox{exp}\Bigg\lbrace\frac{(v_{{new}_i}-v_{{nearest}_i})^2}{2\theta_i'^2}\Bigg\rbrace}
 \end{equation}
 
-\subsubsection{Prior ratio (depth part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
+\subsubsection{Prior ratio (Voronoi position part): $\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)}$}
 \begin{equation} \label{eq:prior_ratio_c_depth}
-	\frac{p({\bf c'}\mid k-1)}{p({\bf c}\mid k)} = \frac{\Gamma(\sum_{i=1}^{k-1}\alpha_i')\Gamma(\alpha_{removed})\Delta z}{\Gamma(\sum_{i=1}^k\alpha_i)h_{removed}^{\alpha_{removed}-1}}\prod_{\substack{i\\h_i\ne h_i'}}\frac{h_i^{\alpha_i-1}}{h_i'^{\alpha_i'-1}}
-\end{equation}
-For the case when $\alpha=1$,
-\begin{equation} \label{eq:prior_ratio_c_depth_special_case}
-	\frac{p({\bf c'}\mid k)}{p({\bf c}\mid k)} = \frac{\Delta z}{k+1}
+	\frac{p({\bf c'}\mid k-1)}{p({\bf c}\mid k)} = \frac{N-k+1}{k+1}
 \end{equation}
 
 \subsubsection{Prior ratio (parameter part): $\frac{p({\bf v'}\mid k)}{p({\bf v}\mid k)}$}
@@ -315,11 +303,11 @@ For the case when $\alpha=1$,
 		\end{equation}
 	\item \textbf{Single Gaussian parameter}.
 		\begin{equation} \label{eq:prior_ratio_death_param_single_gaussian}
-			\frac{p({\bf v'}\mid k-1)}{p({\bf v}\mid k)} = (\sigma_{removed}\sqrt{2\pi}\mbox{exp}\Big\lbrace{\frac{(v_{removed}-\mu_{removed})^2}{2\sigma_{removed}}}\Big\rbrace)
+			\frac{p({\bf v'}\mid k-1)}{p({\bf v}\mid k)} = \sigma_{removed}\sqrt{2\pi}\mbox{exp}\Big\lbrace{\frac{(v_{removed}-\mu_{nearest})^2}{2\sigma_{removed}}}\Big\rbrace
 		\end{equation}
 	\item \textbf{Multiple uniform and Gaussian parameters}.
 		\begin{equation} \label{eq:prior_ratio_death_param_multiple}
-			\frac{p({\bf v'}\mid k-1)}{p({\bf v}\mid k)} = TODO
+			\frac{p({\bf v'}\mid k-1)}{p({\bf v}\mid k)} = \prod_i^N{\Delta v_{{removed}_i}} \prod_i^M{\sigma_{{removed}_i}\sqrt{2\pi}\mbox{exp}\Big\lbrace{\frac{(v_{{removed}_i}-\mu_{{nearest}_i})^2}{2\sigma_{{removed}_i}}}\Big\rbrace}
 		\end{equation}
 \end{enumerate}
 
