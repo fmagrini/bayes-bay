@@ -19,13 +19,14 @@ from ._exceptions import ForwardException, DimensionalityException
 
 
 class MarkovChain:
-    def __init__(self, parameterization, targets, forward_functions, temperature):
+    def __init__(self, parameterization, targets, fwd_functions, temperature):
         self.parameterization = parameterization
         self.parameterization.initialize()
+        self.id = str(random.randint(10000, 99999))
         self.log_likelihood = LogLikelihood(
             model=parameterization.model,
             targets=targets,
-            forward_functions=forward_functions,
+            fwd_functions=fwd_functions,
         )
         self._init_perturbation_funcs()
         self._init_statistics()
@@ -141,6 +142,7 @@ class MarkovChain:
         self._accepted_counts = defaultdict(int)
         self._proposed_counts_total = 0
         self._accepted_counts_total = 0
+        self._fwd_failure_counts_total = 0
 
     def _save_model(self, misfit):
         self.saved_models["misfits"].append(misfit)
@@ -176,7 +178,7 @@ class MarkovChain:
         self._accepted_counts_total += 1 if accepted else 0
 
     def _print_statistics(self):
-        head = "EXPLORED MODELS: %s - " % self._proposed_counts_total
+        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (self.id, self._proposed_counts_total)
         acceptance_rate = (
             self._accepted_counts_total / self._proposed_counts_total * 100
         )
@@ -196,9 +198,10 @@ class MarkovChain:
                 % (perturb_type, accepted, proposed, acceptance_rate)
             )
         print("CURRENT MISFIT: %.2f" % self._current_misfit)
+        print("NUMBER OF FWD FAILURES: %d" % self._fwd_failure_counts_total)
 
     def _next_iteration(self, save_model):
-        while True:
+        for i in range(500):
             # choose one perturbation function and type
             perturb_i = random.randint(0, len(self.perturbations) - 1)
 
@@ -215,6 +218,7 @@ class MarkovChain:
                 )
             except ForwardException:
                 self.finalizations[perturb_i](False)
+                self._fwd_failure_counts_total += 1
                 continue
 
             # decide whether to accept
@@ -231,6 +235,7 @@ class MarkovChain:
             # save statistics
             self._save_statistics(perturb_i, accepted)
             return
+        raise RuntimeError("Chain getting stuck")
 
     def advance_chain(
         self,
@@ -264,7 +269,7 @@ class BayesianInversion:
     ):
         self.parameterization = parameterization
         self.targets = targets
-        self.fwd_functions = fwd_functions
+        self.fwd_functions = _preprocess_fwd_functions(fwd_functions)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
@@ -379,3 +384,36 @@ class BayesianInversion:
             if prob > math.log(random.random()):
                 chain1.temperature = T2
                 chain2.temperature = T1
+
+
+def _preprocess_fwd_functions(fwd_functions):
+    funcs = []
+    for func in fwd_functions:
+        f = None
+        args = []
+        kwargs = {}
+        if isinstance(func, (tuple, list)) and len(func) > 1:
+            f = func[0]
+            if isinstance(func[1], (tuple, list)):
+                args = func[1]
+                if len(func) > 2 and isinstance(func[2], dict):
+                    kwargs = func[2]
+            elif isinstance(func[1], dict):
+                kwargs = func[1]
+        elif isinstance(func, (tuple, list)):
+            f = func[0]
+        else:
+            f = func
+        funcs.append(_FunctionWrapper(f, args, kwargs))
+    return funcs
+            
+
+class _FunctionWrapper(object):
+    """Function wrapper to make it pickleable (credit to emcee)"""
+    def __init__(self, f, args, kwargs):
+        self.f = f
+        self.args = args or []
+        self.kwargs = kwargs or {}
+
+    def __call__(self, x):
+        return self.f(x, *self.args, **self.kwargs)

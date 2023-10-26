@@ -12,17 +12,17 @@ from ._exceptions import ForwardException
 
 
 class LogLikelihood:
-    def __init__(self, model, targets, forward_functions):
+    def __init__(self, model, targets, fwd_functions):
         # def forward(proposed_model: State) -> numpy.ndarray
         self.model = model
         self.targets = targets
-        self.forward_functions = forward_functions
-        assert len(self.targets) == len(self.forward_functions)
+        self.fwd_functions = fwd_functions
+        assert len(self.targets) == len(self.fwd_functions)
         self.proposed_dpred = {}
 
     def data_misfit(self):
         misfit = 0
-        for target, fwd_func in zip(self.targets, self.forward_functions):
+        for target, fwd_func in zip(self.targets, self.fwd_functions):
             try:
                 dpred = fwd_func(self.model.proposed_state)
             except Exception as e:

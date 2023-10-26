@@ -117,16 +117,25 @@ class UniformParameter(Parameter):
         vmin, vmax = self.get_vmin_vmax(positions)
         values = np.random.uniform(vmin, vmax, positions.size)
         if is_init and self.init_sorted:
-            return np.sort(values)
+            sorted_values = np.sort(values)
+            for i in range(len(sorted_values)):
+                val = sorted_values[i]
+                if val < vmin[i] or val > vmax[i]:
+                    sorted_values[i] = self.perturb_value(positions[i], val)
+            return sorted_values
         return values
 
     def perturb_value(self, position, value):
+        # snap `value` to the closest bound if it's out of range
         vmin, vmax = self.get_vmin_vmax(position)
+        if value > vmax: value = vmax
+        if value < vmin: value = vmin
+        # randomly perturb the value until within range
         std = self.get_perturb_std(position)
         while True:
             random_deviate = random.normalvariate(0, std)
             new_value = value + random_deviate
-            if not (new_value < vmin or new_value > vmax):
+            if new_value >= vmin and new_value <= vmax:
                 return new_value
 
     def prior_ratio_perturbation_free_param(self, old_value, new_value, position):

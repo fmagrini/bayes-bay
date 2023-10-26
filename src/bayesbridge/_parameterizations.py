@@ -3,6 +3,7 @@ from functools import partial
 import random
 import math
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 
 from ._state import State
@@ -490,7 +491,7 @@ class Parameterization1D(Parameterization):
         ax.set_ylabel("Depth (km)")
         return ax
 
-    @staticmethod
+    @classmethod
     def plot_param_samples(
         samples_voronoi_cell_extents, samples_param_values, ax=None, **kwargs
     ):
@@ -543,7 +544,7 @@ class Parameterization1D(Parameterization):
 
         return ax
 
-    @staticmethod
+    @classmethod
     def plot_hist_n_voronoi_cells(samples_n_voronoi_cells, ax=None, **kwargs):
         """
         Plot a histogram of the distribution of the number of Voronoi cells.
@@ -598,8 +599,8 @@ class Parameterization1D(Parameterization):
 
         return ax
 
+    @classmethod
     def plot_depth_profile(
-        self,
         samples_voronoi_cell_extents,
         samples_param_values,
         bins=100,
@@ -640,11 +641,8 @@ class Parameterization1D(Parameterization):
         for thicknesses, values in zip(
             samples_voronoi_cell_extents, samples_param_values
         ):
-            thicknesses = np.array(thicknesses)
-            y_depth = np.insert(np.cumsum(thicknesses), 0, 0)
-            x_vel = np.insert(values, 0, values[0])
-            depths.extend(y_depth)
-            velocities.extend(x_vel)
+            depths.extend(np.cumsum(np.array(thicknesses)))
+            velocities.extend(values)
         # plotting the 2D histogram
         cax = ax.hist2d(velocities, depths, bins=bins, **kwargs)
         # colorbar (for the histogram density)
@@ -653,5 +651,34 @@ class Parameterization1D(Parameterization):
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         ax.set_xlabel("Velocity (km/s)")
+        ax.set_ylabel("Depth (km)")
+        return ax
+    
+    @classmethod
+    def plot_interface_distribution(
+        samples_voronoi_cell_extents,
+        bins=100,
+        ax=None,
+        include_kde=True,
+        **kwargs,
+    ):
+        if ax is None:
+            _, ax = plt.subplots()
+        depths = []
+        for thicknesses in samples_voronoi_cell_extents:
+            thicknesses = np.array(thicknesses)
+            depths.extend(np.cumsum(thicknesses))
+        # calculate 1D histogram
+        h, e = np.histogram(depths, bins=bins, density=True)
+        x = np.linspace(e.min(), e.max(), bins)
+        # plot the histogram
+        ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
+        # plot the kde (if include_kde=True)
+        if include_kde:
+            kde = scipy.stats.gaussian_kde(depths, bw_method=0.2)
+            ax.plot(kde(x), x, c="C1", label="KDE")
+        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+            ax.invert_yaxis()
+        ax.set_xlabel("p(discontinuity)")
         ax.set_ylabel("Depth (km)")
         return ax
