@@ -81,12 +81,10 @@ p({\bf v} \mid k) = \prod_{i=1}^{k} p(v_i|k),
 \end{equation}
 and
 \begin{equation} \label{eq:conditional_c}
-p({\bf c} \mid k) = \frac{},
+p({\bf c} \mid k) = \frac{k! \left(N - k \right)!}{N!},
 \end{equation}
-where ${h_i}$ denotes the thickness of the $i$th Voronoi cell, $\Delta z = z_{max} - z_{min}$, and $\alpha$ denotes the concentration parameters in the Dirichlet distribution, and
-\begin{equation}
-B(y_1, ..., y_k) = \frac{\prod_{i=1}^k\Gamma(y_i)}{\Gamma(\sum_{i=1}^k y_i)}
-\end{equation}
+where $N$ denotes the number of possible positions that can be occupied by the Voronoi cells. (Expression (\ref{eq:conditional_c}) implies that the Voronoi cells can only be placed in a discrete number of positions. We will see in the following, however, that $N$ will cancel out in the definition of the acceptance probability, thus allowing for a uniform sampling of the depth range considered in the parameterization.)
+
 Similar to expression (\ref{eq:conditional_v}), the prior probability of having $k$ layers 
 \begin{equation} \label{eq:prior_k} 
 p(k) = \frac{1}{\Delta k},
