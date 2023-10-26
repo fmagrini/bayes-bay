@@ -22,6 +22,7 @@ class MarkovChain:
     def __init__(self, parameterization, targets, forward_functions, temperature):
         self.parameterization = parameterization
         self.parameterization.initialize()
+        self.id = str(random.randint(10000, 99999))
         self.log_likelihood = LogLikelihood(
             model=parameterization.model,
             targets=targets,
@@ -141,6 +142,7 @@ class MarkovChain:
         self._accepted_counts = defaultdict(int)
         self._proposed_counts_total = 0
         self._accepted_counts_total = 0
+        self._fwd_failure_counts_total = 0
 
     def _save_model(self, misfit):
         self.saved_models["misfits"].append(misfit)
@@ -176,7 +178,7 @@ class MarkovChain:
         self._accepted_counts_total += 1 if accepted else 0
 
     def _print_statistics(self):
-        head = "EXPLORED MODELS: %s - " % self._proposed_counts_total
+        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (self.id, self._proposed_counts_total)
         acceptance_rate = (
             self._accepted_counts_total / self._proposed_counts_total * 100
         )
@@ -196,9 +198,10 @@ class MarkovChain:
                 % (perturb_type, accepted, proposed, acceptance_rate)
             )
         print("CURRENT MISFIT: %.2f" % self._current_misfit)
+        print("NUMBER OF FWD FAILURES: %d" % self._fwd_failure_counts_total)
 
     def _next_iteration(self, save_model):
-        while True:
+        for i in range(500):
             # choose one perturbation function and type
             perturb_i = random.randint(0, len(self.perturbations) - 1)
 
@@ -215,6 +218,7 @@ class MarkovChain:
                 )
             except ForwardException:
                 self.finalizations[perturb_i](False)
+                self._fwd_failure_counts_total += 1
                 continue
 
             # decide whether to accept
@@ -231,6 +235,7 @@ class MarkovChain:
             # save statistics
             self._save_statistics(perturb_i, accepted)
             return
+        raise RuntimeError("Chain getting stuck")
 
     def advance_chain(
         self,
