@@ -59,7 +59,7 @@ class Parameter:
 
 class UniformParameter(Parameter):
     def __init__(self, name, vmin, vmax, perturb_std, position=None, init_sorted=False):
-        super.__init__(
+        super().__init__(
             name=name,
             position=position,
             vmin=vmin,
@@ -155,7 +155,7 @@ class UniformParameter(Parameter):
 
 class GaussianParameter(Parameter):
     def __init__(self, name, mean, std, perturb_std, position=None, init_sorted=False):
-        super.__init__(
+        super().__init__(
             name=name,
             position=position,
             mean=mean,

@@ -235,8 +235,8 @@ class Parameterization1D(Parameterization):
         self.model.propose_free_param_perturbation(param_name, isite, new_value)
         # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
         param = self.free_params[param_name]
-        proposal_ratio = self._proposal_ratio_free_param(param)
-        prior_depth_ratio = self._prior_depth_ratio_free_param(param, old_value, new_value)
+        proposal_ratio = self._proposal_ratio_free_param()
+        prior_depth_ratio = self._prior_position_ratio_free_param()
         prior_value_ratio = param.prior_ratio_perturbation_free_param(old_value, new_value, site)
         return proposal_ratio + prior_depth_ratio + prior_value_ratio
 
@@ -262,7 +262,7 @@ class Parameterization1D(Parameterization):
         self.model.propose_site_perturbation(isite, new_site)
         # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
         proposal_ratio = self._proposal_ratio_voronoi_site(old_site, new_site)
-        prior_depth_ratio = self._prior_depth_ratio_voronoi_site(old_site, new_site)
+        prior_depth_ratio = self._prior_position_ratio_voronoi_site()
         prior_value_ratio = 0
         for param_name, param in self.free_params.items():
             value = getattr(self.model.current_state, param_name)[isite]
@@ -299,8 +299,8 @@ class Parameterization1D(Parameterization):
         # register intention to perturb from Model class
         self.model.propose_birth_perturbation()
         # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
-        proposal_ratio = self._proposal_ratio_birth(all_old_values, all_new_values, new_site, n_cells)
-        prior_depth_ratio = self._prior_depth_ratio_birth()
+        proposal_ratio = self._proposal_ratio_birth(all_old_values, all_new_values, new_site)
+        prior_depth_ratio = self._prior_position_ratio_birth()
         prior_value_ratio = 0
         for param in self.free_params.values():
             prior_value_ratio += param.prior_ratio_perturbation_birth(new_site, new_value)
@@ -326,8 +326,8 @@ class Parameterization1D(Parameterization):
         # register intention to perturb from Model class
         self.model.propose_death_perturbation()
         # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
-        proposal_ratio = self._proposal_ratio_death(isite, inearest, removed_site, n_cells)
-        prior_depth_ratio = self._prior_depth_ratio_death()
+        proposal_ratio = self._proposal_ratio_death(isite, inearest, removed_site)
+        prior_depth_ratio = self._prior_position_ratio_death()
         prior_value_ratio = 0
         for param in self.free_params.values():
             removed_value = getattr(self.model.current_state, param_name)[isite]
@@ -347,9 +347,10 @@ class Parameterization1D(Parameterization):
         return math.log(std_old / std_new) + \
             d * (std_new**2 - std_old**2) / (2 * std_new**2 * std_old**2)
     
-    def _proposal_ratio_birth(self, all_old_values, all_new_values, new_site, n_cells):
-        delta_z = self.voronoi_site_bounds[1] - self.voronoi_site_bounds[0]
-        ratio = math.log(delta_z / (n_cells + 1))
+    def _proposal_ratio_birth(self, all_old_values, all_new_values, new_site):
+        # The calculation omits the \frac{N-k}{k+1} part in the formula,
+        # as this will be cancelled out with the prior ratio of the voronoi position part
+        ratio = 0
         for param_name, param in self.free_params.items():
             theta = param.get_perturb_std(new_site)
             old_value = all_old_values[param_name]
@@ -357,9 +358,10 @@ class Parameterization1D(Parameterization):
             ratio += math.log(theta**2*SQRT_TWO_PI) + (new_value-old_value)**2 / 2*theta**2
         return ratio
     
-    def _proposal_ratio_death(self, i_removed, i_nearest, removed_site, n_cells):
-        delta_z = self.voronoi_site_bounds[1] - self.voronoi_site_bounds[0]
-        ratio = math.log(n_cells / (delta_z))
+    def _proposal_ratio_death(self, i_removed, i_nearest, removed_site):
+        # The calculation omits the \frac{N-k+1}{k} part in the formula,
+        # as this will be cancelled out with the prior ratio of the voronoi position part
+        ratio = 0
         for param_name, param in self.free_params.items():
             theta = param.get_perturb_std(removed_site)
             removed_value = getattr(self.model.current_state, param_name)[i_removed]
@@ -367,17 +369,21 @@ class Parameterization1D(Parameterization):
             ratio -= math.log(theta**2*2*SQRT_TWO_PI) + (removed_value-nearest_value)**2 / 2*theta**2
         return ratio
     
-    def _prior_depth_ratio_free_param(self, param, value, perturbed_value):
-        raise NotImplementedError("TODO more discussion on prior depth")
+    def _prior_position_ratio_free_param(self):
+        return 0
     
-    def _prior_depth_ratio_voronoi_site(self, old_site, new_site):
-        raise NotImplementedError("TODO more discussion on prior depth")
+    def _prior_position_ratio_voronoi_site(self):
+        return 0
     
-    def _prior_depth_ratio_birth(self, old_value, new_value, new_site, n_cells):
-        raise NotImplementedError("TODO more discussion on prior depth")
+    def _prior_position_ratio_birth(self):
+        # The calculation omits the \frac{k+1}{N-k} part in the formula,
+        # as this will be cancelled out with the proposal ratio
+        return 0
     
-    def _prior_depth_ratio_death(self, removed_value, nearest_value, ):
-        raise NotImplementedError("TODO more discussion on prior depth")
+    def _prior_position_ratio_death(self):
+        # The calculation omits the \frac{k}{N-k+1} part in the formula,
+        # as this will be cancelled out with the proposal ratio
+        return 0
     
     def _prior_nlayers(self):
         return 0
