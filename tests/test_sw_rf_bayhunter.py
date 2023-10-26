@@ -22,44 +22,22 @@ RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
 
-
-def forward_rayleigh(proposed_state):
+def forward_sw(proposed_state, wave="rayleigh", mode=1):
     thickness = proposed_state.voronoi_cell_extents
     vs = proposed_state.vs
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
-
     return surf96(
         thickness,
         vp,
         vs,
         rho,
         periods,
-        wave="rayleigh",
-        mode=1,
+        wave=wave,
+        mode=mode,
         velocity="phase",
         flat_earth=False,
     )
-
-
-def forward_love(proposed_state):
-    thickness = proposed_state.voronoi_cell_extents
-    vs = proposed_state.vs
-    vp = vs * VP_VS
-    rho = 0.32 * vp + 0.77
-
-    return surf96(
-        thickness,
-        vp,
-        vs,
-        rho,
-        periods,
-        wave="love",
-        mode=1,
-        velocity="phase",
-        flat_earth=False,
-    )
-
 
 def forward_rf(proposed_state):
     vs = proposed_state.vs
@@ -78,31 +56,24 @@ true_model.set_param_values("vs", vs)
 
 periods = np.linspace(4, 80, 20)
 
-rayleigh = forward_rayleigh(true_model)
+rayleigh = forward_sw(true_model, "rayleigh", 1)
 rayleigh_noisy = rayleigh + np.random.normal(0, RAYLEIGH_STD, rayleigh.size)
 
-love = forward_love(true_model)
+love = forward_sw(true_model, "love", 1)
 love_noisy = love + np.random.normal(0, LOVE_STD, love.size)
 
 rf = forward_rf(true_model)
-# rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
-
-
-plt.plot(periods, rayleigh, "r--")
-plt.plot(periods, love, "b--")
-
-fig, ax = plt.subplots(1, 1, figsize=(8, 10))
-Parameterization1D.plot_param_samples([thickness], [vs], alpha=1, ax=ax)
+rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
 
 targets = [
-    # Target("rayleigh", rayleigh_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    # Target("love", love_noisy, covariance_mat_inv=1 / LOVE_STD**2),
+    Target("rayleigh", rayleigh_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    Target("love", love_noisy, covariance_mat_inv=1 / LOVE_STD**2),
     Target("rf", rf, covariance_mat_inv=1 / RF_STD**2),
 ]
 
 fwd_functions = [
-    # forward_rayleigh, 
-    # forward_love,
+    (forward_sw, ["rayleigh", 1]), 
+    (forward_sw, ["love", 1]),
     forward_rf
 ]
 
@@ -117,7 +88,6 @@ free_parameters = [
     )
 ]
 
-
 parameterization = Parameterization1D(
     voronoi_site_bounds=(0, 130),
     voronoi_site_perturb_std=8,
@@ -127,16 +97,13 @@ parameterization = Parameterization1D(
     free_params=free_parameters,
 )
 
-
 inversion = BayesianInversion(
     parameterization, targets, fwd_functions=fwd_functions, n_cpus=48, n_chains=48
 )
 
 inversion.run(
-    # n_iterations=1_000_000,
-    # burnin_iterations=400_000,
-    n_iterations=10_000,
-    burnin_iterations=4_000, 
+    n_iterations=1_000_000,
+    burnin_iterations=400_000,
     save_every=1_000,
     print_every=5_000,
 )
@@ -144,27 +111,33 @@ inversion.run(
 saved_models, saved_targets = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(130, dtype=float)
 
+# plot samples, true model and statistics (mean, median, quantiles, etc.)
 ax = Parameterization1D.plot_param_samples(
     saved_models["voronoi_cell_extents"], saved_models["vs"], linewidth=0.1, color="k"
 )
 Parameterization1D.plot_param_samples(
     [thickness], [vs], alpha=1, ax=ax, color="r", label="True"
 )
-
 Parameterization1D.plot_ensemble_statistics(
     saved_models["voronoi_cell_extents"], saved_models["vs"], interp_depths, ax=ax
 )
 
-ax2 = parameterization.plot_depth_profile(
-    saved_models["voronoi_cell_extents"], saved_models["vs"], vmax=500
+# plot depths and velocities density profile
+fig, axes = plt.subplots(1, 2, figsize=(10, 8))
+Parameterization1D.plot_depth_profile(
+    saved_models["voronoi_cell_extents"], saved_models["vs"], ax=axes[1]
 )
-
+Parameterization1D.plot_interface_distribution(
+    saved_models["voronoi_cell_extents"], ax=axes[1]
+)
+for d in np.cumsum(thickness):
+    axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
+# prefix = "rf_1_000_000"
 # prefix = "rayleigh_love_1_000_000"
-# prefix = "rf_rayleigh_love_1_000_000"
-prefix = "rf_1_000_000"
+prefix = "rf_rayleigh_love_1_000_000"
 ax.get_figure().savefig(f"{prefix}_samples")
-ax2.get_figure().savefig(f"{prefix}_density")
+fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)
 np.save(f"{prefix}_saved_targets", saved_targets)
