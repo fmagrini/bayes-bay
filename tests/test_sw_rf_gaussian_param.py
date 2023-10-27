@@ -125,7 +125,7 @@ Parameterization1D.plot_ensemble_statistics(
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
 Parameterization1D.plot_depth_profile(
-    saved_models["voronoi_cell_extents"], saved_models["vs"], ax=axes[1]
+    saved_models["voronoi_cell_extents"], saved_models["vs"], ax=axes[0], vmax=500
 )
 Parameterization1D.plot_interface_distribution(
     saved_models["voronoi_cell_extents"], ax=axes[1]

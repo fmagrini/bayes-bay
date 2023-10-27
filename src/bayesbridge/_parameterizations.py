@@ -497,7 +497,7 @@ class Parameterization1D(Parameterization):
         ax.set_ylabel("Depth (km)")
         return ax
 
-    @classmethod
+    @staticmethod
     def plot_param_samples(
         samples_voronoi_cell_extents, samples_param_values, ax=None, **kwargs
     ):
@@ -550,7 +550,7 @@ class Parameterization1D(Parameterization):
 
         return ax
 
-    @classmethod
+    @staticmethod
     def plot_hist_n_voronoi_cells(samples_n_voronoi_cells, ax=None, **kwargs):
         """
         Plot a histogram of the distribution of the number of Voronoi cells.
@@ -605,7 +605,7 @@ class Parameterization1D(Parameterization):
 
         return ax
 
-    @classmethod
+    @staticmethod
     def plot_depth_profile(
         samples_voronoi_cell_extents,
         samples_param_values,
@@ -660,7 +660,7 @@ class Parameterization1D(Parameterization):
         ax.set_ylabel("Depth (km)")
         return ax
     
-    @classmethod
+    @staticmethod
     def plot_interface_distribution(
         samples_voronoi_cell_extents,
         bins=100,
@@ -681,7 +681,7 @@ class Parameterization1D(Parameterization):
         ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
         # plot the kde (if include_kde=True)
         if include_kde:
-            kde = scipy.stats.gaussian_kde(depths, bw_method=0.2)
+            kde = scipy.stats.gaussian_kde(depths, bw_method=0.05)
             ax.plot(kde(x), x, c="C1", label="KDE")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
