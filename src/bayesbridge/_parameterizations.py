@@ -680,20 +680,8 @@ class Parameterization1D(Parameterization):
         ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
         # plot the kde (if include_kde=True)
         if include_kde:
-            from sklearn.mixture import GaussianMixture
-            lowest_bic = np.infty
-            best_gmm = None
-            depths = np.array(depths)
-            for n in range(1, int(e.max())):
-                gmm = GaussianMixture(n_components=n)
-                gmm.fit(depths.reshape(-1, 1))
-                bic = gmm.bic(depths.reshape(-1, 1))
-                if bic < lowest_bic:
-                    lowest_bic = bic
-                    best_gmm = gmm
-            x = np.linspace(e.min(), e.max(), bins)
-            pdf = np.exp(best_gmm.score_samples(x.reshape(-1, 1)))
-            ax.plot(pdf, x, c="C1", label="KDE")
+            kde = scipy.stats.gaussian_kde(depths, bw_method=0.05)
+            ax.plot(kde(x), x, c="C1", label="KDE")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         ax.set_xlabel("p(discontinuity)")

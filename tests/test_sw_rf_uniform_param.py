@@ -56,24 +56,46 @@ true_model.set_param_values("vs", vs)
 
 periods = np.linspace(4, 80, 20)
 
-rayleigh = forward_sw(true_model, "rayleigh", 1)
-rayleigh_noisy = rayleigh + np.random.normal(0, RAYLEIGH_STD, rayleigh.size)
-
-love = forward_sw(true_model, "love", 1)
-love_noisy = love + np.random.normal(0, LOVE_STD, love.size)
-
+rayleigh1 = forward_sw(true_model, "rayleigh", 1)
+rayleigh1_noisy = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
+love1 = forward_sw(true_model, "love", 1)
+love1_noisy = love1 + np.random.normal(0, LOVE_STD, love1.size)
+rayleigh2 = forward_sw(true_model, "rayleigh", 2)
+rayleigh2_noisy = rayleigh2 + np.random.normal(0, RAYLEIGH_STD, rayleigh2.size)
+love2 = forward_sw(true_model, "love", 2)
+love2_noisy = love2 + np.random.normal(0, LOVE_STD, love2.size)
+rayleigh3 = forward_sw(true_model, "rayleigh", 3)
+rayleigh3_noisy = rayleigh3 + np.random.normal(0, RAYLEIGH_STD, rayleigh3.size)
+love3 = forward_sw(true_model, "love", 3)
+love3_noisy = love3 + np.random.normal(0, LOVE_STD, love3.size)
+rayleigh4 = forward_sw(true_model, "rayleigh", 4)
+rayleigh4_noisy = rayleigh4 + np.random.normal(0, RAYLEIGH_STD, rayleigh4.size)
+love4 = forward_sw(true_model, "love", 4)
+love4_noisy = love4 + np.random.normal(0, LOVE_STD, love4.size)
 rf = forward_rf(true_model)
 rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
 
 targets = [
-    Target("rayleigh", rayleigh_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    Target("love", love_noisy, covariance_mat_inv=1 / LOVE_STD**2),
+    Target("rayleigh1", rayleigh1_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    Target("love1", love1_noisy, covariance_mat_inv=1 / LOVE_STD**2),
+    Target("rayleigh2", rayleigh2_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    Target("love2", love2_noisy, covariance_mat_inv=1 / LOVE_STD**2),
+    Target("rayleigh3", rayleigh3_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    Target("love3", love3_noisy, covariance_mat_inv=1 / LOVE_STD**2),
+    # Target("rayleigh4", rayleigh4_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    # Target("love4", love4_noisy, covariance_mat_inv=1 / LOVE_STD**2),
     Target("rf", rf, covariance_mat_inv=1 / RF_STD**2),
 ]
 
 fwd_functions = [
     (forward_sw, ["rayleigh", 1]), 
     (forward_sw, ["love", 1]),
+    (forward_sw, ["rayleigh", 2]), 
+    (forward_sw, ["love", 2]),
+    (forward_sw, ["rayleigh", 3]), 
+    (forward_sw, ["love", 3]),
+    # (forward_sw, ["rayleigh", 4]), 
+    # (forward_sw, ["love", 4]),
     forward_rf
 ]
 
@@ -136,7 +158,7 @@ for d in np.cumsum(thickness):
 # saving plots, models and targets
 # prefix = "rf_uniform_1_000_000"
 # prefix = "sw_uniform_1_000_000"
-prefix = "rf_sw_uniform_1_000_000"
+prefix = "rf_sw123_uniform_1_000_000"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)
