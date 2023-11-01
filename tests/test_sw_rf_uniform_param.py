@@ -54,29 +54,29 @@ rho = 0.32 * vp + 0.77
 true_model = State(len(thickness), thickness, thickness)
 true_model.set_param_values("vs", vs)
 
-periods_fundmode = np.linspace(4, 80, 20)
-periods_highmode = np.linspace(0.05, 10, 30)
-
-rayleigh1 = forward_sw(true_model, periods_fundmode, "rayleigh", 1)
+periods1 = np.linspace(4, 80, 20)
+rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
 rayleigh1_noisy = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
-love1 = forward_sw(true_model, periods_fundmode, "love", 1)
+love1 = forward_sw(true_model, periods1, "love", 1)
 love1_noisy = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
-rayleigh2 = forward_sw(true_model, periods_highmode, "rayleigh", 2)
+periods2 = np.linspace(0.05, 20, 20)
+rayleigh2 = forward_sw(true_model, periods2, "rayleigh", 2)
 rayleigh2_noisy = rayleigh2 + np.random.normal(0, RAYLEIGH_STD, rayleigh2.size)
-love2 = forward_sw(true_model, periods_highmode, "love", 2)
+love2 = forward_sw(true_model, periods2, "love", 2)
 love2_noisy = love2 + np.random.normal(0, LOVE_STD, love2.size)
 
-rayleigh3 = forward_sw(true_model, periods_highmode, "rayleigh", 3)
+periods3 = np.linspace(0.05, 10, 20)
+rayleigh3 = forward_sw(true_model, periods3, "rayleigh", 3)
 rayleigh3_noisy = rayleigh3 + np.random.normal(0, RAYLEIGH_STD, rayleigh3.size)
-
-love3 = forward_sw(true_model, periods_highmode, "love", 3)
+love3 = forward_sw(true_model, periods3, "love", 3)
 love3_noisy = love3 + np.random.normal(0, LOVE_STD, love3.size)
 
-rayleigh4 = forward_sw(true_model, periods_highmode, "rayleigh", 4)
-rayleigh4_noisy = rayleigh4 + np.random.normal(0, RAYLEIGH_STD, rayleigh4.size)
-love4 = forward_sw(true_model, periods_highmode, "love", 4)
-love4_noisy = love4 + np.random.normal(0, LOVE_STD, love4.size)
+# periods4 = np.linspace(0.05, 8, 20)
+# rayleigh4 = forward_sw(true_model, periods4, "rayleigh", 4)
+# rayleigh4_noisy = rayleigh4 + np.random.normal(0, RAYLEIGH_STD, rayleigh4.size)
+# love4 = forward_sw(true_model, periods4, "love", 4)
+# love4_noisy = love4 + np.random.normal(0, LOVE_STD, love4.size)
 
 rf = forward_rf(true_model)
 rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
@@ -94,14 +94,14 @@ targets = [
 ]
 
 fwd_functions = [
-    (forward_sw, ["rayleigh", 1]), 
-    (forward_sw, ["love", 1]),
-    (forward_sw, ["rayleigh", 2]), 
-    (forward_sw, ["love", 2]),
-    (forward_sw, ["rayleigh", 3]), 
-    (forward_sw, ["love", 3]),
-    # (forward_sw, ["rayleigh", 4]), 
-    # (forward_sw, ["love", 4]),
+    (forward_sw, [periods1, "rayleigh", 1]), 
+    (forward_sw, [periods1, "love", 1]),
+    (forward_sw, [periods2, "rayleigh", 2]), 
+    (forward_sw, [periods2, "love", 2]),
+    (forward_sw, [periods3, "rayleigh", 3]), 
+    (forward_sw, [periods3, "love", 3]),
+    # (forward_sw, [periods4, "rayleigh", 4]), 
+    # (forward_sw, [periods4, "love", 4]),
     forward_rf
 ]
 
