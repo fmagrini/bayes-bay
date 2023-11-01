@@ -665,7 +665,6 @@ class Parameterization1D(Parameterization):
         samples_voronoi_cell_extents,
         bins=100,
         ax=None,
-        include_kde=True,
         **kwargs,
     ):
         if ax is None:
@@ -678,10 +677,6 @@ class Parameterization1D(Parameterization):
         h, e = np.histogram(depths, bins=bins, density=True)
         # plot the histogram
         ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
-        # plot the kde (if include_kde=True)
-        if include_kde:
-            kde = scipy.stats.gaussian_kde(depths, bw_method=0.05)
-            ax.plot(kde(x), x, c="C1", label="KDE")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         ax.set_xlabel("p(discontinuity)")
