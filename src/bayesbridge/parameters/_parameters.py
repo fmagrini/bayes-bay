@@ -10,7 +10,7 @@ import random
 from functools import partial
 import math
 import numpy as np
-from ._utils_bayes import interpolate_linear_1d
+from .._utils_bayes import interpolate_linear_1d
 
 
 TWO_PI = 2 * math.pi

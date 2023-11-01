@@ -1,0 +1,150 @@
+from copy import deepcopy
+from collections import defaultdict
+from functools import partial
+import multiprocessing
+import numpy as np
+from ._markov_chain import MarkovChain
+from .samplers import VanillaSampler
+
+class BayesianInversion:
+    def __init__(
+        self,
+        parameterization,
+        targets,
+        fwd_functions,
+        n_chains=10,
+        n_cpus=10,
+    ):
+        self.parameterization = parameterization
+        self.targets = targets
+        self.fwd_functions = _preprocess_fwd_functions(fwd_functions)
+        self.n_chains = n_chains
+        self.n_cpus = n_cpus
+        self._chains = [
+            MarkovChain(
+                deepcopy(self.parameterization),
+                deepcopy(self.targets),
+                self.fwd_functions,
+                temperature=1,
+            )
+            for _ in range(n_chains)
+        ]
+
+    @property
+    def chains(self):
+        return self._chains
+
+    def run(
+        self,
+        sampler=VanillaSampler(),
+        n_iterations=1000,
+        burnin_iterations=0,
+        save_every=100,
+        verbose=True,
+        print_every=100,
+    ):
+        sampler.init_temperatures(self.chains)
+        sampler.run(
+            n_iterations=n_iterations,
+            n_cpus=self.n_cpus,
+            burnin_iterations=burnin_iterations,
+            save_every=save_every,
+            verbose=verbose,
+            print_every=print_every, 
+        )
+
+        # partial_iterations = swap_every if parallel_tempering else n_iterations
+        # func = partial(
+        #     MarkovChain.advance_chain,
+        #     n_iterations=partial_iterations,
+        #     burnin_iterations=burnin_iterations,
+        #     save_every=save_every,
+        #     verbose=verbose,
+        #     print_every=print_every,
+        # )
+        # i_iterations = 0
+
+        # while True:
+        #     if self.n_cpus > 1:
+        #         pool = multiprocessing.Pool(self.n_cpus)
+        #         self._chains = pool.map(func, self._chains)
+        #         pool.close()
+        #         pool.join()
+        #     else:
+        #         self._chains = [func(chain) for chain in self._chains]
+
+        #     i_iterations += partial_iterations
+        #     if i_iterations >= n_iterations:
+        #         break
+        #     if parallel_tempering:
+        #         self.swap_temperatures()
+        #     burnin_iterations = max(0, burnin_iterations - partial_iterations)
+        #     func = partial(
+        #         MarkovChain.advance_chain,
+        #         n_iterations=partial_iterations,
+        #         burnin_iterations=burnin_iterations,
+        #         save_every=save_every,
+        #         verbose=verbose,
+        #     )
+
+    def get_results(self, concatenate_chains=True):
+        results_model = defaultdict(list)
+        results_targets = {}
+        for target_name in self.chains[0].saved_targets:
+            results_targets[target_name] = defaultdict(list)
+        for chain in self.chains:
+            for key, saved_values in chain.saved_models.items():
+                if concatenate_chains and isinstance(saved_values, list):
+                    results_model[key].extend(saved_values)
+                else:
+                    results_model[key].append(saved_values)
+            for target_name, target in chain.saved_targets.items():
+                for key, saved_values in target.items():
+                    if concatenate_chains:
+                        results_targets[target_name][key].extend(saved_values)
+                    else:
+                        results_targets[target_name][key].append(saved_values)
+        return results_model, results_targets
+
+    def swap_temperatures(self):
+        for i in range(len(self.chains)):
+            chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
+            T1, T2 = chain1.temperature, chain2.temperature
+            misfit1, misfit2 = chain1._current_misfit, chain2._current_misfit
+            prob = (1 / T1 - 1 / T2) * (misfit1 - misfit2)
+            if prob > math.log(random.random()):
+                chain1.temperature = T2
+                chain2.temperature = T1
+
+
+def _preprocess_fwd_functions(fwd_functions):
+    funcs = []
+    for func in fwd_functions:
+        f = None
+        args = []
+        kwargs = {}
+        if isinstance(func, (tuple, list)) and len(func) > 1:
+            f = func[0]
+            if isinstance(func[1], (tuple, list)):
+                args = func[1]
+                if len(func) > 2 and isinstance(func[2], dict):
+                    kwargs = func[2]
+            elif isinstance(func[1], dict):
+                kwargs = func[1]
+        elif isinstance(func, (tuple, list)):
+            f = func[0]
+        else:
+            f = func
+        funcs.append(_FunctionWrapper(f, args, kwargs))
+    return funcs
+            
+
+class _FunctionWrapper(object):
+    """Function wrapper to make it pickleable (credit to emcee)"""
+    def __init__(self, f, args, kwargs):
+        self.f = f
+        self.args = args or []
+        self.kwargs = kwargs or {}
+
+    def __call__(self, x):
+        return self.f(x, *self.args, **self.kwargs)
