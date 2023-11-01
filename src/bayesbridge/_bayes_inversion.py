@@ -1,10 +1,8 @@
 from copy import deepcopy
 from collections import defaultdict
-from functools import partial
-import multiprocessing
-import numpy as np
 from ._markov_chain import MarkovChain
 from .samplers import VanillaSampler
+
 
 class BayesianInversion:
     def __init__(
@@ -44,7 +42,7 @@ class BayesianInversion:
         print_every=100,
     ):
         sampler.init_temperatures(self.chains)
-        sampler.run(
+        self._chains = sampler.run(
             n_iterations=n_iterations,
             n_cpus=self.n_cpus,
             burnin_iterations=burnin_iterations,
@@ -52,40 +50,6 @@ class BayesianInversion:
             verbose=verbose,
             print_every=print_every, 
         )
-
-        # partial_iterations = swap_every if parallel_tempering else n_iterations
-        # func = partial(
-        #     MarkovChain.advance_chain,
-        #     n_iterations=partial_iterations,
-        #     burnin_iterations=burnin_iterations,
-        #     save_every=save_every,
-        #     verbose=verbose,
-        #     print_every=print_every,
-        # )
-        # i_iterations = 0
-
-        # while True:
-        #     if self.n_cpus > 1:
-        #         pool = multiprocessing.Pool(self.n_cpus)
-        #         self._chains = pool.map(func, self._chains)
-        #         pool.close()
-        #         pool.join()
-        #     else:
-        #         self._chains = [func(chain) for chain in self._chains]
-
-        #     i_iterations += partial_iterations
-        #     if i_iterations >= n_iterations:
-        #         break
-        #     if parallel_tempering:
-        #         self.swap_temperatures()
-        #     burnin_iterations = max(0, burnin_iterations - partial_iterations)
-        #     func = partial(
-        #         MarkovChain.advance_chain,
-        #         n_iterations=partial_iterations,
-        #         burnin_iterations=burnin_iterations,
-        #         save_every=save_every,
-        #         verbose=verbose,
-        #     )
 
     def get_results(self, concatenate_chains=True):
         results_model = defaultdict(list)
@@ -105,16 +69,6 @@ class BayesianInversion:
                     else:
                         results_targets[target_name][key].append(saved_values)
         return results_model, results_targets
-
-    def swap_temperatures(self):
-        for i in range(len(self.chains)):
-            chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
-            T1, T2 = chain1.temperature, chain2.temperature
-            misfit1, misfit2 = chain1._current_misfit, chain2._current_misfit
-            prob = (1 / T1 - 1 / T2) * (misfit1 - misfit2)
-            if prob > math.log(random.random()):
-                chain1.temperature = T2
-                chain2.temperature = T1
 
 
 def _preprocess_fwd_functions(fwd_functions):
