@@ -16,7 +16,7 @@ from ._exceptions import ForwardException, DimensionalityException
 
 
 class MarkovChain:
-    def __init__(self, parameterization, targets, fwd_functions, temperature):
+    def __init__(self, parameterization, targets, fwd_functions, temperature=1):
         self.parameterization = parameterization
         self.parameterization.initialize()
         self.id = str(random.randint(10000, 99999))

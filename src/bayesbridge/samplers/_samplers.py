@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from functools import partial
 import multiprocessing
 import math
@@ -8,35 +9,35 @@ from .._markov_chain import MarkovChain
 
 class Sampler:
     def __init__(self):
-        pass
+        self._i = 0
     
-    def init_temperatures(self, chains):
+    def initialize(self, chains):           # called by external
+        self.on_initialize(chains)
+        self._chains = chains
+    
+    @abstractmethod
+    def on_initialize(self, chains):        # customized depending on individual sampler
         raise NotImplementedError
     
-    def run(self):
+    @abstractmethod
+    def on_advance_chain_end(self, chains): # customized depending on individual sampler
+        raise NotImplementedError
+    
+    @abstractmethod
+    def run(self):     # customized depending on individual sampler; called by external
         raise NotImplementedError
     
     @property
     def chains(self):
         return self._chains
-
-    def _assign_temperatures_to_chains(self, temperatures, chains):
-        for i, chain in enumerate(chains):
-            chain.temperature = temperatures[i]
-        self._chains = chains
-
-
-class VanillaSampler(Sampler):
-    def __init__(self):
-        pass
-
-    def init_temperatures(self, chains):
-        temperatures = np.ones(len(chains))
-        super()._assign_temperatures_to_chains(temperatures, chains)
     
-    def run(
+    @property
+    def i(self):
+        return self._i
+    
+    def advance_chain(
         self,
-        n_iterations, 
+        n_iterations,
         n_cpus=10,
         burnin_iterations=0,
         save_every=100,
@@ -58,7 +59,40 @@ class VanillaSampler(Sampler):
             pool.join()
         else:
             self._chains = [func(chain) for chain in self.chains]
-        return self._chains
+        self.on_advance_chain_end()
+        self._i += n_iterations
+        return self.chains
+
+    def _assign_temperatures_to_chains(self, temperatures, chains):
+        for i, chain in enumerate(chains):
+            chain.temperature = temperatures[i]
+        self._chains = chains
+
+
+class VanillaSampler(Sampler):
+    def __init__(self):
+        super().__init__()
+
+    def on_initialize(self, chains):
+        pass
+    
+    def run(
+        self,
+        n_iterations, 
+        n_cpus=10,
+        burnin_iterations=0,
+        save_every=100,
+        verbose=True,
+        print_every=100,
+    ):
+        return self.advance_chain(
+            n_iterations=n_iterations,
+            n_cpus=n_cpus,
+            burnin_iterations=burnin_iterations,
+            save_every=save_every,
+            verbose=verbose,
+            print_every=print_every, 
+        )
         
 
 class ParallelTempering(Sampler):
@@ -68,11 +102,12 @@ class ParallelTempering(Sampler):
         chains_with_unit_temperature=0.4,
         swap_every=500,
     ):
+        super().__init__()
         self._temperature_max = temperature_max
         self._chains_with_unit_tempeature = chains_with_unit_temperature
         self._swap_every = swap_every
 
-    def init_temperatures(self, chains):
+    def on_initialize(self, chains):
         n_chains = len(chains)
         temperatures = np.ones(
                 max(2, int(n_chains * self._chains_with_unit_tempeature)) - 1
@@ -93,39 +128,22 @@ class ParallelTempering(Sampler):
         verbose=True,
         print_every=100,
     ):
-        func = partial(
-            MarkovChain.advance_chain,
-            n_iterations=self._swap_every,
-            burnin_iterations=burnin_iterations,
-            save_every=save_every,
-            verbose=verbose,
-            print_every=print_every,
-        )
-        i_iterations = 0
         while True:
-            if n_cpus > 1:
-                pool = multiprocessing.Pool(n_cpus)
-                self._chains = pool.map(func, self.chains)
-                pool.close()
-                pool.join()
-            else:
-                self._chains = [func(chain) for chain in self.chains]
-            i_iterations += self._swap_every
-            if i_iterations >= n_iterations:
-                break
-            self.swap_temperatures()
-            burnin_iterations = max(0, burnin_iterations - self._swap_every)
-            func = partial(
-                MarkovChain.advance_chain,
-                n_iterations=self._swap_every,
-                burnin_iterations=burnin_iterations,
+            n_it = min(self._swap_every, n_iterations - self.i)
+            burnin_it = max(0, min(self._swap_every, burnin_iterations - self.i))
+            self.advance_chain(
+                n_iterations=n_it,
+                n_cpus=n_cpus, 
+                burnin_iterations=burnin_it,
                 save_every=save_every,
                 verbose=verbose,
                 print_every=print_every,
             )
-        return self._chains
+            if self.i >= n_iterations:
+                break
+        return self.chains
     
-    def swap_temperatures(self):
+    def on_advance_chain_end(self):
         for i in range(len(self.chains)):
             chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
             T1, T2 = chain1.temperature, chain2.temperature
@@ -138,4 +156,5 @@ class ParallelTempering(Sampler):
 
 class SimulatedAnnealing(Sampler):
     def __init__(self):
+        super().__init__()
         raise NotImplementedError

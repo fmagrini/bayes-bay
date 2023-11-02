@@ -1,7 +1,7 @@
 from copy import deepcopy
 from collections import defaultdict
 from ._markov_chain import MarkovChain
-from .samplers import VanillaSampler
+from .samplers import VanillaSampler, ParallelTempering
 
 
 class BayesianInversion:
@@ -23,7 +23,6 @@ class BayesianInversion:
                 deepcopy(self.parameterization),
                 deepcopy(self.targets),
                 self.fwd_functions,
-                temperature=1,
             )
             for _ in range(n_chains)
         ]
@@ -41,7 +40,7 @@ class BayesianInversion:
         verbose=True,
         print_every=100,
     ):
-        sampler.init_temperatures(self.chains)
+        sampler.initialize(self.chains)
         self._chains = sampler.run(
             n_iterations=n_iterations,
             n_cpus=self.n_cpus,
