@@ -16,10 +16,10 @@ from ._exceptions import ForwardException, DimensionalityException
 
 
 class MarkovChain:
-    def __init__(self, parameterization, targets, fwd_functions, temperature=1):
+    def __init__(self, id, parameterization, targets, fwd_functions, temperature=1):
+        self.id = id
         self.parameterization = parameterization
         self.parameterization.initialize()
-        self.id = str(random.randint(10000, 99999))
         self.log_likelihood = LogLikelihood(
             model=parameterization.model,
             targets=targets,

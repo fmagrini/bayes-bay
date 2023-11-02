@@ -20,11 +20,12 @@ class BayesianInversion:
         self.n_cpus = n_cpus
         self._chains = [
             MarkovChain(
+                i, 
                 deepcopy(self.parameterization),
                 deepcopy(self.targets),
                 self.fwd_functions,
             )
-            for _ in range(n_chains)
+            for i in range(n_chains)
         ]
 
     @property
