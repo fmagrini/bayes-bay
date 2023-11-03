@@ -20,7 +20,7 @@ class Sampler:
         raise NotImplementedError
     
     @abstractmethod
-    def on_advance_chain_end(self, chains): # customized depending on individual sampler
+    def on_advance_chain_end(self):         # customized depending on individual sampler
         raise NotImplementedError
     
     @abstractmethod
@@ -74,6 +74,9 @@ class VanillaSampler(Sampler):
         super().__init__()
 
     def on_initialize(self, chains):
+        pass
+    
+    def on_advance_chain_end(self):
         pass
     
     def run(

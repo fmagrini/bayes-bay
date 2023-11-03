@@ -73,11 +73,11 @@ rayleigh3_noisy = rayleigh3 + np.random.normal(0, RAYLEIGH_STD, rayleigh3.size)
 love3 = forward_sw(true_model, periods3, "love", 3)
 love3_noisy = love3 + np.random.normal(0, LOVE_STD, love3.size)
 
-# periods4 = np.linspace(0.05, 8, 20)
-# rayleigh4 = forward_sw(true_model, periods4, "rayleigh", 4)
-# rayleigh4_noisy = rayleigh4 + np.random.normal(0, RAYLEIGH_STD, rayleigh4.size)
-# love4 = forward_sw(true_model, periods4, "love", 4)
-# love4_noisy = love4 + np.random.normal(0, LOVE_STD, love4.size)
+periods4 = np.linspace(0.05, 8, 20)
+rayleigh4 = forward_sw(true_model, periods4, "rayleigh", 4)
+rayleigh4_noisy = rayleigh4 + np.random.normal(0, RAYLEIGH_STD, rayleigh4.size)
+love4 = forward_sw(true_model, periods4, "love", 4)
+love4_noisy = love4 + np.random.normal(0, LOVE_STD, love4.size)
 
 rf = forward_rf(true_model)
 rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
@@ -89,8 +89,8 @@ targets = [
     Target("love2", love2_noisy, covariance_mat_inv=1 / LOVE_STD**2),
     Target("rayleigh3", rayleigh3_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
     Target("love3", love3_noisy, covariance_mat_inv=1 / LOVE_STD**2),
-    # Target("rayleigh4", rayleigh4_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    # Target("love4", love4_noisy, covariance_mat_inv=1 / LOVE_STD**2),
+    Target("rayleigh4", rayleigh4_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    Target("love4", love4_noisy, covariance_mat_inv=1 / LOVE_STD**2),
     Target("rf", rf, covariance_mat_inv=1 / RF_STD**2),
 ]
 
@@ -101,8 +101,8 @@ fwd_functions = [
     (forward_sw, [periods2, "love", 2]),
     (forward_sw, [periods3, "rayleigh", 3]), 
     (forward_sw, [periods3, "love", 3]),
-    # (forward_sw, [periods4, "rayleigh", 4]), 
-    # (forward_sw, [periods4, "love", 4]),
+    (forward_sw, [periods4, "rayleigh", 4]), 
+    (forward_sw, [periods4, "love", 4]),
     forward_rf
 ]
 
@@ -154,7 +154,7 @@ Parameterization1D.plot_ensemble_statistics(
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
 Parameterization1D.plot_depth_profile(
-    saved_models["voronoi_cell_extents"], saved_models["vs"], ax=axes[0], vmax=500
+    saved_models["voronoi_cell_extents"], saved_models["vs"], ax=axes[0], vmax=5000
 )
 Parameterization1D.plot_interface_distribution(
     saved_models["voronoi_cell_extents"], ax=axes[1]
@@ -165,7 +165,7 @@ for d in np.cumsum(thickness):
 # saving plots, models and targets
 # prefix = "rf_uniform_1_000_000"
 # prefix = "sw_uniform_1_000_000"
-prefix = "rf_sw123_uniform_1_000_000"
+prefix = "rf_sw1234_uniform_1_000_000"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)

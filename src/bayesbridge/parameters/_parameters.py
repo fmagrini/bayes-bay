@@ -120,7 +120,9 @@ class UniformParameter(Parameter):
             sorted_values = np.sort(values)
             for i in range(len(sorted_values)):
                 val = sorted_values[i]
-                if val < vmin[i] or val > vmax[i]:
+                vmin_i = vmin if np.isscalar(vmin) else vmin[i]
+                vmax_i = vmax if np.isscalar(vmax) else vmax[i]
+                if val < vmin_i or val > vmax_i:
                     sorted_values[i] = self.perturb_value(positions[i], val)
             return sorted_values
         return values

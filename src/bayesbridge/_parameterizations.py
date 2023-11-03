@@ -3,7 +3,6 @@ from functools import partial
 import random
 import math
 import numpy as np
-import scipy
 import matplotlib.pyplot as plt
 
 from ._state import State
@@ -671,7 +670,6 @@ class Parameterization1D(Parameterization):
             _, ax = plt.subplots()
         depths = []
         for thicknesses in samples_voronoi_cell_extents:
-            thicknesses = np.array(thicknesses)
             depths.extend(np.cumsum(thicknesses))
         # calculate 1D histogram
         h, e = np.histogram(depths, bins=bins, density=True)
