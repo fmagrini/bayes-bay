@@ -115,7 +115,7 @@ class Target:
         else:
             sigma = self._proposed_state["sigma"]
             r = self._proposed_state["correlation"]
-            n = self.data.size
+            n = self.dobs.size
             mat = inverse_covariance(sigma, r, n)
             return mat @ vector
 
