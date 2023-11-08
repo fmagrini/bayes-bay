@@ -106,16 +106,30 @@ fwd_functions = [
     forward_rf
 ]
 
-free_parameters = [
-    UniformParameter(
-        "vs",
-        vmin=[2.7, 3.2, 3.75],
-        vmax=[4, 4.75, 5],
-        perturb_std=0.15,
-        position=[0, 40, 80],
-        init_sorted=True,
-    )
-]
+param_vs = UniformParameter(
+    "vs", 
+    vmin=[2.7, 3.2, 3.75],
+    vmax=[4, 4.75, 5],
+    perturb_std=0.15,
+    position=[0, 40, 80],
+)
+
+def param_vs_initialize(param, positions):
+    vmin, vmax = param.get_vmin_vmax(positions)
+    values = np.random.uniform(vmin, vmax, positions.size)
+    sorted_values = np.sort(values)
+    for i in range(len(sorted_values)):
+        val = sorted_values[i]
+        vmin_i = vmin if np.isscalar(vmin) else vmin[i]
+        vmax_i = vmax if np.isscalar(vmax) else vmax[i]
+        if val < vmin_i or val > vmax_i:
+            if val > vmax_i: val = vmax_i
+            if val < vmin_i: val = vmin_i
+            sorted_values[i] = param.perturb_value(positions[i], val)
+    return sorted_values
+
+param_vs.set_custom_initialize(param_vs_initialize)
+free_parameters = [param_vs]
 
 parameterization = Parameterization1D(
     voronoi_site_bounds=(0, 130),

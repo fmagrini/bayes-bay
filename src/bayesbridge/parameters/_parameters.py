@@ -10,7 +10,7 @@ from abc import abstractmethod
 from typing import Callable
 from numbers import Number
 import random
-from functools import partial
+from functools import partial, partialmethod
 import math
 import numpy as np
 from .._utils_bayes import interpolate_linear_1d
@@ -25,7 +25,7 @@ class Parameter:
         self.init_params = kwargs
 
     @abstractmethod
-    def generate_random_values(self, positions: np.ndarray) -> np.ndarray:
+    def initialize(self, positions: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
     @abstractmethod
@@ -48,6 +48,25 @@ class Parameter:
     def prior_ratio_perturbation_death(self, removed_position, removed_value):
         raise NotImplementedError
     
+    def set_custom_initialize(self, initialize_func):
+        """
+        Set a custom initialization function.
+
+        Parameters:
+        initialize_func (callable): The function to use for initialization. This function should take no arguments.
+
+        Example:
+        def my_init():
+            print("This is my custom init!")
+        my_object.set_custom_initialize(my_init)
+        """
+        if not callable(initialize_func):
+            raise ValueError("initialize_func must be a callable function.")
+        self.initialize = partial(self._initializer, initialize_func)
+    
+    def _initializer(self, initialize_func, *args, **kwargs):
+        return initialize_func(self, *args, **kwargs)
+    
     def _init_pos_dependent_hyper_param(self, hyper_param):
         # to be called after self.position is assigned
         return hyper_param if np.isscalar(hyper_param) else \
@@ -67,17 +86,15 @@ class Parameter:
 
 
 class UniformParameter(Parameter):
-    def __init__(self, name, vmin, vmax, perturb_std, position=None, init_sorted=False):
+    def __init__(self, name, vmin, vmax, perturb_std, position=None):
         super().__init__(
             name=name,
             position=position,
             vmin=vmin,
             vmax=vmax,
             perturb_std=perturb_std,
-            init_sorted=init_sorted,
         )
         self.name = name
-        self.init_sorted = init_sorted
         # type standardization and validation
         self.position = (
             position if position is None else np.array(position, dtype=float)
@@ -122,27 +139,15 @@ class UniformParameter(Parameter):
     def get_perturb_std(self, position):
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
     
-    def generate_random_values(self, positions, is_init=False):
+    def initialize(self, positions):
         vmin, vmax = self.get_vmin_vmax(positions)
         values = np.random.uniform(vmin, vmax, positions.size)
-        if is_init and self.init_sorted:
-            sorted_values = np.sort(values)
-            for i in range(len(sorted_values)):
-                val = sorted_values[i]
-                vmin_i = vmin if np.isscalar(vmin) else vmin[i]
-                vmax_i = vmax if np.isscalar(vmax) else vmax[i]
-                if val < vmin_i or val > vmax_i:
-                    sorted_values[i] = self.perturb_value(positions[i], val)
-            return sorted_values
         return values
 
     def perturb_value(self, position, value):
-        # snap `value` to the closest bound if it's out of range
-        vmin, vmax = self.get_vmin_vmax(position)
-        if value > vmax: value = vmax
-        if value < vmin: value = vmin
         # randomly perturb the value until within range
         std = self.get_perturb_std(position)
+        vmin, vmax = self.get_vmin_vmax(position)
         while True:
             random_deviate = random.normalvariate(0, std)
             new_value = value + random_deviate
@@ -165,17 +170,15 @@ class UniformParameter(Parameter):
 
 
 class GaussianParameter(Parameter):
-    def __init__(self, name, mean, std, perturb_std, position=None, init_sorted=False):
+    def __init__(self, name, mean, std, perturb_std, position=None):
         super().__init__(
             name=name,
             position=position,
             mean=mean,
             std=std,
             perturb_std=perturb_std,
-            init_sorted=init_sorted,
         )
         self.name=name
-        self.init_sorted = init_sorted
         
         # type standardization and validation
         self.position = (
@@ -214,12 +217,10 @@ class GaussianParameter(Parameter):
     def get_perturb_std(self, position):
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
 
-    def generate_random_values(self, positions, is_init=False):
+    def initialize(self, positions):
         mean = self.get_mean(positions)
         std = self.get_std(positions)
         values = np.random.normal(mean, std, positions.size)
-        if is_init and self.init_sorted:
-            return np.sort(values)
         return values
 
     def perturb_value(self, position, value):
@@ -257,22 +258,22 @@ class ParameterFromPrior(Parameter):
         self, 
         name: str, 
         log_prior: Callable[[Number, Number], Number], 
-        generate_random_values: Callable[[np.ndarray], np.ndarray], 
+        initialize: Callable[[np.ndarray], np.ndarray], 
         perturb_value: Callable[[Number, Number], Number], 
     ):
         super().__init__(
             name=name, 
             log_prior=log_prior,
-            generate_random_values=generate_random_values, 
+            initialize=initialize, 
             perturb_value=perturb_value, 
         )
         self.name = name
         self._log_prior = log_prior
-        self._generate_random_values = generate_random_values
+        self._initialize = initialize
         self._perturb_value = perturb_value
 
-    def generate_random_values(self, positions: np.ndarray) -> np.ndarray:
-        return self._generate_random_values(positions)
+    def initialize(self, positions: np.ndarray) -> np.ndarray:
+        return self._initialize(positions)
 
     def perturb_value(self, position, value):
         return self._perturb_value(position, value)

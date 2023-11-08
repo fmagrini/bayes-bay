@@ -196,7 +196,7 @@ class Parameterization1D(Parameterization):
             self._init_free_parameter(free_param)
 
     def _init_free_parameter(self, free_param, voronoi_sites):
-        values = free_param.generate_random_values(voronoi_sites, is_init=True)
+        values = free_param.initialize(voronoi_sites)
         self.model.add_free_parameter(free_param.name, values)
 
     def _init_voronoi_site_perturb_std(self, std, position):
