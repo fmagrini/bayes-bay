@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Callable, List
 from functools import partial
 import multiprocessing
 import math
@@ -10,10 +11,34 @@ from .._markov_chain import MarkovChain
 class Sampler:
     def __init__(self):
         self._i = 0
+        self._extra_on_initialize = []
+        self._extra_on_advance_chain_end = []
+        self.on_advance_chain_end = self.decorate(self.on_advance_chain_end)
     
-    def initialize(self, chains):           # called by external
+    def initialize(self, chains: List[MarkovChain]):           # called by external
         self.on_initialize(chains)
         self._chains = chains
+        for func in self._extra_on_initialize:
+            func(self, chains)
+            
+    def add_on_initialize(
+        self, 
+        func: Callable[["Sampler", List[MarkovChain]], None], 
+    ):
+        self._extra_on_initialize.append(func)
+        
+    def add_on_advance_chain_end(
+        self, 
+        func: Callable[["Sampler"], None]
+    ):
+        self._extra_on_advance_chain_end.append(func)
+    
+    def decorate(self, on_advance_chain_end):
+        def wrapper(*args, **kwargs):
+            on_advance_chain_end(*args, **kwargs)
+            for func in self._extra_on_advance_chain_end:
+                func(self)
+        return wrapper
     
     @abstractmethod
     def on_initialize(self, chains):        # customized depending on individual sampler

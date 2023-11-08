@@ -7,16 +7,28 @@ Created on Sat Apr  9 15:07:01 2022
 
 """
 
+from typing import Union, List, Callable
 from collections import defaultdict
 from functools import partial
 import random
 import math
+import numpy
 from ._log_likelihood import LogLikelihood
+from ._target import Target
+from ._parameterizations import Parameterization
+from ._state import State
 from ._exceptions import ForwardException, DimensionalityException
 
 
 class MarkovChain:
-    def __init__(self, id, parameterization, targets, fwd_functions, temperature=1):
+    def __init__(
+        self,
+        id: Union[int, str], 
+        parameterization: Parameterization, 
+        targets: List[Target], 
+        fwd_functions: Callable[[State], numpy.ndarray], 
+        temperature: int = 1, 
+    ):
         self.id = id
         self.parameterization = parameterization
         self.parameterization.initialize()
