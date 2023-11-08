@@ -5,4 +5,5 @@ __all__ = [
     "Parameter",
     "UniformParameter",
     "GaussianParameter", 
+    "ParameterFromPrior", 
 ]

@@ -6,6 +6,9 @@ Created on Wed Dec 21 15:56:00 2022
 @author: fabrizio
 """
 
+from abc import abstractmethod
+from typing import Callable
+from numbers import Number
 import random
 from functools import partial
 import math
@@ -21,21 +24,27 @@ class Parameter:
     def __init__(self, **kwargs):
         self.init_params = kwargs
 
-    def generate_random_values(self, position):
+    @abstractmethod
+    def generate_random_values(self, positions: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
+    @abstractmethod
     def perturb_value(self, position, value):
         raise NotImplementedError
 
+    @abstractmethod
     def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         raise NotImplementedError
     
+    @abstractmethod
     def prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
         raise NotImplementedError
     
+    @abstractmethod
     def prior_ratio_perturbation_birth(self, new_position, new_value):
         raise NotImplementedError
     
+    @abstractmethod
     def prior_ratio_perturbation_death(self, removed_position, removed_value):
         raise NotImplementedError
     
@@ -241,3 +250,45 @@ class GaussianParameter(Parameter):
         mean = self.get_mean(removed_position)
         std = self.get_std(removed_position)
         return math.log(std*SQRT_TWO_PI) + (removed_value-mean)**2 / (2*std)
+
+
+class ParameterFromPrior(Parameter):
+    def __init__(
+        self, 
+        name: str, 
+        log_prior: Callable[[Number, Number], Number], 
+        generate_random_values: Callable[[np.ndarray], np.ndarray], 
+        perturb_value: Callable[[Number, Number], Number], 
+    ):
+        super().__init__(
+            name=name, 
+            log_prior=log_prior,
+            generate_random_values=generate_random_values, 
+            perturb_value=perturb_value, 
+        )
+        self.name = name
+        self._log_prior = log_prior
+        self._generate_random_values = generate_random_values
+        self._perturb_value = perturb_value
+
+    def generate_random_values(self, positions: np.ndarray) -> np.ndarray:
+        return self._generate_random_values(positions)
+
+    def perturb_value(self, position, value):
+        return self._perturb_value(position, value)
+        
+    def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+        new_log_prior = self._log_prior(position, new_value)
+        old_log_prior = self._log_prior(position, old_value)    
+        return new_log_prior - old_log_prior
+
+    def prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+        new_log_prior = self._log_prior(new_position, value)
+        old_log_prior = self._log_prior(old_position, value)
+        return new_log_prior - old_log_prior
+    
+    def prior_ratio_perturbation_birth(self, new_position, new_value):
+        return self._log_prior(new_position, new_value)
+    
+    def prior_ratio_perturbation_death(self, removed_position, removed_value):
+        return - self._log_prior(removed_position, removed_value)
