@@ -4,6 +4,20 @@ import numpy as np
 
 @dataclass
 class State:
+    """Data structure that stores the necessary information to perform the forward
+    operation
+
+    Raises
+    ------
+    TypeError
+        when ``n_voronoi_cells`` is not an int
+    TypeError
+        when ``voronoi_sites`` is not a numpy ndarray
+    TypeError
+        when ``voronoi_cell_extents`` is not a numpy ndarray
+    AssertionError
+        when the lengths of ``voronoi_sites`` and ``voronoi_cell_extents`` aren't aligned with ``n_voronoi_cells``
+    """
     n_voronoi_cells: int
     voronoi_sites: np.ndarray
     voronoi_cell_extents: np.ndarray

@@ -1,7 +1,7 @@
 from copy import deepcopy
 from collections import defaultdict
 from ._markov_chain import MarkovChain
-from .samplers import VanillaSampler, ParallelTempering
+from .samplers import VanillaSampler 
 
 
 class BayesianInversion:

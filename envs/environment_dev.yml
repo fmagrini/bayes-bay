@@ -3,13 +3,14 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.10  # Change this if you want a different default version for development
+  - python=3.10 
   - numpy>=1.22
   - matplotlib>=3.0.0
   - pip
   - pip:
     - nox
     - sphinx
+    - sphinx-book-theme
     - flake8
     - black
     - wheel

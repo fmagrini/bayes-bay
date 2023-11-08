@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 30 15:04:42 2023
-
-@author: fabrizio
-"""
-
 import math
 from typing import Any
 from ._exceptions import ForwardException

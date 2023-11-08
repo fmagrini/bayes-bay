@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Apr  9 15:07:01 2022
-
-@author: fabrizio
-
-"""
-
 from typing import Union, List, Callable
 from collections import defaultdict
 from functools import partial

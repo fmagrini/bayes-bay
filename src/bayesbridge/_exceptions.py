@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Sep 13 14:39:21 2023
-
-@author: fabrizio
-"""
-
-
 class InitException(Exception):
     """
     Exception raised when users try to access a certain field that hasn't been

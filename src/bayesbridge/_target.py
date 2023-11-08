@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 30 12:03:11 2023
-
-@author: fabrizio
-"""
-
 import random
 from copy import deepcopy
 import numpy as np
