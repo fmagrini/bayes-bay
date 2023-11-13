@@ -1,33 +1,33 @@
 from copy import deepcopy
 from collections import defaultdict
-from ._markov_chain import MarkovChain
+from ._markov_chain import MarkovChainFromParameterization, MarkovChain
 from .samplers import VanillaSampler 
 
 
 class BayesianInversion:
     def __init__(
-        self,
-        parameterization,
-        targets,
-        fwd_functions,
-        n_chains=10,
-        n_cpus=10,
+        self, 
+        walkers_starting_pos, 
+        perturbations, 
+        log_posterior_func, 
+        n_chains=10, 
+        n_cpus=10, 
     ):
-        self.parameterization = parameterization
-        self.targets = targets
-        self.fwd_functions = _preprocess_fwd_functions(fwd_functions)
+        self.walkers_starting_pos = walkers_starting_pos
+        self.perturbations = perturbations
+        self.log_posterior_func = log_posterior_func
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
             MarkovChain(
                 i, 
-                deepcopy(self.parameterization),
-                deepcopy(self.targets),
-                self.fwd_functions,
+                walkers_starting_pos[i, :], 
+                perturbations, 
+                log_posterior_func, 
             )
             for i in range(n_chains)
         ]
-
+        
     @property
     def chains(self):
         return self._chains
@@ -50,6 +50,31 @@ class BayesianInversion:
             verbose=verbose,
             print_every=print_every, 
         )
+        
+
+class BayesianInversionFromParameterization(BayesianInversion):
+    def __init__(
+        self,
+        parameterization,
+        targets,
+        fwd_functions,
+        n_chains=10,
+        n_cpus=10,
+    ):
+        self.parameterization = parameterization
+        self.targets = targets
+        self.fwd_functions = _preprocess_fwd_functions(fwd_functions)
+        self.n_chains = n_chains
+        self.n_cpus = n_cpus
+        self._chains = [
+            MarkovChainFromParameterization(
+                i, 
+                deepcopy(self.parameterization),
+                deepcopy(self.targets),
+                self.fwd_functions,
+            )
+            for i in range(n_chains)
+        ]
 
     def get_results(self, concatenate_chains=True):
         results_model = defaultdict(list)

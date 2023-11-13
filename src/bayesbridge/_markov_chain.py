@@ -1,4 +1,5 @@
-from typing import Union, List, Callable
+from typing import Union, List, Callable, Tuple
+from numbers import Number
 from collections import defaultdict
 from functools import partial
 import random
@@ -12,6 +13,132 @@ from ._exceptions import ForwardException, DimensionalityException
 
 
 class MarkovChain:
+    def __init__(
+        self, 
+        id: Union[int, str], 
+        starting_pos: List[numpy.ndarray], 
+        perturbations: Callable[[numpy.ndarray], Tuple[numpy.ndarray, Number]], 
+        log_posterior_func: Callable[[numpy.ndarray], Number], 
+        temperature: int = 1, 
+    ):
+        self.id = id
+        self.starting_pos = starting_pos
+        self.current_model = starting_pos
+        self.perturbations = perturbations
+        self.perturbation_types = [func.__name__ for func in perturbations]
+        self.log_posterior_func = log_posterior_func
+        self._temperature = temperature
+        self._init_statistics()
+        self._init_saved_models()
+    
+    @property
+    def temperature(self):
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, value):
+        self._temperature = value
+    
+    def _init_saved_models(self):
+        self._saved_models = {"model": []}
+
+    def _init_statistics(self):
+        self._current_misfit = float("inf")
+        self._proposed_counts = defaultdict(int)
+        self._accepted_counts = defaultdict(int)
+        self._proposed_counts_total = 0
+        self._accepted_counts_total = 0
+        self._fwd_failure_counts_total = 0
+    
+    def _save_model(self):
+        self.saved_models["model"].append(self.current_model)
+    
+    def _save_statistics(self, perturb_i, accepted):
+        perturb_type = self.perturbation_types[perturb_i]
+        self._proposed_counts[perturb_type] += 1
+        self._accepted_counts[perturb_type] += 1 if accepted else 0
+        self._proposed_counts_total += 1
+        self._accepted_counts_total += 1 if accepted else 0
+
+    def _print_statistics(self):
+        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (self.id, self._proposed_counts_total)
+        acceptance_rate = (
+            self._accepted_counts_total / self._proposed_counts_total * 100
+        )
+        head += "ACCEPTANCE RATE: %d/%d (%.2f %%)" % (
+            self._accepted_counts_total,
+            self._proposed_counts_total,
+            acceptance_rate,
+        )
+        print(head)
+        print("PARTIAL ACCEPTANCE RATES:")
+        for perturb_type in sorted(self._proposed_counts):
+            proposed = self._proposed_counts[perturb_type]
+            accepted = self._accepted_counts[perturb_type]
+            acceptance_rate = accepted / proposed * 100
+            print(
+                "\t%s: %d/%d (%.2f%%)"
+                % (perturb_type, accepted, proposed, acceptance_rate)
+            )
+        print("CURRENT MISFIT: %.2f" % self._current_misfit)
+        print("NUMBER OF FWD FAILURES: %d" % self._fwd_failure_counts_total)
+
+    def _next_iteration(self, save_model):
+        for i in range(500):
+            # choose one perturbation function and type
+            perturb_i = random.randint(0, len(self.perturbations) - 1)
+            perturb_func = self.perturbations[perturb_i]
+            
+            # perturb and calculate the log proposal ratio
+            try:
+                new_model, log_proposal_ratio = perturb_func(self.current_model)
+            except RuntimeError:
+                continue
+            
+            # calculate the log posterior ratio
+            try:
+                log_posterior_ratio = self.log_posterior_func(new_model)
+            except Exception:
+                self._fwd_failure_counts_total += 1
+                continue
+            
+            # decide whether to accept
+            log_probability_ratio = log_proposal_ratio + log_posterior_ratio
+            accepted = log_probability_ratio > math.log(random.random())
+            if save_model and self.temperature == 1:
+                self._saved_model()
+            
+            # finalize perturbation based on whether it's accepted
+            if accepted:
+                self.current_model = new_model
+            
+            # save statistics
+            self._save_statistics(perturb_i, accepted)
+            return
+        raise RuntimeError("Chain getting stuck")
+    
+    def advance_chain(
+        self,
+        n_iterations=1000,
+        burnin_iterations=0,
+        save_every=100,
+        verbose=True,
+        print_every=100,
+    ):
+        for i in range(1, n_iterations + 1):
+            if i <= burnin_iterations:
+                save_model = False
+            else:
+                save_model = not (i - burnin_iterations) % save_every
+
+            self._next_iteration(save_model)
+            if verbose and not i % print_every:
+                self._print_statistics()
+
+        return self
+
+
+class MarkovChainFromParameterization(MarkovChain):
     def __init__(
         self,
         id: Union[int, str], 
@@ -33,14 +160,6 @@ class MarkovChain:
         self._temperature = temperature
         self._init_saved_models()
         self._init_saved_targets()
-
-    @property
-    def temperature(self):
-        return self._temperature
-
-    @temperature.setter
-    def temperature(self, value):
-        self._temperature = value
 
     @property
     def saved_models(self):
@@ -136,14 +255,6 @@ class MarkovChain:
                     saved_targets[target.name]["correlation"] = []
         self._saved_targets = saved_targets
 
-    def _init_statistics(self):
-        self._current_misfit = float("inf")
-        self._proposed_counts = defaultdict(int)
-        self._accepted_counts = defaultdict(int)
-        self._proposed_counts_total = 0
-        self._accepted_counts_total = 0
-        self._fwd_failure_counts_total = 0
-
     def _save_model(self, misfit):
         self.saved_models["misfits"].append(misfit)
         for key, value in self.parameterization.model.proposed_state.items():
@@ -169,36 +280,6 @@ class MarkovChain:
                     self.saved_targets[target.name]["correlation"].append(
                         target._proposed_state["correlation"]
                     )
-
-    def _save_statistics(self, perturb_i, accepted):
-        perturb_type = self.perturbation_types[perturb_i]
-        self._proposed_counts[perturb_type] += 1
-        self._accepted_counts[perturb_type] += 1 if accepted else 0
-        self._proposed_counts_total += 1
-        self._accepted_counts_total += 1 if accepted else 0
-
-    def _print_statistics(self):
-        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (self.id, self._proposed_counts_total)
-        acceptance_rate = (
-            self._accepted_counts_total / self._proposed_counts_total * 100
-        )
-        head += "ACCEPTANCE RATE: %d/%d (%.2f %%)" % (
-            self._accepted_counts_total,
-            self._proposed_counts_total,
-            acceptance_rate,
-        )
-        print(head)
-        print("PARTIAL ACCEPTANCE RATES:")
-        for perturb_type in sorted(self._proposed_counts):
-            proposed = self._proposed_counts[perturb_type]
-            accepted = self._accepted_counts[perturb_type]
-            acceptance_rate = accepted / proposed * 100
-            print(
-                "\t%s: %d/%d (%.2f%%)"
-                % (perturb_type, accepted, proposed, acceptance_rate)
-            )
-        print("CURRENT MISFIT: %.2f" % self._current_misfit)
-        print("NUMBER OF FWD FAILURES: %d" % self._fwd_failure_counts_total)
 
     def _next_iteration(self, save_model):
         for i in range(500):
@@ -236,23 +317,3 @@ class MarkovChain:
             self._save_statistics(perturb_i, accepted)
             return
         raise RuntimeError("Chain getting stuck")
-
-    def advance_chain(
-        self,
-        n_iterations=1000,
-        burnin_iterations=0,
-        save_every=100,
-        verbose=True,
-        print_every=100,
-    ):
-        for i in range(1, n_iterations + 1):
-            if i <= burnin_iterations:
-                save_model = False
-            else:
-                save_model = not (i - burnin_iterations) % save_every
-
-            self._next_iteration(save_model)
-            if verbose and not i % print_every:
-                self._print_statistics()
-
-        return self

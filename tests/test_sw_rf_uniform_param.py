@@ -10,7 +10,7 @@ Vs model from Fu et al. 2016, https://doi.org/10.1002/2016JB013305
 
 import numpy as np
 import matplotlib.pyplot as plt
-from bayesbridge import Parameterization1D, Target, BayesianInversion, State
+from bayesbridge import Parameterization1D, Target, BayesianInversionFromParameterization, State
 from bayesbridge.parameters import UniformParameter
 from pysurf96 import surf96
 from BayHunter import SynthObs
@@ -140,7 +140,7 @@ parameterization = Parameterization1D(
     free_params=free_parameters,
 )
 
-inversion = BayesianInversion(
+inversion = BayesianInversionFromParameterization(
     parameterization, targets, fwd_functions=fwd_functions, n_cpus=48, n_chains=48
 )
 

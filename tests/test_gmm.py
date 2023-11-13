@@ -50,7 +50,7 @@ parameterization = bb.Parameterization1D(
 )
 
 # run
-inversion = bb.BayesianInversion(
+inversion = bb.BayesianInversionFromParameterization(
     parameterization, targets, fwd_functions, n_cpus=48, n_chains=48
 )
 inversion.run(
