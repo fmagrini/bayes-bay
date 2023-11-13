@@ -1,5 +1,8 @@
+from typing import List, Callable, Tuple
+from numbers import Number
 from copy import deepcopy
 from collections import defaultdict
+import numpy
 from ._markov_chain import MarkovChainFromParameterization, MarkovChain
 from .samplers import VanillaSampler 
 
@@ -7,21 +10,21 @@ from .samplers import VanillaSampler
 class BayesianInversion:
     def __init__(
         self, 
-        walkers_starting_pos, 
-        perturbations, 
-        log_posterior_func, 
-        n_chains=10, 
-        n_cpus=10, 
+        walkers_starting_pos: List[numpy.ndarray], 
+        perturbations: List[Callable[[numpy.ndarray], Tuple[numpy.ndarray, Number]]], 
+        log_posterior_func: Callable[[numpy.ndarray], Number], 
+        n_chains: int = 10, 
+        n_cpus: int = 10, 
     ):
         self.walkers_starting_pos = walkers_starting_pos
-        self.perturbations = perturbations
-        self.log_posterior_func = log_posterior_func
+        self.perturbations = [_preprocess_func(func) for func in perturbations]
+        self.log_posterior_func = _preprocess_func(log_posterior_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
             MarkovChain(
                 i, 
-                walkers_starting_pos[i, :], 
+                walkers_starting_pos[i], 
                 perturbations, 
                 log_posterior_func, 
             )
@@ -63,7 +66,7 @@ class BayesianInversionFromParameterization(BayesianInversion):
     ):
         self.parameterization = parameterization
         self.targets = targets
-        self.fwd_functions = _preprocess_fwd_functions(fwd_functions)
+        self.fwd_functions = [_preprocess_func(func) for func in fwd_functions]
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
@@ -96,27 +99,23 @@ class BayesianInversionFromParameterization(BayesianInversion):
         return results_model, results_targets
 
 
-def _preprocess_fwd_functions(fwd_functions):
-    funcs = []
-    for func in fwd_functions:
-        f = None
-        args = []
-        kwargs = {}
-        if isinstance(func, (tuple, list)) and len(func) > 1:
-            f = func[0]
-            if isinstance(func[1], (tuple, list)):
-                args = func[1]
-                if len(func) > 2 and isinstance(func[2], dict):
-                    kwargs = func[2]
-            elif isinstance(func[1], dict):
-                kwargs = func[1]
-        elif isinstance(func, (tuple, list)):
-            f = func[0]
-        else:
-            f = func
-        funcs.append(_FunctionWrapper(f, args, kwargs))
-    return funcs
-            
+def _preprocess_func(func):
+    f = None
+    args = []
+    kwargs = {}
+    if isinstance(func, (tuple, list)) and len(func) > 1:
+        f = func[0]
+        if isinstance(func[1], (tuple, list)):
+            args = func[1]
+            if len(func) > 2 and isinstance(func[2], dict):
+                kwargs = func[2]
+        elif isinstance(func[1], dict):
+            kwargs = func[1]
+    elif isinstance(func, (tuple, list)):
+        f = func[0]
+    else:
+        f = func
+    return _FunctionWrapper(f, args, kwargs)
 
 class _FunctionWrapper(object):
     """Function wrapper to make it pickleable (credit to emcee)"""

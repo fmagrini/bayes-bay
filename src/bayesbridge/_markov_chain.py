@@ -39,6 +39,10 @@ class MarkovChain:
     def temperature(self, value):
         self._temperature = value
     
+    @property
+    def saved_models(self):
+        return getattr(self, "_saved_models", None)
+    
     def _init_saved_models(self):
         self._saved_models = {"model": []}
 
@@ -80,11 +84,11 @@ class MarkovChain:
                 "\t%s: %d/%d (%.2f%%)"
                 % (perturb_type, accepted, proposed, acceptance_rate)
             )
-        print("CURRENT MISFIT: %.2f" % self._current_misfit)
+        # print("CURRENT MISFIT: %.2f" % self._current_misfit)
         print("NUMBER OF FWD FAILURES: %d" % self._fwd_failure_counts_total)
 
     def _next_iteration(self, save_model):
-        for i in range(500):
+        for i in range(100):
             # choose one perturbation function and type
             perturb_i = random.randint(0, len(self.perturbations) - 1)
             perturb_func = self.perturbations[perturb_i]
@@ -94,10 +98,12 @@ class MarkovChain:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
             except RuntimeError:
                 continue
-            
+                        
             # calculate the log posterior ratio
             try:
-                log_posterior_ratio = self.log_posterior_func(new_model)
+                log_posterior_old = self.log_posterior_func(self.current_model)
+                log_posterior_new = self.log_posterior_func(new_model)
+                log_posterior_ratio = log_posterior_new / log_posterior_old
             except Exception:
                 self._fwd_failure_counts_total += 1
                 continue
@@ -106,7 +112,7 @@ class MarkovChain:
             log_probability_ratio = log_proposal_ratio + log_posterior_ratio
             accepted = log_probability_ratio > math.log(random.random())
             if save_model and self.temperature == 1:
-                self._saved_model()
+                self._save_model()
             
             # finalize perturbation based on whether it's accepted
             if accepted:
@@ -160,24 +166,6 @@ class MarkovChainFromParameterization(MarkovChain):
         self._temperature = temperature
         self._init_saved_models()
         self._init_saved_targets()
-
-    @property
-    def saved_models(self):
-        r"""models that are saved in current chain; intialized everytime `advance_chain`
-        is called
-
-        It is a Python dict. See the following example:
-
-        .. code-block::
-
-           {
-               'n_voronoi_cells': 5,
-               'voronoi_sites': array([1.61200696, 3.69444193, 4.25564828, 4.34085936, 9.48688864]),
-               'voronoi_cell_extents': array([2.65322445, 1.32182066, 0.32320872, 2.61562018, 0.        ])
-           }
-
-        """
-        return getattr(self, "_saved_models", None)
 
     @property
     def saved_targets(self):
