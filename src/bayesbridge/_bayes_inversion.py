@@ -37,13 +37,15 @@ class BaseBayesianInversion:
 
     def run(
         self,
-        sampler=VanillaSampler(),
+        sampler=None,
         n_iterations=1000,
         burnin_iterations=0,
         save_every=100,
         verbose=True,
         print_every=100,
     ):
+        if sampler is None:
+            sampler = VanillaSampler()
         sampler.initialize(self.chains)
         self._chains = sampler.run(
             n_iterations=n_iterations,
@@ -53,6 +55,16 @@ class BaseBayesianInversion:
             verbose=verbose,
             print_every=print_every, 
         )
+
+    def get_results(self, concatenate_chains=True):
+        results_model = defaultdict(list)
+        for chain in self.chains:
+            for key, saved_values in chain.saved_models.items():
+                if concatenate_chains and isinstance(saved_values, list):
+                    results_model[key].extend(saved_values)
+                else:
+                    results_model[key].append(saved_values)
+        return results_model
         
 
 class BayesianInversion(BaseBayesianInversion):
