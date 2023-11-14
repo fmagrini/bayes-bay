@@ -10,7 +10,7 @@ from .._markov_chain import MarkovChainFromParameterization
 
 class Sampler:
     def __init__(self):
-        self._i = 0
+        self._iteration = 0
         self._extra_on_initialize = []
         self._extra_on_advance_chain_end = []
         self.on_advance_chain_end = self.decorate(self.on_advance_chain_end)
@@ -57,8 +57,8 @@ class Sampler:
         return self._chains
     
     @property
-    def i(self):
-        return self._i
+    def iteration(self):
+        return self._iteration
     
     def advance_chain(
         self,
@@ -85,7 +85,7 @@ class Sampler:
         else:
             self._chains = [func(chain) for chain in self.chains]
         self.on_advance_chain_end()
-        self._i += n_iterations
+        self._iteration += n_iterations
         return self.chains
 
     def _assign_temperatures_to_chains(self, temperatures, chains):
@@ -157,8 +157,8 @@ class ParallelTempering(Sampler):
         print_every=100,
     ):
         while True:
-            n_it = min(self._swap_every, n_iterations - self.i)
-            burnin_it = max(0, min(self._swap_every, burnin_iterations - self.i))
+            n_it = min(self._swap_every, n_iterations - self.iteration)
+            burnin_it = max(0, min(self._swap_every, burnin_iterations - self.iteration))
             self.advance_chain(
                 n_iterations=n_it,
                 n_cpus=n_cpus, 
@@ -167,10 +167,10 @@ class ParallelTempering(Sampler):
                 verbose=verbose,
                 print_every=print_every,
             )
-            if self.i >= n_iterations:
+            if self.iteration >= n_iterations:
                 break
         return self.chains
-    
+       
     def on_advance_chain_end(self):
         for i in range(len(self.chains)):
             chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
