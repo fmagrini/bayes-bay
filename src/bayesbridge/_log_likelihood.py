@@ -1,6 +1,6 @@
 import math
 from typing import Any
-from ._exceptions import ForwardException
+from .exceptions import ForwardException
 
 
 class LogLikelihood:

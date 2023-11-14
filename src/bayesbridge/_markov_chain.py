@@ -5,11 +5,12 @@ from functools import partial
 import random
 import math
 import numpy
+from .exceptions import ForwardException, DimensionalityException
 from ._log_likelihood import LogLikelihood
 from ._target import Target
 from ._parameterizations import Parameterization
 from ._state import State
-from ._exceptions import ForwardException, DimensionalityException
+
 
 
 class MarkovChain:
@@ -96,7 +97,7 @@ class MarkovChain:
             # perturb and calculate the log proposal ratio
             try:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
-            except RuntimeError:
+            except:
                 continue
                         
             # calculate the log posterior ratio

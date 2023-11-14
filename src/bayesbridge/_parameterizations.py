@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from ._state import State
 from .parameters._parameters import TWO_PI, SQRT_TWO_PI
-from ._exceptions import InitException, DimensionalityException
+from .exceptions import InitException, DimensionalityException
 from ._utils_bayes import (
     _get_thickness,
     _is_sorted,
