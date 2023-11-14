@@ -51,9 +51,9 @@ true_model = np.hstack((true_thickness, true_vs))
 
 periods1 = np.linspace(4, 80, 20)
 rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
-rayleigh1_noisy = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
+rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
 love1 = forward_sw(true_model, periods1, "love", 1)
-love1_noisy = love1 + np.random.normal(0, LOVE_STD, love1.size)
+love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 
 # -------------- Implement distribution functions
@@ -67,21 +67,21 @@ def log_prior(model):
     # p(v|k) prior on param value given #layers
     log_p_v_k = float("-inf") \
         if any(vs > VS_UNIFORM_MAX) or any(vs < VS_UNIFORM_MIN) \
-            else - k * np.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
+            else - k * math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
     # p(k) prior on #layers
-    log_p_k = - np.log(LAYERS_MAX - LAYERS_MIN)
+    log_p_k = - math.log(LAYERS_MAX - LAYERS_MIN)
     return log_p_c_k + log_p_v_k + log_p_k
 
 def log_likelihood(model):
-    rayleigh_synth = forward_sw(model, periods1, "rayleigh", 1)
-    rayleigh_residual = rayleigh1_noisy - rayleigh_synth
+    rayleigh_dpred = forward_sw(model, periods1, "rayleigh", 1)
+    rayleigh_residual = rayleigh1_dobs - rayleigh_dpred
     rayleigh_loglike = -0.5 * np.sum(
-        (rayleigh_residual/RAYLEIGH_STD)**2 + np.log(2 * np.pi * RAYLEIGH_STD**2)
+        (rayleigh_residual/RAYLEIGH_STD)**2 + math.log(2 * np.pi * RAYLEIGH_STD**2)
     )
-    love_synth = forward_sw(model, periods1, "love", 1)
-    love_residual = love1_noisy - love_synth
+    love_dpred = forward_sw(model, periods1, "love", 1)
+    love_residual = love1_dobs - love_dpred
     love_loglike = -0.5 * np.sum(
-        (love_residual/LOVE_STD) ** 2 + np.log(2 * np.pi * LOVE_STD**2)
+        (love_residual/LOVE_STD) ** 2 + math.log(2 * np.pi * LOVE_STD**2)
     )
     return rayleigh_loglike + love_loglike
 
@@ -107,7 +107,8 @@ def perturbation_vs(model):
     new_vs = vs.copy()
     new_vs[isite] = new_value
     new_model = np.hstack((sites, new_vs))
-    return new_model, 0
+    log_proposal_ratio = 0
+    return new_model, log_proposal_ratio
 
 def perturbation_voronoi_site(model):
     k = int(len(model) / 2)
@@ -131,14 +132,15 @@ def perturbation_voronoi_site(model):
     new_sites = new_sites[isort]
     new_vs = vs[isort]
     new_model = np.hstack((new_sites, new_vs))
-    return new_model, 0
+    log_proposal_ratio = 0
+    return new_model, log_proposal_ratio
 
 def perturbation_birth(model):
     k = int(len(model) / 2)
     sites = model[:k]
     vs = model[k:]
     if k == LAYERS_MAX:
-        raise RuntimeError("Maximum layers reached")
+        raise ValueError("Maximum layers reached")
     # randomly choose a new Voronoi site position
     while True:
         new_site = random.uniform(VORONOI_POS_MIN, VORONOI_POS_MAX)
@@ -156,7 +158,7 @@ def perturbation_birth(model):
     new_vs = new_vs[isort]
     new_model = np.hstack((new_sites, new_vs))
     # calculate proposal ratio
-    log_proposal_ratio = np.log((_N-k) / (k+1) / (VS_UNIFORM_MAX - VS_UNIFORM_MIN))
+    log_proposal_ratio = math.log((_N-k) / (k+1) / (VS_UNIFORM_MAX - VS_UNIFORM_MIN))
     return new_model, log_proposal_ratio
 
 def perturbation_death(model):
@@ -164,7 +166,7 @@ def perturbation_death(model):
     sites = model[:k]
     vs = model[k:]
     if k == LAYERS_MIN:
-        raise RuntimeError("Minimum layers reached")
+        raise ValueError("Minimum layers reached")
     # randomly choose an existing Voronoi site to remove
     isite = random.randint(0, k-1)
     # integrate into a new model variable
@@ -172,7 +174,7 @@ def perturbation_death(model):
     new_vs = np.delete(vs, isite)
     new_model = np.hstack((new_sites, new_vs))
     # calculate proposal ratio
-    log_proposal_ratio = np.log(k * (VS_UNIFORM_MAX - VS_UNIFORM_MIN) / (_N-k+1))
+    log_proposal_ratio = math.log(k * (VS_UNIFORM_MAX - VS_UNIFORM_MIN) / (_N-k+1))
     return new_model, log_proposal_ratio
 
 
