@@ -5,7 +5,7 @@ import multiprocessing
 import math
 import random
 import numpy as np
-from .._markov_chain import MarkovChainFromParameterization
+from .._markov_chain import MarkovChain
 
 
 class Sampler:
@@ -15,7 +15,7 @@ class Sampler:
         self._extra_on_advance_chain_end = []
         self.on_advance_chain_end = self.decorate(self.on_advance_chain_end)
     
-    def initialize(self, chains: List[MarkovChainFromParameterization]):           # called by external
+    def initialize(self, chains: List[MarkovChain]):           # called by external
         self.on_initialize(chains)
         self._chains = chains
         for func in self._extra_on_initialize:
@@ -23,7 +23,7 @@ class Sampler:
             
     def add_on_initialize(
         self, 
-        func: Callable[["Sampler", List[MarkovChainFromParameterization]], None], 
+        func: Callable[["Sampler", List[MarkovChain]], None], 
     ):
         self._extra_on_initialize.append(func)
         
@@ -70,7 +70,7 @@ class Sampler:
         print_every=100,
     ):
         func = partial(
-            MarkovChainFromParameterization.advance_chain,
+            MarkovChain.advance_chain,
             n_iterations=n_iterations,
             burnin_iterations=burnin_iterations,
             save_every=save_every,

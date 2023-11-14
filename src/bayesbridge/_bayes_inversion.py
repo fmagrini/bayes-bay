@@ -1,31 +1,31 @@
-from typing import List, Callable, Tuple
+from typing import List, Callable, Tuple, Any
 from numbers import Number
 from copy import deepcopy
 from collections import defaultdict
 import numpy
-from ._markov_chain import MarkovChainFromParameterization, MarkovChain
+from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler 
 
 
-class BayesianInversion:
+class BaseBayesianInversion:
     def __init__(
         self, 
-        walkers_starting_pos: List[numpy.ndarray], 
-        perturbations: List[Callable[[numpy.ndarray], Tuple[numpy.ndarray, Number]]], 
-        log_posterior_func: Callable[[numpy.ndarray], Number], 
+        walkers_starting_models: List[Any], 
+        perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]], 
+        log_posterior_func: Callable[[Any], Number], 
         n_chains: int = 10, 
         n_cpus: int = 10, 
     ):
-        self.walkers_starting_pos = walkers_starting_pos
-        self.perturbations = [_preprocess_func(func) for func in perturbations]
+        self.walkers_starting_models = walkers_starting_models
+        self.perturbation_funcs = [_preprocess_func(func) for func in perturbation_funcs]
         self.log_posterior_func = _preprocess_func(log_posterior_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
-            MarkovChain(
+            BaseMarkovChain(
                 i, 
-                walkers_starting_pos[i], 
-                perturbations, 
+                walkers_starting_models[i], 
+                perturbation_funcs, 
                 log_posterior_func, 
             )
             for i in range(n_chains)
@@ -55,7 +55,7 @@ class BayesianInversion:
         )
         
 
-class BayesianInversionFromParameterization(BayesianInversion):
+class BayesianInversion(BaseBayesianInversion):
     def __init__(
         self,
         parameterization,
@@ -70,7 +70,7 @@ class BayesianInversionFromParameterization(BayesianInversion):
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
-            MarkovChainFromParameterization(
+            MarkovChain(
                 i, 
                 deepcopy(self.parameterization),
                 deepcopy(self.targets),

@@ -50,14 +50,14 @@ parameterization = bb.Parameterization1D(
 )
 
 # run
-inversion = bb.BayesianInversionFromParameterization(
-    parameterization, targets, fwd_functions, n_cpus=48, n_chains=48
+inversion = bb.BayesianInversion(
+    parameterization, targets, fwd_functions, n_cpus=2, n_chains=2
 )
 inversion.run(
-    n_iterations=1_000_000,
-    burnin_iterations=400_000,
-    save_every=1_000,
-    print_every=5_000,
+    n_iterations=1_000,
+    burnin_iterations=500,
+    save_every=100,
+    print_every=100,
 )
 
 

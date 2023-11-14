@@ -1,4 +1,4 @@
-from typing import Union, List, Callable, Tuple
+from typing import Union, List, Callable, Tuple, Any
 from numbers import Number
 from collections import defaultdict
 from functools import partial
@@ -13,20 +13,26 @@ from ._state import State
 
 
 
-class MarkovChain:
+class BaseMarkovChain:
+    """
+    Parameters
+    ----------
+    starting_model : object
+        The `starting_model` will be passed to `perturbation_funcs` and 
+    """
     def __init__(
         self, 
         id: Union[int, str], 
-        starting_pos: List[numpy.ndarray], 
-        perturbations: Callable[[numpy.ndarray], Tuple[numpy.ndarray, Number]], 
-        log_posterior_func: Callable[[numpy.ndarray], Number], 
+        starting_model: Any, 
+        perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]], 
+        log_posterior_func: Callable[[Any], Number], 
         temperature: int = 1, 
     ):
         self.id = id
-        self.starting_pos = starting_pos
-        self.current_model = starting_pos
-        self.perturbations = perturbations
-        self.perturbation_types = [func.__name__ for func in perturbations]
+        self.starting_model = starting_model
+        self.current_model = starting_model
+        self.perturbation_funcs = perturbation_funcs
+        self.perturbation_types = [func.__name__ for func in perturbation_funcs]
         self.log_posterior_func = log_posterior_func
         self._temperature = temperature
         self._init_statistics()
@@ -91,8 +97,8 @@ class MarkovChain:
     def _next_iteration(self, save_model):
         for i in range(100):
             # choose one perturbation function and type
-            perturb_i = random.randint(0, len(self.perturbations) - 1)
-            perturb_func = self.perturbations[perturb_i]
+            perturb_i = random.randint(0, len(self.perturbation_funcs) - 1)
+            perturb_func = self.perturbation_funcs[perturb_i]
             
             # perturb and calculate the log proposal ratio
             try:
@@ -145,7 +151,7 @@ class MarkovChain:
         return self
 
 
-class MarkovChainFromParameterization(MarkovChain):
+class MarkovChain(BaseMarkovChain):
     def __init__(
         self,
         id: Union[int, str], 
@@ -209,14 +215,14 @@ class MarkovChainFromParameterization(MarkovChain):
                 perturb_targets_types.append("Target - " + target.name)
                 finalize_targets.append(target.finalize_perturbation)
 
-        self.perturbations = perturb_voronoi + perturb_free_params + perturb_targets
+        self.perturbation_funcs = perturb_voronoi + perturb_free_params + perturb_targets
         self.perturbation_types = (
             perturb_types + perturb_free_params_types + perturb_targets_types
         )
-        self.finalizations = finalize_voronoi + finalize_free_params + finalize_targets
+        self.finalization_funcs = finalize_voronoi + finalize_free_params + finalize_targets
 
-        assert len(self.perturbations) == len(self.perturbation_types)
-        assert len(self.perturbations) == len(self.finalizations)
+        assert len(self.perturbation_funcs) == len(self.perturbation_types)
+        assert len(self.perturbation_funcs) == len(self.finalization_funcs)
 
     def _init_saved_models(self):
         trans_d = self.parameterization.trans_d
@@ -273,11 +279,11 @@ class MarkovChainFromParameterization(MarkovChain):
     def _next_iteration(self, save_model):
         for i in range(500):
             # choose one perturbation function and type
-            perturb_i = random.randint(0, len(self.perturbations) - 1)
+            perturb_i = random.randint(0, len(self.perturbation_funcs) - 1)
 
             # propose new model and calculate probability ratios
             try:
-                log_prob_ratio = self.perturbations[perturb_i]()
+                log_prob_ratio = self.perturbation_funcs[perturb_i]()
             except DimensionalityException:
                 continue
 
@@ -287,7 +293,7 @@ class MarkovChainFromParameterization(MarkovChain):
                     self._current_misfit, self.temperature
                 )
             except ForwardException:
-                self.finalizations[perturb_i](False)
+                self.finalization_funcs[perturb_i](False)
                 self._fwd_failure_counts_total += 1
                 continue
 
@@ -299,7 +305,7 @@ class MarkovChainFromParameterization(MarkovChain):
                 self._save_target()
 
             # finalize perturbation based whether it's accepted
-            self.finalizations[perturb_i](accepted)
+            self.finalization_funcs[perturb_i](accepted)
             self._current_misfit = misfit if accepted else self._current_misfit
 
             # save statistics

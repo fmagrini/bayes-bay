@@ -29,8 +29,7 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
     thickness = np.hstack((depths[0], depths[1:]-depths[:-1], 0))
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
-    try:
-        return surf96(
+    return surf96(
             thickness,
             vp,
             vs,
@@ -41,8 +40,6 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
             velocity="phase",
             flat_earth=False,
         )
-    except Exception as e:
-        raise SystemExit(e)
 
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
@@ -190,9 +187,9 @@ for i in range(N_CHAINS):
 
 
 # -------------- Define BayesianInversion
-inversion = bb.BayesianInversion(
-    walkers_starting_pos=walkers_start, 
-    perturbations=[
+inversion = bb.BaseBayesianInversion(
+    walkers_starting_models=walkers_start, 
+    perturbation_funcs=[
         perturbation_vs, 
         perturbation_voronoi_site, 
         perturbation_birth, 

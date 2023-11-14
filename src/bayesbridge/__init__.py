@@ -2,8 +2,8 @@ from ._state import State
 from ._parameterizations import Parameterization1D
 from ._target import Target
 from ._log_likelihood import LogLikelihood
-from ._markov_chain import MarkovChainFromParameterization, MarkovChain
-from ._bayes_inversion import BayesianInversionFromParameterization, BayesianInversion
+from ._markov_chain import MarkovChain, BaseMarkovChain
+from ._bayes_inversion import BayesianInversion, BaseBayesianInversion
 
 from . import samplers, parameters
 
@@ -13,7 +13,7 @@ __all__ = [
     "Target",
     "LogLikelihood",
     "MarkovChain", 
-    "MarkovChainFromParameterization",
+    "BaseMarkovChain",
     "BayesianInversion", 
-    "BayesianInversionFromParameterization",
+    "BaseBayesianInversion",
 ]
