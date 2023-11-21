@@ -3,34 +3,39 @@ from typing import Tuple
 import random
 
 from .._state import State
-from .._parameterizations import Parameterization
 from ..parameters._parameters import Parameter
 from ._base_perturbation import Perturbation
 
 
 class ParamPerturbation(Perturbation):
     def __init__(
-        self, 
-        parameterization: Parameterization, 
-        param_name: str, 
-        parameter: Parameter, 
+        self,
+        param_name: str,
+        parameter: Parameter,
     ):
-        super().__init__(parameterization)
         self.param_name = param_name
         self.parameter = parameter
-        
+
     def perturb(self, model: State) -> Tuple[State, Number]:
         # randomly choose a Voronoi site to perturb the value
         nsites = model.n_voronoi_cells
-        isite = random.randint(0, nsites-1)
-        site = model.voronoi_sites[isite]
+        isite = random.randint(0, nsites - 1)
+        self._site = model.voronoi_sites[isite]
         # randomly perturb the value
         old_values = model.get_param_values(self.param_name)
-        new_value = self.parameter.perturb_value(site, old_values[isite])
+        self._old_value = old_values[isite]
+        self._new_value = self.parameter.perturb_value(self._site, self._old_value)
         # structure new param value into new model
         new_values = old_values.copy()
-        new_values[isite] = new_value
+        new_values[isite] = self._new_value
         new_model = State(nsites, model.voronoi_sites.copy(), new_values)
         # calculate proposal ratio
         proposal_ratio = 0
         return new_model, proposal_ratio
+
+    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+        # p(k) ratio and p(c|k) ratio both evaluate to 0
+        # calculate only p(v|c) below
+        return self.parameter.prior_ratio_perturbation_free_param(
+            self._old_value, self._new_value, self._site
+        )
