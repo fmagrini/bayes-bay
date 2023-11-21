@@ -6,7 +6,7 @@ Created on Wed Dec 21 15:56:00 2022
 @author: fabrizio
 """
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Callable
 from numbers import Number
 import random
@@ -20,7 +20,7 @@ TWO_PI = 2 * math.pi
 SQRT_TWO_PI = math.sqrt(TWO_PI)
 
 
-class Parameter:
+class Parameter(ABC):
     def __init__(self, **kwargs):
         self.init_params = kwargs
 
@@ -30,6 +30,10 @@ class Parameter:
 
     @abstractmethod
     def perturb_value(self, position, value):
+        raise NotImplementedError
+
+    @abstractmethod
+    def log_pdf(self, position, value):
         raise NotImplementedError
 
     @abstractmethod
@@ -153,6 +157,13 @@ class UniformParameter(Parameter):
             new_value = value + random_deviate
             if new_value >= vmin and new_value <= vmax:
                 return new_value
+    
+    def log_pdf(self, position, value): 
+        vmin, vmax = self.get_vmin_vmax(position)
+        if vmin <= value <= vmax:
+            return -math.log(vmax - vmin)
+        else:
+            return -math.inf
 
     def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         return 0
@@ -227,6 +238,11 @@ class GaussianParameter(Parameter):
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
+    
+    def log_pdf(self, position, value):
+        mean = self.get_mean(position)
+        var = self.get_std(position) ** 2
+        return -0.5 * ((value - mean) ** 2 / var + math.log(2 * math.pi * var))
 
     def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         mean = self.get_mean(position)
@@ -277,6 +293,9 @@ class ParameterFromPrior(Parameter):
 
     def perturb_value(self, position, value):
         return self._perturb_value(position, value)
+    
+    def log_pdf(self, position, value):
+        return self._log_prior(position, value)
         
     def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         new_log_prior = self._log_prior(position, new_value)

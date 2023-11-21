@@ -1,170 +1,88 @@
-from copy import deepcopy
-from functools import partial
+from abc import ABC, abstractmethod
+from typing import Tuple, Union, List, Dict, Callable
+from numbers import Number
 import random
-import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+from .parameters import Parameter
 from ._state import State
-from .parameters._parameters import TWO_PI, SQRT_TWO_PI
-from .exceptions import InitException, DimensionalityException
-from ._utils_bayes import (
-    _get_thickness,
-    _is_sorted,
-    _interpolate_result,
-    nearest_index,
-    interpolate_linear_1d,
+from .perturbations._birth_death import (
+    BirthFromNeighbour1D,
+    BirthFromPrior1D,
+    DeathFromNeighbour1D,
+    DeathFromPrior1D,
 )
+from .perturbations._param_values import ParamPerturbation
+from .perturbations._site_positions import Voronoi1DPerturbation
+from ._utils_bayes import _interpolate_result
 
 
-class Model:
-    def __init__(self, n_voronoi_cells, voronoi_sites):
-        voronoi_cell_extents = self._get_voronoi_cell_extents(voronoi_sites)
-        self.current_state = self._init_current_state(
-            n_voronoi_cells, voronoi_sites, voronoi_cell_extents
-        )
-        self.proposed_state = deepcopy(self.current_state)
-        self._current_perturbation = {}
-        self._finalize_dict = dict(
-            site=self._finalize_site_perturbation,
-            free_param=self._finalize_free_param_perturbation,
-            birth=self._finalize_birth_death_perturbation,
-            death=self._finalize_birth_death_perturbation,
-        )
+class Parameterization(ABC):
+    @property
+    @abstractmethod
+    def trans_d(self) -> bool:
+        raise NotImplementedError
 
     @property
-    def current_perturbation(self):
-        return self._current_perturbation
+    @abstractmethod
+    def parameters(self) -> Dict[str, Parameter]:
+        raise NotImplementedError
 
-    def _init_current_state(self, n_voronoi_cells, voronoi_sites, voronoi_cell_extents):
-        return State(n_voronoi_cells, voronoi_sites, voronoi_cell_extents)
-
-    def _get_voronoi_cell_extents(self, voronoi_sites):
-        return _get_thickness(voronoi_sites)
-
-    def add_free_parameter(self, name, values):
-        self.current_state.set_param_values(name, values)
-        self.proposed_state.set_param_values(name, values.copy())
-
-    def propose_free_param_perturbation(self, name, idx, value):
-        getattr(self.proposed_state, name)[idx] = value
-        self._current_perturbation["type"] = name
-        self._current_perturbation["idx"] = idx
-
-    def propose_site_perturbation(self, isite, site):
-        self.proposed_state.voronoi_sites[isite] = site
-        self._sort_proposed_state()
-        self._current_perturbation["type"] = "site"
-
-    def propose_birth_perturbation(self):
-        self.proposed_state.n_voronoi_cells += 1
-        self._sort_proposed_state()
-        self._current_perturbation["type"] = "birth"
-
-    def propose_death_perturbation(self):
-        self.proposed_state.n_voronoi_cells -= 1
-        self.proposed_state.voronoi_cell_extents = self._get_voronoi_cell_extents(
-            self.proposed_state.voronoi_sites
-        )
-        self._current_perturbation["type"] = "death"
-
-    def finalize_perturbation(self, accepted):
-        perturb_type = self._current_perturbation["type"]
-        if perturb_type in self._finalize_dict:
-            finalize = self._finalize_dict[perturb_type]
-        else:
-            finalize = self._finalize_dict["free_param"]
-        accepted_state = self.proposed_state if accepted else self.current_state
-        rejected_state = self.current_state if accepted else self.proposed_state
-        finalize(accepted_state, rejected_state)
-
-    def _finalize_site_perturbation(self, accepted_state, rejected_state):
-        rejected_state.voronoi_sites = accepted_state.voronoi_sites.copy()
-        rejected_state.voronoi_cell_extents = accepted_state.voronoi_cell_extents.copy()
-
-    def _finalize_free_param_perturbation(self, accepted_state, rejected_state):
-        name = self._current_perturbation["type"]
-        idx = self._current_perturbation["idx"]
-        getattr(rejected_state, name)[idx] = getattr(accepted_state, name)[idx]
-
-    def _finalize_birth_death_perturbation(self, accepted_state, rejected_state):
-        rejected_state.clone_from(accepted_state)
-
-    def _sort_proposed_state(self):
-        isort = np.argsort(self.proposed_state.voronoi_sites)
-        if not _is_sorted(isort):
-            self.proposed_state.voronoi_sites = self.proposed_state.voronoi_sites[isort]
-            for name, values in self.proposed_state.param_values.items():
-                self.proposed_state.set_param_values(name, values[isort])
-
-        self.proposed_state.voronoi_cell_extents = self._get_voronoi_cell_extents(
-            self.proposed_state.voronoi_sites
-        )
-
-
-class Parameterization:
     @property
-    def trans_d(self):
-        raise NotImplementedError
-    
-    def initialize(self):
-        raise NotImplementedError
-    
-    def perturbation_birth(self):
+    @abstractmethod
+    def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
         raise NotImplementedError
 
-    def perturbation_death(self):
+    @property
+    @abstractmethod
+    def prior_ratio_functions(self, old_model: State, new_model) -> Number:
         raise NotImplementedError
 
-    def perturbation_voronoi_site(self):
-        raise NotImplementedError
-
-    def perturbation_free_param(self):
-        raise NotImplementedError
-
-    def finalize_perturbation(self):
+    @abstractmethod
+    def initialize(self) -> State:
         raise NotImplementedError
 
 
-class Parameterization1D(Parameterization):
+class Voronoi1D(Parameterization):
     def __init__(
         self,
-        voronoi_site_bounds,
-        voronoi_site_perturb_std,
-        position=None,
-        n_voronoi_cells=None,
-        free_params=None,
-        n_voronoi_cells_min=None,
-        n_voronoi_cells_max=None,
-        voronoi_cells_init_range=0.2,
+        voronoi_site_bounds: Tuple[Number, Number],
+        voronoi_site_perturb_std: Union[Number, np.ndarray],
+        position: np.ndarray,
+        n_voronoi_cells: Number = None,
+        free_params: List[Parameter] = None,
+        n_voronoi_cells_min: Number = None,
+        n_voronoi_cells_max: Number = None,
+        voronoi_cells_init_range: Number = 0.2,
+        birth_from: str = "neighbour",  # either "neighbour" or "prior"
     ):
         self.voronoi_site_bounds = voronoi_site_bounds
-        self._voronoi_site_perturb_std = self._init_voronoi_site_perturb_std(
-            voronoi_site_perturb_std, position
-        )
-
+        self.voronoi_site_perturb_std = voronoi_site_perturb_std
+        self.position = position
         self._trans_d = n_voronoi_cells is None
         self._n_voronoi_cells = n_voronoi_cells
         self.n_voronoi_cells_min = n_voronoi_cells_min
         self.n_voronoi_cells_max = n_voronoi_cells_max
-
-        self._initialized = False
         self._voronoi_cells_init_range = voronoi_cells_init_range
-
+        self._birth_from = birth_from
         self.free_params = {}
         if free_params is not None:
             for param in free_params:
-                self._add_free_parameter(param)
+                self.free_params[param.name] = param
+        self._init_perturbation_funcs()
+        self._init_prior_ratio_funcs()
 
     @property
-    def trans_d(self):
+    def trans_d(self) -> bool:
         return self._trans_d
 
     @property
-    def initialized(self):
-        return self._initialized
+    def parameters(self) -> Dict[str, Parameter]:
+        return self.free_params
 
-    def initialize(self):
+    def initialize(self) -> State:
+        # initialize number of cells
         if self.trans_d:
             cells_range = self._voronoi_cells_init_range
             cells_min = self.n_voronoi_cells_min
@@ -173,219 +91,63 @@ class Parameterization1D(Parameterization):
             n_voronoi_cells = random.randint(cells_min, init_max)
         else:
             n_voronoi_cells = self._n_voronoi_cells
-        voronoi_sites = self._init_voronoi_sites(n_voronoi_cells)
-        self.model = Model(n_voronoi_cells, voronoi_sites)
-        for free_param in self.free_params.values():
-            self._init_free_parameter(free_param, voronoi_sites)
         del self._n_voronoi_cells
-        self._initialized = True
-
-    def __getattr__(self, attr):
-        valid_attr = attr in ["n_voronoi_cells", "voronoi_sites", "model"]
-        if valid_attr and not self.initialized:
-            message = f"The {self.__class__.__name__} instance has not been"
-            message += " initialized yet. Run `.initialize()` or pass it"
-            message += " to `BayesianInversion`."
-            raise InitException(message)
-        else:
-            return self.__getattribute__(attr)
-
-    def _add_free_parameter(self, free_param):
-        self.free_params[free_param.name] = free_param
-        if self.initialized:
-            self._init_free_parameter(free_param)
-
-    def _init_free_parameter(self, free_param, voronoi_sites):
-        values = free_param.initialize(voronoi_sites)
-        self.model.add_free_parameter(free_param.name, values)
-
-    def _init_voronoi_site_perturb_std(self, std, position):
-        if np.isscalar(std):
-            return std
-        assert position is not None, (
-            "`position` should not be None if `voronoi_site_perturb_std` is"
-            " not a scalar"
-        )
-        assert len(position) == len(
-            std
-        ), "`position` should have the same lenght as `voronoi_site_perturb_std`"
-        std = np.array(std, dtype=float)
-        position = np.array(position, dtype=float)
-        return partial(interpolate_linear_1d, x=position, y=std)
-
-    def _init_voronoi_sites(self, n_voronoi_cells):
+        # initialize site positions
         lb, ub = self.voronoi_site_bounds
-        return np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
+        voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
+        # initialize parameter values
+        param_vals = dict()
+        for name, param in self.free_params.items():
+            param_vals[name] = param.initialize(voronoi_sites)
+        return State(n_voronoi_cells, voronoi_sites, param_vals)
 
-    def _get_voronoi_site_perturb_std(self, site):
-        if np.isscalar(self._voronoi_site_perturb_std):
-            return self._voronoi_site_perturb_std
-        return self._voronoi_site_perturb_std(site)
+    def _init_perturbation_funcs(self):
+        self._perturbation_funcs = [
+            Voronoi1DPerturbation(
+                voronoi_site_bounds=self.voronoi_site_bounds,
+                voronoi_site_perturb_std=self.voronoi_site_perturb_std,
+                position=self.position,
+            )
+        ]
+        for name, param in self.parameters.items():
+            self._perturbation_funcs.append(ParamPerturbation(name, param))
+        if self.trans_d:
+            birth_perturb_params = {
+                "parameters": self.parameters,
+                "n_voronoi_cells_max": self.n_voronoi_cells_max,
+                "voronoi_site_bounds": self.voronoi_site_bounds,
+            }
+            death_perturb_params = {
+                "parameters": self.parameters,
+                "n_voronoi_cells_min": self.n_voronoi_cells_min,
+            }
+            if self._birth_from == "neighbour":
+                self._perturbation_funcs.append(
+                    BirthFromNeighbour1D(**birth_perturb_params)
+                )
+                self._perturbation_funcs.append(
+                    DeathFromNeighbour1D(**death_perturb_params)
+                )
+            else:
+                self._perturbation_funcs.append(
+                    BirthFromPrior1D(**birth_perturb_params)
+                )
+                self._perturbation_funcs.append(
+                    DeathFromPrior1D(**death_perturb_params)
+                )
 
-    def perturbation_free_param(self, param_name):
-        # randomly choose a Voronoi site to perturb the value
-        nsites = self.model.current_state.n_voronoi_cells
-        isite = random.randint(0, nsites - 1)
-        site = self.model.current_state.voronoi_sites[isite]
-        # randomly perturb the value
-        old_value = getattr(self.model.current_state, param_name)[isite]
-        new_value = self.free_params[param_name].perturb_value(site, old_value)
-        # update proposed_model in Model class
-        self.model.propose_free_param_perturbation(param_name, isite, new_value)
-        # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
-        param = self.free_params[param_name]
-        proposal_ratio = self._proposal_ratio_free_param()
-        prior_depth_ratio = self._prior_position_ratio_free_param()
-        prior_value_ratio = param.prior_ratio_perturbation_free_param(old_value, new_value, site)
-        return proposal_ratio + prior_depth_ratio + prior_value_ratio
+    def _init_prior_ratio_funcs(self):
+        self._prior_ratio_funcs = [
+            func.prior_ratio for func in self._perturbation_funcs
+        ]
 
-    def perturbation_voronoi_site(self):
-        # randomly choose a Voronoi site to perturb the position
-        nsites = self.model.current_state.n_voronoi_cells
-        isite = random.randint(0, nsites - 1)
-        # prepare for position perturbation
-        voronoi_sites = self.model.current_state.voronoi_sites
-        old_site = voronoi_sites[isite]
-        site_min, site_max = self.voronoi_site_bounds
-        std = self._get_voronoi_site_perturb_std(old_site)
-        # perturb a valid position
-        while True:
-            random_deviate = random.normalvariate(0, std)
-            new_site = old_site + random_deviate
-            if new_site < site_min or new_site > site_max:
-                continue
-            if np.any(np.abs(new_site - voronoi_sites) < 1e-2):
-                continue
-            break
-        # update proposed_model in Model class
-        self.model.propose_site_perturbation(isite, new_site)
-        # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
-        proposal_ratio = self._proposal_ratio_voronoi_site(old_site, new_site)
-        prior_depth_ratio = self._prior_position_ratio_voronoi_site()
-        prior_value_ratio = 0
-        for param_name, param in self.free_params.items():
-            value = getattr(self.model.current_state, param_name)[isite]
-            prior_value_ratio += param.prior_ratio_perturbation_voronoi_site(old_site, new_site, value)
-        return proposal_ratio + prior_depth_ratio + prior_value_ratio
+    @property
+    def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
+        return self._perturbation_funcs
 
-    def perturbation_birth(self):
-        # prepare for birth perturbation
-        n_cells = self.model.current_state.n_voronoi_cells
-        if n_cells == self.n_voronoi_cells_max:
-            raise DimensionalityException("Birth")
-        old_sites = self.model.proposed_state.voronoi_sites
-        # randomly choose a new Voronoi site position
-        while True:
-            lb, ub = self.voronoi_site_bounds
-            new_site = random.uniform(lb, ub)
-            # abort if it's too close to existing positions
-            if np.any(np.abs(new_site - old_sites) < 1e-2):
-                continue
-            break
-        self.model.proposed_state.voronoi_sites = np.append(old_sites, new_site)
-        # randomly perturb the value for the new site based on value of nearest site
-        isite = nearest_index(xp=new_site, x=old_sites, xlen=old_sites.size)
-        all_old_values = dict()
-        all_new_values = dict()
-        for param_name, param in self.free_params.items():
-            old_values = getattr(self.model.current_state, param_name)
-            old_value = old_values[isite]
-            new_value = param.perturb_value(new_site, old_value)
-            all_old_values[param_name] = old_value
-            all_new_values[param_name] = new_value
-            # update param values of proposed_state in Model class
-            self.model.proposed_state.set_param_values(param_name, np.append(old_values, new_value))
-        # register intention to perturb from Model class
-        self.model.propose_birth_perturbation()
-        # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
-        proposal_ratio = self._proposal_ratio_birth(all_old_values, all_new_values, new_site)
-        prior_depth_ratio = self._prior_position_ratio_birth()
-        prior_value_ratio = 0
-        for param in self.free_params.values():
-            prior_value_ratio += param.prior_ratio_perturbation_birth(new_site, new_value)
-        return proposal_ratio + prior_depth_ratio + prior_value_ratio
-
-    def perturbation_death(self):
-        # prepare for death perturbation
-        n_cells = self.model.current_state.n_voronoi_cells
-        if n_cells == self.n_voronoi_cells_min:
-            raise DimensionalityException("Death")
-        # randomly choose an existing Voronoi site to kill
-        isite = random.randint(0, n_cells - 1)
-        removed_site = self.model.current_state.voronoi_sites[isite]
-        old_sites = self.model.current_state.voronoi_sites
-        new_sites = np.delete(old_sites, isite)
-        self.model.proposed_state.voronoi_sites = new_sites
-        inearest = nearest_index(xp=removed_site, x=new_sites, xlen=new_sites.size)
-        for param_name, param in self.free_params.items():
-            old_values = getattr(self.model.current_state, param_name)
-            new_values = np.delete(old_values, isite)
-            # update param values of proposd_state in Model class
-            self.model.proposed_state.set_param_values(param_name, new_values)
-        # register intention to perturb from Model class
-        self.model.propose_death_perturbation()
-        # calculate proposal and prior ratio; p(k) ratio is always 0 so omitted here
-        proposal_ratio = self._proposal_ratio_death(isite, inearest, removed_site)
-        prior_depth_ratio = self._prior_position_ratio_death()
-        prior_value_ratio = 0
-        for param in self.free_params.values():
-            removed_value = getattr(self.model.current_state, param_name)[isite]
-            prior_value_ratio += param.prior_ratio_perturbation_death(removed_site, removed_value)
-        return proposal_ratio + prior_depth_ratio + prior_value_ratio
-
-    def finalize_perturbation(self, accepted):
-        self.model.finalize_perturbation(accepted)
-
-    def _proposal_ratio_free_param(self):
-        return 0
-
-    def _proposal_ratio_voronoi_site(self, old_site, new_site):
-        std_old = self._get_voronoi_site_perturb_std(old_site)
-        std_new = self._get_voronoi_site_perturb_std(new_site)
-        d = (old_site - new_site) ** 2
-        return math.log(std_old / std_new) + \
-            d * (std_new**2 - std_old**2) / (2 * std_new**2 * std_old**2)
-    
-    def _proposal_ratio_birth(self, all_old_values, all_new_values, new_site):
-        # The calculation omits the \frac{N-k}{k+1} part in the formula,
-        # as this will be cancelled out with the prior ratio of the voronoi position part
-        ratio = 0
-        for param_name, param in self.free_params.items():
-            theta = param.get_perturb_std(new_site)
-            old_value = all_old_values[param_name]
-            new_value = all_new_values[param_name]
-            ratio += math.log(theta**2*SQRT_TWO_PI) + (new_value-old_value)**2 / 2*theta**2
-        return ratio
-    
-    def _proposal_ratio_death(self, i_removed, i_nearest, removed_site):
-        # The calculation omits the \frac{N-k+1}{k} part in the formula,
-        # as this will be cancelled out with the prior ratio of the voronoi position part
-        ratio = 0
-        for param_name, param in self.free_params.items():
-            theta = param.get_perturb_std(removed_site)
-            removed_value = getattr(self.model.current_state, param_name)[i_removed]
-            nearest_value = getattr(self.model.proposed_state, param_name)[i_nearest]
-            ratio -= math.log(theta**2*2*SQRT_TWO_PI) + (removed_value-nearest_value)**2 / 2*theta**2
-        return ratio
-    
-    def _prior_position_ratio_free_param(self):
-        return 0
-    
-    def _prior_position_ratio_voronoi_site(self):
-        return 0
-    
-    def _prior_position_ratio_birth(self):
-        # The calculation omits the \frac{k+1}{N-k} part in the formula,
-        # as this will be cancelled out with the proposal ratio
-        return 0
-    
-    def _prior_position_ratio_death(self):
-        # The calculation omits the \frac{k}{N-k+1} part in the formula,
-        # as this will be cancelled out with the proposal ratio
-        return 0
-    
-    def _prior_nlayers(self):
-        return 0
+    @property
+    def prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
+        return self._prior_ratio_funcs
 
     @staticmethod
     def get_ensemble_statistics(
@@ -394,7 +156,7 @@ class Parameterization1D(Parameterization):
         interp_positions,
         percentiles=(10, 90),
     ):
-        interp_params = Parameterization1D.interpolate_samples(
+        interp_params = Voronoi1D.interpolate_samples(
             samples_voronoi_cell_extents, samples_param_values, interp_positions
         )
         statistics = {
@@ -414,7 +176,7 @@ class Parameterization1D(Parameterization):
         ax=None,
         **kwargs,
     ):
-        statistics = Parameterization1D.get_ensemble_statistics(
+        statistics = Voronoi1D.get_ensemble_statistics(
             samples_voronoi_cell_extents,
             samples_param_values,
             interp_positions,
@@ -456,45 +218,6 @@ class Parameterization1D(Parameterization):
                 np.array(sample_extents), np.array(sample_values), interp_positions
             )
         return interp_params
-
-    def plot_param_current(self, param_name, ax=None, **kwargs):
-        """Plot the 1D Earth model given a param_name.
-
-        Parameters
-        ----------
-        param_name: str
-            name of the free parameter to plot values
-        ax: matplotlib.axes.Axes, optional
-            An optional Axes object to plot on
-        kwargs: dict, optional
-            Additional keyword arguments to pass to ax.step
-
-        Returns
-        -------
-        ax
-            The Axes object containing the plot
-        """
-        if param_name not in self.free_params:
-            raise ValueError(
-                "%s is not in the free parameters list: %s"
-                % (param_name, list(self.free_params.keys()))
-            )
-        current = self.model.current_state
-        values = current[param_name]
-        thicknesses = np.array(current["voronoi_cell_extents"])
-        thicknesses[-1] = 20
-        y = np.insert(np.cumsum(thicknesses), 0, 0)
-        x = np.insert(values, 0, values[0])
-
-        # plotting
-        if ax is None:
-            _, ax = plt.subplots()
-        ax.step(x, y, where="post", **kwargs)
-        if ax.get_ylim()[0] < ax.get_ylim()[1]:
-            ax.invert_yaxis()
-        ax.set_xlabel("Velocity (km/s)")
-        ax.set_ylabel("Depth (km)")
-        return ax
 
     @staticmethod
     def plot_param_samples(
@@ -658,7 +381,7 @@ class Parameterization1D(Parameterization):
         ax.set_xlabel("Velocity (km/s)")
         ax.set_ylabel("Depth (km)")
         return ax
-    
+
     @staticmethod
     def plot_interface_distribution(
         samples_voronoi_cell_extents,
