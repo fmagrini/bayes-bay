@@ -13,14 +13,11 @@ class State:
         when ``n_voronoi_cells`` is not an int
     TypeError
         when ``voronoi_sites`` is not a numpy ndarray
-    TypeError
-        when ``voronoi_cell_extents`` is not a numpy ndarray
     AssertionError
-        when the lengths of ``voronoi_sites`` and ``voronoi_cell_extents`` aren't aligned with ``n_voronoi_cells``
+        when the length of ``voronoi_sites`` isn't aligned with ``n_voronoi_cells``
     """
     n_voronoi_cells: int
     voronoi_sites: np.ndarray
-    voronoi_cell_extents: np.ndarray
     param_values: dict = field(default_factory=dict)
     
     def __post_init__(self):
@@ -28,15 +25,11 @@ class State:
             raise TypeError("n_voronoi_cells should be an int")
         if not isinstance(self.voronoi_sites, np.ndarray):
             raise TypeError("voronoi_sites should be a numpy ndarray")
-        if not isinstance(self.voronoi_cell_extents, np.ndarray):
-            raise TypeError("voronoi_cell_extents should be a numpy ndarray")
         assert len(self.voronoi_sites) == self.n_voronoi_cells, \
             "lengths of voronoi_sites should be the same as n_voronoi_cells"
-        assert len(self.voronoi_cell_extents) == self.n_voronoi_cells, \
-            "lengths of voronoi_cell_extents should be the same as n_voronoi_cells"
-
+        
     def set_param_values(self, param_name, values):
-        if param_name in ["n_voronoi_cells", "voronoi_sites", "voronoi_cell_extents"]:
+        if param_name in ["n_voronoi_cells", "voronoi_sites"]:
             raise AttributeError(f"'{param_name}' attribute already exists on the State object.")
         if not isinstance(values, np.ndarray):
             raise TypeError("parameter values should be a numpy ndarray")
@@ -55,7 +48,6 @@ class State:
     def clone_from(self, other):
         self.n_voronoi_cells = other.n_voronoi_cells
         self.voronoi_sites = other.voronoi_sites.copy()
-        self.voronoi_cell_extents = other.voronoi_cell_extents.copy()
         self.param_values = {}
         for k, v in other.param_values.items():
             self.set_param_values(k, v.copy())
