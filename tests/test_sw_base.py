@@ -195,7 +195,8 @@ inversion = bb.BaseBayesianInversion(
         perturbation_birth, 
         perturbation_death, 
     ], 
-    log_posterior_func=log_posterior, 
+    log_prior_func=log_prior, 
+    log_likelihood_func=log_likelihood, 
     n_chains=1, 
     n_cpus=1, 
 )

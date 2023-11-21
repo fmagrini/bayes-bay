@@ -49,7 +49,7 @@ class Voronoi1D(Parameterization):
         self,
         voronoi_site_bounds: Tuple[Number, Number],
         voronoi_site_perturb_std: Union[Number, np.ndarray],
-        position: np.ndarray,
+        position: np.ndarray = None,
         n_voronoi_cells: Number = None,
         free_params: List[Parameter] = None,
         n_voronoi_cells_min: Number = None,
@@ -91,7 +91,7 @@ class Voronoi1D(Parameterization):
             n_voronoi_cells = random.randint(cells_min, init_max)
         else:
             n_voronoi_cells = self._n_voronoi_cells
-        del self._n_voronoi_cells
+            del self._n_voronoi_cells
         # initialize site positions
         lb, ub = self.voronoi_site_bounds
         voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
@@ -104,6 +104,7 @@ class Voronoi1D(Parameterization):
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = [
             Voronoi1DPerturbation(
+                parameters=self.parameters, 
                 voronoi_site_bounds=self.voronoi_site_bounds,
                 voronoi_site_perturb_std=self.voronoi_site_perturb_std,
                 position=self.position,

@@ -2,7 +2,6 @@ from abc import abstractmethod
 from typing import Tuple
 from numbers import Number
 
-from .._parameterizations import Parameterization
 from .._state import State
 
 

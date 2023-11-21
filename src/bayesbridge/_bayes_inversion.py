@@ -12,13 +12,15 @@ class BaseBayesianInversion:
         self, 
         walkers_starting_models: List[Any], 
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]], 
-        log_posterior_func: Callable[[Any], Number], 
+        log_prior_func: Callable[[Any], Number], 
+        log_likelihood_func: Callable[[Any], Number], 
         n_chains: int = 10, 
         n_cpus: int = 10, 
     ):
         self.walkers_starting_models = walkers_starting_models
         self.perturbation_funcs = [_preprocess_func(func) for func in perturbation_funcs]
-        self.log_posterior_func = _preprocess_func(log_posterior_func)
+        self.log_prior_func = _preprocess_func(log_prior_func)
+        self.log_likelihood_func = _preprocess_func(log_likelihood_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
@@ -26,7 +28,8 @@ class BaseBayesianInversion:
                 i, 
                 walkers_starting_models[i], 
                 perturbation_funcs, 
-                log_posterior_func, 
+                self.log_prior_func, 
+                self.log_likelihood_func, 
             )
             for i in range(n_chains)
         ]
