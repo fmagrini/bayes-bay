@@ -118,13 +118,13 @@ class BaseMarkovChain:
                 continue
             
             # calculate the log posterior ratio
+            log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
             try:
-                log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model, i_perturb)
-                log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
             except Exception:
                 self._fwd_failure_counts_total += 1
                 continue
+            log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
             
             # decide whether to accept
             log_probability_ratio = log_proposal_ratio + log_posterior_ratio
@@ -189,14 +189,14 @@ class MarkovChain(BaseMarkovChain):
     
     def _log_likelihood_ratio(self, new_model, i_perturb):
         # tempered by self.temperature
-        raise NotImplementedError       # TODO
-        # return self.log_like_ratio_func()
+        log_like_ratio = self.log_like_ratio_func(self.current_model, new_model)
+        return log_like_ratio / self.temperature
     
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
         priors_from_parameterization = self.parameterization.prior_ratio_functions
         # TODO: data noise perturbations and associated log prior ratios
-        # funcs_from_log_likelihood = self.log_like_ratio_func.perturbation_functions
+        funcs_from_log_likelihood = self.log_like_ratio_func.perturbation_functions
         self.perturbation_funcs = funcs_from_parameterization
         self.perturbation_types = [f.type for f in self.perturbation_funcs]
         self.log_prior_ratio_funcs = priors_from_parameterization

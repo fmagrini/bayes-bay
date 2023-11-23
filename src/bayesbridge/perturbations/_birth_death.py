@@ -79,7 +79,7 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
     def initialize_newborn_cell(
         self, new_site: Number, old_sites: List[Number], model: State
     ) -> Dict[str, np.ndarray]:
-        isite = nearest_index(xp=new_site, x=old_sites)
+        isite = nearest_index(xp=new_site, x=old_sites, xlen=old_sites.size)
         new_born_values = dict()
         self._all_old_values = dict()
         self._all_new_values = dict()

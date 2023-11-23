@@ -10,7 +10,7 @@ class Perturbation:
     def perturb(self, model: State) -> Tuple[State, Number]:
         raise NotImplementedError
 
-    def __run__(self, model: State) -> Tuple[State, Number]:
+    def __call__(self, model: State) -> Tuple[State, Number]:
         return self.perturb(model)
 
     @abstractmethod

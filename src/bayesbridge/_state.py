@@ -1,4 +1,6 @@
 from dataclasses import dataclass, field
+from typing import Dict
+from numbers import Number
 import numpy as np
 
 
@@ -18,7 +20,9 @@ class State:
     """
     n_voronoi_cells: int
     voronoi_sites: np.ndarray
-    param_values: dict = field(default_factory=dict)
+    param_values: Dict[str, np.ndarray] = field(default_factory=dict)
+    noise_std: Number = None
+    noise_correlation: Number = None
     
     def __post_init__(self):
         if not isinstance(self.n_voronoi_cells, int):
@@ -27,6 +31,8 @@ class State:
             raise TypeError("voronoi_sites should be a numpy ndarray")
         assert len(self.voronoi_sites) == self.n_voronoi_cells, \
             "lengths of voronoi_sites should be the same as n_voronoi_cells"
+        for name, values in self.param_values.items():
+            self.set_param_values(name, values)
         
     def set_param_values(self, param_name, values):
         if param_name in ["n_voronoi_cells", "voronoi_sites"]:
@@ -44,10 +50,19 @@ class State:
 
     def items(self):
         return vars(self).items()
-
-    def clone_from(self, other):
-        self.n_voronoi_cells = other.n_voronoi_cells
-        self.voronoi_sites = other.voronoi_sites.copy()
-        self.param_values = {}
-        for k, v in other.param_values.items():
-            self.set_param_values(k, v.copy())
+    
+    def clone(self) -> "State":
+        _n_voronoi_cells = self.n_voronoi_cells
+        _voronoi_sites = self.voronoi_sites.copy()
+        _noise_std = self.noise_std
+        _noise_corr = self.noise_correlation
+        _param_values = dict()
+        for k, v in self.param_values.items():
+            _param_values[k] = v.copy()
+        return State(
+            _n_voronoi_cells, 
+            _voronoi_sites, 
+            _param_values, 
+            _noise_std, 
+            _noise_corr, 
+        )
