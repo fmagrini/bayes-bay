@@ -196,7 +196,7 @@ class DeathFromNeighbour1D(DeathPerturbation1D):
             theta = param.get_perturb_std(self._removed_site)
             nearest_value = self._new_model.get_param_values(param_name)[i_nearest]
             removed_value = self._removed_values[param_name]
-            ratio += (
+            ratio -= (
                 math.log(theta**2 * SQRT_TWO_PI)
                 + (removed_value - nearest_value) ** 2 / 2 * theta**2
             )
