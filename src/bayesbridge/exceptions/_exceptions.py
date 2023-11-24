@@ -24,10 +24,10 @@ class ForwardException(Exception):
     """
 
     def __init__(self, original_exc):
-        self.message = (
+        self.message = "error occurred when running the forward function - " + (
             original_exc.message
             if hasattr(original_exc, "message")
-            else "Error occurred when running the forward function"
+            else f"{type(original_exc).__name__}: {str(original_exc)}"
         )
         super().__init__(self.message)
 

@@ -91,6 +91,7 @@ free_parameters = [param_vs]
 parameterization = bb.Voronoi1D(
     voronoi_site_bounds=(VORONOI_POS_MIN, VORONOI_POS_MAX), 
     voronoi_site_perturb_std=VORONOI_PERTURB_STD, 
+    free_params=free_parameters, 
     n_voronoi_cells=None, 
     n_voronoi_cells_min=LAYERS_MIN, 
     n_voronoi_cells_max=LAYERS_MAX, 

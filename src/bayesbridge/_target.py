@@ -45,30 +45,14 @@ class Target:
     @property
     def perturbation_function(self) -> Callable[[State], Tuple[State, Number]]:
         return self._perturbation_func
+    
+    @property
+    def prior_ratio_function(self) -> Callable[[State], Number]:
+        return self._perturbation_func.prior_ratio
 
     @property
     def is_hierarchical(self):
         return self.perturbation_function is not None
-
-    # def perturb_covariance(self):
-    #     to_be_perturbed = random.choice(self._perturbations)
-    #     name = to_be_perturbed["name"]
-    #     std = to_be_perturbed["perturb_std"]
-    #     vmin, vmax = to_be_perturbed["min"], to_be_perturbed["max"]
-    #     value = self._current_state[name]
-    #     while True:
-    #         random_deviate = random.normalvariate(0, std)
-    #         new_value = value + random_deviate
-    #         if not (new_value < vmin or new_value > vmax)if not (new_value < vmin or new_value > vmax)::
-    #             self._proposed_state[name] = new_value
-    #             break
-    #     return 0
-
-    # def finalize_perturbation(self, accepted):
-    #     accepted_state = self._proposed_state if accepted else self._current_state
-    #     rejected_state = self._current_state if accepted else self._proposed_state
-    #     for k, v in accepted_state.items():
-    #         rejected_state[k] = v
 
     def covariance_times_vector(self, vector):
         if hasattr(self, "covariance_mat_inv"):

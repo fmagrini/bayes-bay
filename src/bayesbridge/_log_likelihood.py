@@ -22,6 +22,10 @@ class LogLikelihood:
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
         return self._perturbation_funcs
     
+    @property
+    def prior_ratio_functions(self) -> List[Callable[[State], Number]]:
+        return self._prior_ratio_funcs
+    
     def log_likelihood_ratio(self, old_model, new_model):
         old_misfit, old_log_det = self._get_misfit_and_det(old_model)
         new_misfit, new_log_det = self._get_misfit_and_det(new_model)
@@ -33,9 +37,11 @@ class LogLikelihood:
     
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []
+        self._prior_ratio_funcs = []
         for target in self.targets:
             if target.is_hierarchical:
-                self._perturbation_funcs.append(target.perturb_covariance)
+                self._perturbation_funcs.append(target.perturbation_function)
+                self._prior_ratio_funcs.append(target.prior_ratio_function)
 
     def _get_misfit_and_det(self, model: State) -> Tuple[Number, Number]:
         model_hash = hash(model)

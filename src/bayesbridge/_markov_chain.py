@@ -114,14 +114,16 @@ class BaseMarkovChain:
             # perturb and calculate the log proposal ratio
             try:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
-            except:
+            except Exception as e:
+                print("LOG:", e)
                 continue
             
             # calculate the log posterior ratio
             log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model, i_perturb)
-            except Exception:
+            except Exception as e:
+                print("LOG:", e)
                 self._fwd_failure_counts_total += 1
                 continue
             log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
@@ -174,7 +176,7 @@ class MarkovChain(BaseMarkovChain):
         self.id = id
         self.parameterization = parameterization
         self.parameterization.initialize()
-        self.log_like_ratio_func = LogLikelihood(
+        self._log_like_ratio_func = LogLikelihood(
             targets=targets,
             fwd_functions=fwd_functions,
         )
@@ -189,17 +191,17 @@ class MarkovChain(BaseMarkovChain):
     
     def _log_likelihood_ratio(self, new_model, i_perturb):
         # tempered by self.temperature
-        log_like_ratio = self.log_like_ratio_func(self.current_model, new_model)
+        log_like_ratio = self._log_like_ratio_func(self.current_model, new_model)
         return log_like_ratio / self.temperature
     
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
         priors_from_parameterization = self.parameterization.prior_ratio_functions
-        # TODO: data noise perturbations and associated log prior ratios
-        funcs_from_log_likelihood = self.log_like_ratio_func.perturbation_functions
-        self.perturbation_funcs = funcs_from_parameterization
+        funcs_from_log_likelihood = self._log_like_ratio_func.perturbation_functions
+        priors_from_log_likelihood = self._log_like_ratio_func.prior_ratio_functions
+        self.perturbation_funcs = funcs_from_parameterization + funcs_from_log_likelihood
         self.perturbation_types = [f.type for f in self.perturbation_funcs]
-        self.log_prior_ratio_funcs = priors_from_parameterization
+        self.log_prior_ratio_funcs = priors_from_parameterization + priors_from_log_likelihood
 
     def initialize(self):
         self.current_model = self.parameterization.initialize()
@@ -210,49 +212,6 @@ class MarkovChain(BaseMarkovChain):
     #     `advance_chain` is called
     #     """
     #     return getattr(self, "_saved_targets", None)
-
-    # def _init_perturbation_funcs(self):
-    #     perturb_voronoi = [self.parameterization.perturbation_voronoi_site]
-    #     finalize_voronoi = [self.parameterization.finalize_perturbation]
-    #     perturb_types = ["VoronoiSite"]
-    #     if self.parameterization.trans_d:
-    #         perturb_voronoi += [
-    #             self.parameterization.perturbation_birth,
-    #             self.parameterization.perturbation_death,
-    #         ]
-    #         finalize_voronoi += [
-    #             self.parameterization.finalize_perturbation,
-    #             self.parameterization.finalize_perturbation,
-    #         ]
-    #         perturb_types += ["Birth", "Death"]
-
-    #     perturb_free_params = []
-    #     perturb_free_params_types = []
-    #     finalize_free_params = []
-    #     for name in self.parameterization.free_params:
-    #         perturb_free_params.append(
-    #             partial(self.parameterization.perturbation_free_param, param_name=name)
-    #         )
-    #         perturb_free_params_types.append("Param - " + name)
-    #         finalize_free_params.append(self.parameterization.finalize_perturbation)
-
-    #     perturb_targets = []
-    #     perturb_targets_types = []
-    #     finalize_targets = []
-    #     for target in self.log_likelihood.targets:
-    #         if target.is_hierarchical:
-    #             perturb_targets.append(target.perturb_covariance)
-    #             perturb_targets_types.append("Target - " + target.name)
-    #             finalize_targets.append(target.finalize_perturbation)
-
-    #     self.perturbation_funcs = perturb_voronoi + perturb_free_params + perturb_targets
-    #     self.perturbation_types = (
-    #         perturb_types + perturb_free_params_types + perturb_targets_types
-    #     )
-    #     self.finalization_funcs = finalize_voronoi + finalize_free_params + finalize_targets
-
-    #     assert len(self.perturbation_funcs) == len(self.perturbation_types)
-    #     assert len(self.perturbation_funcs) == len(self.finalization_funcs)
 
     # def _init_saved_models(self):
     #     trans_d = self.parameterization.trans_d

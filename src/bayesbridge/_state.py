@@ -66,3 +66,11 @@ class State:
             _noise_std, 
             _noise_corr, 
         )
+
+    def __hash__(self):
+        voronoi_sites_sum = np.sum(self.voronoi_sites)
+        voronoi_sites_min = np.min(self.voronoi_sites)
+        voronoi_sites_max = np.max(self.voronoi_sites)
+        voronoi_sites_hash = hash((voronoi_sites_sum, voronoi_sites_min, voronoi_sites_max))
+        param_values_hash = hash(frozenset((k, np.sum(v), np.min(v), np.max(v)) for k, v in self.param_values.items()))
+        return hash((self.n_voronoi_cells, voronoi_sites_hash, param_values_hash, self.noise_std, self.noise_correlation))

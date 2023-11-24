@@ -3,11 +3,10 @@ from typing import Tuple
 import random
 
 from .._state import State
-from .._parameterizations import Parameterization
 from ._base_perturbation import Perturbation
 
 
-class NoisePerturbation(Perturbation):  # TODO
+class NoisePerturbation(Perturbation):
     def __init__(
         self, 
         std_min: Number, 
@@ -35,9 +34,10 @@ class NoisePerturbation(Perturbation):  # TODO
             new_value = old_value + random_deviate
             if new_value < vmin or new_value > vmax:
                 continue
+            break
         new_model = model.clone()
         setattr(self, f"noise_{to_be_perturbed}", new_value)
         return new_model, 0
         
     def prior_ratio(self, old_model: State, new_model: State) -> Number:
-        return super().prior_ratio(old_model, new_model)
+        return 0
