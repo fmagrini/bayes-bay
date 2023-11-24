@@ -115,7 +115,7 @@ class BaseMarkovChain:
             try:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
             except Exception as e:
-                print("LOG:", e)
+                # print("LOG:", e)
                 continue
             
             # calculate the log posterior ratio
@@ -123,7 +123,7 @@ class BaseMarkovChain:
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model, i_perturb)
             except Exception as e:
-                print("LOG:", e)
+                # print("LOG:", e)
                 self._fwd_failure_counts_total += 1
                 continue
             log_posterior_ratio = log_prior_ratio + log_likelihood_ratio

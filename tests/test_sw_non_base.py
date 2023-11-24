@@ -25,8 +25,12 @@ def forward_sw(model: bb.State, periods, wave="rayleigh", mode=1):
     k = model.n_voronoi_cells
     sites = model.voronoi_sites
     vs = model.get_param_values("vs")
-    depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:]-depths[:-1], 0))
+    if hasattr(model, "thickness"):
+        thickness = model.thickness
+    else:
+        depths = (sites[:-1] + sites[1:]) / 2
+        thickness = np.hstack((depths[0], depths[1:]-depths[:-1], 0))
+        model.thickness = thickness
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
