@@ -29,7 +29,7 @@ class LogLikelihood:
     def log_likelihood_ratio(self, old_model, new_model):
         old_misfit, old_log_det = self._get_misfit_and_det(old_model)
         new_misfit, new_log_det = self._get_misfit_and_det(new_model)
-        log_like_ratio = (old_log_det - new_log_det) + (old_misfit - new_misfit) / 2
+        log_like_ratio = (old_log_det - new_log_det + old_misfit - new_misfit) / 2
         return log_like_ratio
 
     def __call__(self, old_misfit, temperature) -> Any:

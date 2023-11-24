@@ -1,11 +1,12 @@
 from abc import abstractmethod
-from typing import Callable, List
+from typing import Callable, List, Tuple
 from functools import partial
 import multiprocessing
 import math
 import random
 import numpy as np
-from .._markov_chain import MarkovChain
+
+from .._markov_chain import MarkovChain, BaseMarkovChain
 
 
 class Sampler:
@@ -51,11 +52,11 @@ class Sampler:
         raise NotImplementedError
 
     @property
-    def chains(self):
+    def chains(self) -> List[BaseMarkovChain]:
         return self._chains
 
     @property
-    def iteration(self):
+    def iteration(self) -> int:
         return self._iteration
 
     def advance_chain(
@@ -173,10 +174,11 @@ class ParallelTempering(Sampler):
 
     def on_advance_chain_end(self):
         for i in range(len(self.chains)):
-            chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
+            (chain1, chain2): Tuple[BaseMarkovChain, BaseMarkovChain] = \
+                np.random.choice(self.chains, 2, replace=False)
             T1, T2 = chain1.temperature, chain2.temperature
-            misfit1, misfit2 = chain1._current_misfit, chain2._current_misfit
-            prob = (1 / T1 - 1 / T2) * (misfit1 - misfit2)
+            log_like_ratio = chain1._log_likelihood_ratio(chain2.current_model)
+            prob = (1 / T1 - 1 / T2) * log_like_ratio
             if prob > math.log(random.random()):
                 chain1.temperature = T2
                 chain2.temperature = T1

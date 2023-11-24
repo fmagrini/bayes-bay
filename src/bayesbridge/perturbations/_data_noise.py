@@ -36,7 +36,7 @@ class NoisePerturbation(Perturbation):
                 continue
             break
         new_model = model.clone()
-        setattr(self, f"noise_{to_be_perturbed}", new_value)
+        setattr(new_model, f"noise_{to_be_perturbed}", new_value)
         return new_model, 0
 
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:

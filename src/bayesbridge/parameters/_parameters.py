@@ -64,8 +64,12 @@ class Parameter(ABC):
         initialize_func (callable): The function to use for initialization. This function should take no arguments.
 
         Example:
-        def my_init(positions: Union[np.ndarray, Number]) -> Union[np.ndarray, Number]:
+        def my_init(
+            param: bb.parameters.Parameter, 
+            positions: Union[np.ndarray, Number]
+        ) -> Union[np.ndarray, Number]:
             print("This is my custom init!")
+
         my_object.set_custom_initialize(my_init)
         """
         if not callable(initialize_func):

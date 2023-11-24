@@ -106,8 +106,7 @@ class BaseMarkovChain:
     def _log_likelihood_ratio(self, new_model, i_perturb):
         log_likelihood_old = self.log_likelihood_func(self.current_model)
         log_likelihood_new = self.log_likelihood_func(new_model)
-        tempered_ratio = (log_likelihood_new - log_likelihood_old) / self.temperature
-        return tempered_ratio  # TODO proofread this tempering!
+        return log_likelihood_new - log_likelihood_old
 
     def _next_iteration(self, save_model):
         for i in range(500):
@@ -126,11 +125,12 @@ class BaseMarkovChain:
             log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model, i_perturb)
+                tempered_loglike_ratio = log_likelihood_ratio / self.temperature
             except Exception as e:
                 # print("LOG:", e)
                 self._fwd_failure_counts_total += 1
                 continue
-            log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
+            log_posterior_ratio = log_prior_ratio + tempered_loglike_ratio
 
             # decide whether to accept
             log_probability_ratio = log_proposal_ratio + log_posterior_ratio
@@ -190,13 +190,16 @@ class MarkovChain(BaseMarkovChain):
         self._init_saved_models()
         self.initialize()
 
+    def initialize(self):
+        self.current_model = self.parameterization.initialize()
+
     def _log_prior_ratio(self, new_model, i_perturb):
         return self.log_prior_ratio_funcs[i_perturb](self.current_model, new_model)
 
     def _log_likelihood_ratio(self, new_model, i_perturb):
         # tempered by self.temperature
         log_like_ratio = self._log_like_ratio_func(self.current_model, new_model)
-        return log_like_ratio / self.temperature
+        return log_like_ratio
 
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
@@ -214,102 +217,3 @@ class MarkovChain(BaseMarkovChain):
         self.log_prior_ratio_funcs = (
             log_priors_from_parameterization + log_priors_from_log_likelihood
         )
-
-    def initialize(self):
-        self.current_model = self.parameterization.initialize()
-
-    # @property
-    # def saved_targets(self):
-    #     """targets that are saved in current chain; intialized everytime
-    #     `advance_chain` is called
-    #     """
-    #     return getattr(self, "_saved_targets", None)
-
-    # def _init_saved_models(self):
-    #     trans_d = self.parameterization.trans_d
-    #     saved_models = {
-    #         k: []
-    #         for k in self.parameterization.model.current_state
-    #         if k != "n_voronoi_cells"
-    #     }
-    #     saved_models["n_voronoi_cells"] = (
-    #         []
-    #         if trans_d
-    #         else self.parameterization.model.current_state["n_voronoi_cells"]
-    #     )
-    #     saved_models["misfits"] = []
-    #     self._saved_models = saved_models
-
-    # def _init_saved_targets(self):
-    #     saved_targets = {}
-    #     for target in self.log_likelihood.targets:
-    #         if target.save_dpred:
-    #             saved_targets[target.name] = {"dpred": []}
-    #         if target.is_hierarchical:
-    #             saved_targets[target.name]["sigma"] = []
-    #             if target.noise_is_correlated:
-    #                 saved_targets[target.name]["correlation"] = []
-    #     self._saved_targets = saved_targets
-
-    # def _save_model(self, misfit):
-    #     self.saved_models["misfits"].append(misfit)
-    #     for key, value in self.parameterization.model.proposed_state.items():
-    #         if key == "n_voronoi_cells":
-    #             if isinstance(self.saved_models["n_voronoi_cells"], int):
-    #                 continue
-    #             else:
-    #                 self.saved_models["n_voronoi_cells"].append(value)
-    #         else:
-    #             self.saved_models[key].append(value)
-
-    # def _save_target(self):
-    #     for target in self.log_likelihood.targets:
-    #         if target.save_dpred:
-    #             self.saved_targets[target.name]["dpred"].append(
-    #                 self.log_likelihood.proposed_dpred[target.name]
-    #             )
-    #         if target.is_hierarchical:
-    #             self.saved_targets[target.name]["sigma"].append(
-    #                 target._proposed_state["sigma"]
-    #             )
-    #             if target.noise_is_correlated:
-    #                 self.saved_targets[target.name]["correlation"].append(
-    #                     target._proposed_state["correlation"]
-    #                 )
-
-    # def _next_iteration(self, save_model):
-    #     for i in range(500):
-    #         # choose one perturbation function and type
-    #         perturb_i = random.randint(0, len(self.perturbation_funcs) - 1)
-
-    #         # propose new model and calculate probability ratios
-    #         try:
-    #             log_prob_ratio = self.perturbation_funcs[perturb_i]()
-    #         except DimensionalityException:
-    #             continue
-
-    #         # calculate the forward and evaluate log_likelihood
-    #         try:
-    #             log_likelihood_ratio, misfit = self.log_likelihood(
-    #                 self._current_misfit, self.temperature
-    #             )
-    #         except ForwardException:
-    #             self.finalization_funcs[perturb_i](False)
-    #             self._fwd_failure_counts_total += 1
-    #             continue
-
-    #         # decide whether to accept
-    #         accepted = log_prob_ratio + log_likelihood_ratio > math.log(random.random())
-
-    #         if save_model and self.temperature == 1:
-    #             self._save_model(misfit)
-    #             self._save_target()
-
-    #         # finalize perturbation based whether it's accepted
-    #         self.finalization_funcs[perturb_i](accepted)
-    #         self._current_misfit = misfit if accepted else self._current_misfit
-
-    #         # save statistics
-    #         self._save_statistics(perturb_i, accepted)
-    #         return
-    #     raise RuntimeError("Chain getting stuck")
