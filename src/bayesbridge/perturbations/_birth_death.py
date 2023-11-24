@@ -125,7 +125,7 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
         ratio = 0
         for param_name, param in self.parameters.items():
             new_val = self._all_new_values[param_name]
-            ratio += param.log_pdf(self._new_site, new_val)
+            ratio += param.log_prior(self._new_site, new_val)
         return ratio
 
 
@@ -210,5 +210,5 @@ class DeathFromPrior1D(DeathPerturbation1D):
         ratio = 0
         for param_name, param in self.parameters.items():
             removed_val = self._removed_values[param_name]
-            ratio -= param.log_pdf(self._removed_site, removed_val)
+            ratio -= param.log_prior(self._removed_site, removed_val)
         return ratio

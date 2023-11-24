@@ -35,7 +35,7 @@ class Parameter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def log_pdf(self, position, value):
+    def log_prior(self, position, value):
         raise NotImplementedError
 
     @abstractmethod
@@ -170,7 +170,7 @@ class UniformParameter(Parameter):
             if new_value >= vmin and new_value <= vmax:
                 return new_value
 
-    def log_pdf(self, position, value):
+    def log_prior(self, position, value):
         vmin, vmax = self.get_vmin_vmax(position)
         if vmin <= value <= vmax:
             return -math.log(vmax - vmin)
@@ -253,7 +253,7 @@ class GaussianParameter(Parameter):
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
 
-    def log_pdf(self, position, value):
+    def log_prior(self, position, value):
         mean = self.get_mean(position)
         var = self.get_std(position) ** 2
         return -0.5 * ((value - mean) ** 2 / var + math.log(2 * math.pi * var))
@@ -311,7 +311,7 @@ class ParameterFromPrior(Parameter):
     def perturb_value(self, position, value):
         return self._perturb_value(position, value)
 
-    def log_pdf(self, position, value):
+    def log_prior(self, position, value):
         return self._log_prior(position, value)
 
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
