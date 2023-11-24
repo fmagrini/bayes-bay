@@ -58,7 +58,7 @@ class Voronoi1DPerturbation(Perturbation):
         proposal_ratio = self._proposal_ratio(old_site, new_site)
         return new_model, proposal_ratio
 
-    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         # p(k) ratio and p(c|k) ratio both evaluate to 0
         # calculate only p(v|c) below
         prior_value_ratio = 0
@@ -66,7 +66,7 @@ class Voronoi1DPerturbation(Perturbation):
         new_site = new_model.voronoi_sites[self._isite]
         for param_name, param in self.parameters.items():
             value = old_model.get_param_values(param_name)[self._isite]
-            prior_value_ratio += param.prior_ratio_perturbation_voronoi_site(
+            prior_value_ratio += param.log_prior_ratio_perturbation_voronoi_site(
                 old_site, new_site, value
             )
         return prior_value_ratio

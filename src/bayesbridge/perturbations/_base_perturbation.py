@@ -14,7 +14,7 @@ class Perturbation:
         return self.perturb(model)
 
     @abstractmethod
-    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         raise NotImplementedError
 
     @property

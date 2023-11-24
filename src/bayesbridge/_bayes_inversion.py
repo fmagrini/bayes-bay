@@ -2,7 +2,6 @@ from typing import List, Callable, Tuple, Any
 from numbers import Number
 from copy import deepcopy
 from collections import defaultdict
-import numpy
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler 
 
@@ -35,7 +34,7 @@ class BaseBayesianInversion:
         ]
         
     @property
-    def chains(self):
+    def chains(self) -> List[BaseMarkovChain]:
         return self._chains
 
     def run(

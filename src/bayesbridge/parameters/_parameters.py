@@ -7,10 +7,10 @@ Created on Wed Dec 21 15:56:00 2022
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Union
 from numbers import Number
 import random
-from functools import partial, partialmethod
+from functools import partial
 import math
 import numpy as np
 from .._utils_bayes import interpolate_linear_1d
@@ -25,7 +25,7 @@ class Parameter(ABC):
         self.init_params = kwargs
 
     @abstractmethod
-    def initialize(self, positions: np.ndarray) -> np.ndarray:
+    def initialize(self, positions: Union[np.ndarray, Number]) -> Union[np.ndarray, Number]:
         raise NotImplementedError
 
     @abstractmethod
@@ -37,19 +37,19 @@ class Parameter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+    def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         raise NotImplementedError
     
     @abstractmethod
-    def prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
         raise NotImplementedError
     
     @abstractmethod
-    def prior_ratio_perturbation_birth(self, new_position, new_value):
+    def log_prior_ratio_perturbation_birth(self, new_position, new_value):
         raise NotImplementedError
     
     @abstractmethod
-    def prior_ratio_perturbation_death(self, removed_position, removed_value):
+    def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
         raise NotImplementedError
     
     def set_custom_initialize(self, initialize_func):
@@ -60,7 +60,7 @@ class Parameter(ABC):
         initialize_func (callable): The function to use for initialization. This function should take no arguments.
 
         Example:
-        def my_init():
+        def my_init(positions: Union[np.ndarray, Number]) -> Union[np.ndarray, Number]:
             print("This is my custom init!")
         my_object.set_custom_initialize(my_init)
         """
@@ -143,10 +143,12 @@ class UniformParameter(Parameter):
     def get_perturb_std(self, position):
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
     
-    def initialize(self, positions):
+    def initialize(self, positions: Union[np.ndarray, Number]) -> Union[np.ndarray, Number]:
         vmin, vmax = self.get_vmin_vmax(positions)
-        values = np.random.uniform(vmin, vmax, positions.size)
-        return values
+        if isinstance(positions, Number):
+            return random.uniform(vmin, vmax)
+        else:
+            return np.random.uniform(vmin, vmax, positions.size)
 
     def perturb_value(self, position, value):
         # randomly perturb the value until within range
@@ -165,19 +167,19 @@ class UniformParameter(Parameter):
         else:
             return -math.inf
 
-    def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+    def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         return 0
     
-    def prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
         old_delta = self.get_delta(old_position)
         new_delta = self.get_delta(new_position)
         return math.log(old_delta / new_delta)
     
-    def prior_ratio_perturbation_birth(self, new_position, new_value):
-        return 1 / self.get_delta(new_position)
+    def log_prior_ratio_perturbation_birth(self, new_position, new_value):
+        return - math.log(self.get_delta(new_position))
     
-    def prior_ratio_perturbation_death(self, removed_position, removed_value):
-        return self.get_delta(removed_position)
+    def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
+        return math.log(self.get_delta(removed_position))
 
 
 class GaussianParameter(Parameter):
@@ -244,12 +246,12 @@ class GaussianParameter(Parameter):
         var = self.get_std(position) ** 2
         return -0.5 * ((value - mean) ** 2 / var + math.log(2 * math.pi * var))
 
-    def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+    def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         mean = self.get_mean(position)
         std = self.get_std(position)
         return (old_value - mean)**2 - (new_value - mean)**2 / (2*std**2)
     
-    def prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
         old_mean = self.get_mean(old_position)
         new_mean = self.get_mean(new_position)
         old_std = self.get_std(old_position)
@@ -258,12 +260,12 @@ class GaussianParameter(Parameter):
             (new_std**2*(value-old_mean)**2 - old_std**2*(value-new_mean) / \
                 2*old_std**2*new_std**2)
     
-    def prior_ratio_perturbation_birth(self, new_position, new_value):
+    def log_prior_ratio_perturbation_birth(self, new_position, new_value):
         mean = self.get_mean(new_position)
         std = self.get_std(new_position)
         return -math.log(std*SQRT_TWO_PI) - (new_value - mean)**2 / (2*std)
     
-    def prior_ratio_perturbation_death(self, removed_position, removed_value):
+    def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
         mean = self.get_mean(removed_position)
         std = self.get_std(removed_position)
         return math.log(std*SQRT_TWO_PI) + (removed_value-mean)**2 / (2*std)
@@ -297,18 +299,18 @@ class ParameterFromPrior(Parameter):
     def log_pdf(self, position, value):
         return self._log_prior(position, value)
         
-    def prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+    def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         new_log_prior = self._log_prior(position, new_value)
         old_log_prior = self._log_prior(position, old_value)    
         return new_log_prior - old_log_prior
 
-    def prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
         new_log_prior = self._log_prior(new_position, value)
         old_log_prior = self._log_prior(old_position, value)
         return new_log_prior - old_log_prior
     
-    def prior_ratio_perturbation_birth(self, new_position, new_value):
+    def log_prior_ratio_perturbation_birth(self, new_position, new_value):
         return self._log_prior(new_position, new_value)
     
-    def prior_ratio_perturbation_death(self, removed_position, removed_value):
+    def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
         return - self._log_prior(removed_position, removed_value)

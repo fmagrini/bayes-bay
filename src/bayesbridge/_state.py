@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Any
 from numbers import Number
 import numpy as np
 
@@ -15,6 +15,8 @@ class State:
         when ``n_voronoi_cells`` is not an int
     TypeError
         when ``voronoi_sites`` is not a numpy ndarray
+    TypeError
+        when ``param_values`` is not a dict
     AssertionError
         when the length of ``voronoi_sites`` isn't aligned with ``n_voronoi_cells``
     """
@@ -23,12 +25,15 @@ class State:
     param_values: Dict[str, np.ndarray] = field(default_factory=dict)
     noise_std: Number = None
     noise_correlation: Number = None
+    cache: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):
         if not isinstance(self.n_voronoi_cells, int):
             raise TypeError("n_voronoi_cells should be an int")
         if not isinstance(self.voronoi_sites, np.ndarray):
             raise TypeError("voronoi_sites should be a numpy ndarray")
+        if not isinstance(self.param_values, dict):
+            raise TypeError("param_values should be a dict")
         assert len(self.voronoi_sites) == self.n_voronoi_cells, \
             "lengths of voronoi_sites should be the same as n_voronoi_cells"
         for name, values in self.param_values.items():
@@ -44,6 +49,15 @@ class State:
 
     def get_param_values(self, name):
         return getattr(self, name, None)
+    
+    def has_cache(self, name: str) -> bool:
+        return name in self.cache
+    
+    def load_cache(self, name: str) -> Any:
+        return self.cache[name]
+    
+    def store_cache(self, name: str, value: Any):
+        self.cache[name] = value
 
     def __iter__(self):
         return iter(vars(self))

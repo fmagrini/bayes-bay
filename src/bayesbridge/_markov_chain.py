@@ -106,7 +106,7 @@ class BaseMarkovChain:
         return tempered_ratio       # TODO proofread this tempering!
 
     def _next_iteration(self, save_model):
-        for i in range(100):
+        for i in range(500):
             # choose one perturbation function and type
             i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
             perturb_func = self.perturbation_funcs[i_perturb]
@@ -196,12 +196,12 @@ class MarkovChain(BaseMarkovChain):
     
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
-        priors_from_parameterization = self.parameterization.prior_ratio_functions
+        log_priors_from_parameterization = self.parameterization.log_prior_ratio_functions
         funcs_from_log_likelihood = self._log_like_ratio_func.perturbation_functions
-        priors_from_log_likelihood = self._log_like_ratio_func.prior_ratio_functions
+        log_priors_from_log_likelihood = self._log_like_ratio_func.log_prior_ratio_functions
         self.perturbation_funcs = funcs_from_parameterization + funcs_from_log_likelihood
         self.perturbation_types = [f.type for f in self.perturbation_funcs]
-        self.log_prior_ratio_funcs = priors_from_parameterization + priors_from_log_likelihood
+        self.log_prior_ratio_funcs = log_priors_from_parameterization + log_priors_from_log_likelihood
 
     def initialize(self):
         self.current_model = self.parameterization.initialize()

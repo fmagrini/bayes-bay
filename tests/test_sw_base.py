@@ -54,20 +54,15 @@ love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 
 # -------------- Implement distribution functions
-_N = 100_000   # possible positions, to be cancelled out in the final ratio
-
 def log_prior(model):
     k = int(len(model) / 2)
     vs = model[k:]
-    # p(c|k) prior on voronoi cell positions given #layers
-    log_p_c_k = math.factorial(k) / np.prod(np.arange(_N-k+1, _N+1))
+    # p(k) and p(c|k) are to be cancelled out in acceptance criteria
     # p(v|k) prior on param value given #layers
     log_p_v_k = float("-inf") \
         if any(vs > VS_UNIFORM_MAX) or any(vs < VS_UNIFORM_MIN) \
             else - k * math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
-    # p(k) prior on #layers
-    log_p_k = - math.log(LAYERS_MAX - LAYERS_MIN)
-    return log_p_c_k + log_p_v_k + log_p_k
+    return log_p_v_k
 
 def log_likelihood(model):
     rayleigh_dpred = forward_sw(model, periods1, "rayleigh", 1)
@@ -155,7 +150,7 @@ def perturbation_birth(model):
     new_vs = new_vs[isort]
     new_model = np.hstack((new_sites, new_vs))
     # calculate proposal ratio
-    log_proposal_ratio = math.log((_N-k) / (k+1) / (VS_UNIFORM_MAX - VS_UNIFORM_MIN))
+    log_proposal_ratio = - math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
     return new_model, log_proposal_ratio
 
 def perturbation_death(model):
@@ -171,7 +166,7 @@ def perturbation_death(model):
     new_vs = np.delete(vs, isite)
     new_model = np.hstack((new_sites, new_vs))
     # calculate proposal ratio
-    log_proposal_ratio = math.log(k * (VS_UNIFORM_MAX - VS_UNIFORM_MIN) / (_N-k+1))
+    log_proposal_ratio = math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
     return new_model, log_proposal_ratio
 
 

@@ -39,5 +39,5 @@ class NoisePerturbation(Perturbation):
         setattr(self, f"noise_{to_be_perturbed}", new_value)
         return new_model, 0
         
-    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         return 0

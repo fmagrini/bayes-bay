@@ -36,7 +36,7 @@ class Parameterization(ABC):
 
     @property
     @abstractmethod
-    def prior_ratio_functions(self, old_model: State, new_model) -> Number:
+    def log_prior_ratio_functions(self, old_model: State, new_model) -> Number:
         raise NotImplementedError
 
     @abstractmethod
@@ -71,7 +71,7 @@ class Voronoi1D(Parameterization):
             for param in free_params:
                 self.free_params[param.name] = param
         self._init_perturbation_funcs()
-        self._init_prior_ratio_funcs()
+        self._init_log_prior_ratio_funcs()
 
     @property
     def trans_d(self) -> bool:
@@ -137,9 +137,9 @@ class Voronoi1D(Parameterization):
                     DeathFromPrior1D(**death_perturb_params)
                 )
 
-    def _init_prior_ratio_funcs(self):
-        self._prior_ratio_funcs = [
-            func.prior_ratio for func in self._perturbation_funcs
+    def _init_log_prior_ratio_funcs(self):
+        self._log_prior_ratio_funcs = [
+            func.log_prior_ratio for func in self._perturbation_funcs
         ]
 
     @property
@@ -147,8 +147,8 @@ class Voronoi1D(Parameterization):
         return self._perturbation_funcs
 
     @property
-    def prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
-        return self._prior_ratio_funcs
+    def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
+        return self._log_prior_ratio_funcs
 
     @staticmethod
     def get_ensemble_statistics(

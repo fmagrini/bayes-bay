@@ -45,7 +45,7 @@ class BirthPerturbation1D(Perturbation):
         isort = np.argsort(new_sites)
         new_sites = new_sites[isort]
         new_values = dict()
-        for name, values in unsorted_values:
+        for name, values in unsorted_values.items():
             new_values[name] = values[isort]
         new_model = State(n_cells + 1, new_sites, new_values)
         # calculate proposal ratio
@@ -58,14 +58,14 @@ class BirthPerturbation1D(Perturbation):
     ) -> Dict[str, np.ndarray]:
         raise NotImplementedError
 
-    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         # p(k) ratio is always 0 so omitted here
         # p(c|k) ratio = \frac{k+1}{N-k} cancels out with proposal ratio so omitted here
         # calculate only p(v|c) below
         prior_value_ratio = 0
         for param_name, param in self.parameters.items():
             new_value = new_model.get_param_values(param_name)
-            prior_value_ratio += param.prior_ratio_perturbation_birth(
+            prior_value_ratio += param.log_prior_ratio_perturbation_birth(
                 self._new_site, new_value
             )
         return prior_value_ratio
@@ -167,14 +167,14 @@ class DeathPerturbation1D(Perturbation):  # TODO
             new_values[param_name] = np.delete(old_values, isite)
         return new_values
 
-    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         # p(k) ratio is always 0 so omitted here
         # p(c|k) ratio = \frac{k}{N-k+1} cancels out with proposal ratio so omitted here
         # calculate only p(v|c) below
         prior_value_ratio = 0
         for param_name, param in self.parameters.items():
             removed_value = old_model.get_param_values(param_name)[self._i_removed]
-            prior_value_ratio += param.prior_ratio_perturbation_death(
+            prior_value_ratio += param.log_prior_ratio_perturbation_death(
                 self._removed_site, removed_value
             )
         return prior_value_ratio

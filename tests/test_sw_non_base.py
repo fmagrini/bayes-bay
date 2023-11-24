@@ -25,12 +25,12 @@ def forward_sw(model: bb.State, periods, wave="rayleigh", mode=1):
     k = model.n_voronoi_cells
     sites = model.voronoi_sites
     vs = model.get_param_values("vs")
-    if hasattr(model, "thickness"):
-        thickness = model.thickness
+    if model.has_cache("thickness"):
+        thickness = model.load_cache("thickness")
     else:
         depths = (sites[:-1] + sites[1:]) / 2
         thickness = np.hstack((depths[0], depths[1:]-depths[:-1], 0))
-        model.thickness = thickness
+        model.store_cache("thickness", thickness)
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
@@ -77,6 +77,8 @@ param_vs = bb.parameters.UniformParameter(
 
 def param_vs_initialize(param, positions):
     vmin, vmax = param.get_vmin_vmax(positions)
+    if isinstance(positions, (float, int)):
+        return random.uniform(vmin, vmax)
     values = np.random.uniform(vmin, vmax, positions.size)
     sorted_values = np.sort(values)
     for i in range(len(sorted_values)):
@@ -99,7 +101,7 @@ parameterization = bb.Voronoi1D(
     n_voronoi_cells=None, 
     n_voronoi_cells_min=LAYERS_MIN, 
     n_voronoi_cells_max=LAYERS_MAX, 
-    birth_from="neighbour",     # or "prior"
+    birth_from="prior",     # or "prior"
 )
 
 # -------------- Run inversion

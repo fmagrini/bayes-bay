@@ -28,14 +28,15 @@ class ParamPerturbation(Perturbation):
         # structure new param value into new model
         new_values = old_values.copy()
         new_values[isite] = self._new_value
-        new_model = State(nsites, model.voronoi_sites.copy(), new_values)
+        new_model = model.clone()
+        new_model.set_param_values(self.param_name, new_values)
         # calculate proposal ratio
         proposal_ratio = 0
         return new_model, proposal_ratio
 
-    def prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         # p(k) ratio and p(c|k) ratio both evaluate to 0
         # calculate only p(v|c) below
-        return self.parameter.prior_ratio_perturbation_free_param(
+        return self.parameter.log_prior_ratio_perturbation_free_param(
             self._old_value, self._new_value, self._site
         )

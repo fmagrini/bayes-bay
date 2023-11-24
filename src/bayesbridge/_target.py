@@ -47,8 +47,8 @@ class Target:
         return self._perturbation_func
     
     @property
-    def prior_ratio_function(self) -> Callable[[State], Number]:
-        return self._perturbation_func.prior_ratio
+    def log_prior_ratio_function(self) -> Callable[[State], Number]:
+        return self._perturbation_func.log_prior_ratio
 
     @property
     def is_hierarchical(self):
