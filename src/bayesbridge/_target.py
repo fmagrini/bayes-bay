@@ -28,12 +28,14 @@ class Target:
         self.correlation = None
         if covariance_mat_inv is None:
             self._perturbation_func = NoisePerturbation(
-                std_min=std_min, 
-                std_max=std_max, 
-                std_perturb_std=std_perturb_std, 
-                correlation_min=correlation_min if noise_is_correlated else None, 
-                correlation_max=correlation_max if noise_is_correlated else None, 
-                correlation_perturb_std=correlation_perturb_std if noise_is_correlated else None, 
+                std_min=std_min,
+                std_max=std_max,
+                std_perturb_std=std_perturb_std,
+                correlation_min=correlation_min if noise_is_correlated else None,
+                correlation_max=correlation_max if noise_is_correlated else None,
+                correlation_perturb_std=correlation_perturb_std
+                if noise_is_correlated
+                else None,
             )
         else:
             self._perturbation_func = None
@@ -45,7 +47,7 @@ class Target:
     @property
     def perturbation_function(self) -> Callable[[State], Tuple[State, Number]]:
         return self._perturbation_func
-    
+
     @property
     def log_prior_ratio_function(self) -> Callable[[State], Number]:
         return self._perturbation_func.log_prior_ratio

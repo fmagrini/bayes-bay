@@ -10,7 +10,12 @@ Vs model from Fu et al. 2016, https://doi.org/10.1002/2016JB013305
 
 import numpy as np
 import matplotlib.pyplot as plt
-from bayesbridge import Parameterization1D, Target, BayesianInversionFromParameterization, State
+from bayesbridge import (
+    Parameterization1D,
+    Target,
+    BayesianInversionFromParameterization,
+    State,
+)
 from bayesbridge.parameters import UniformParameter
 from pysurf96 import surf96
 from BayHunter import SynthObs
@@ -22,6 +27,7 @@ LOVE_STD = 0.02
 RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
+
 
 def forward_sw(proposed_state, periods, wave="rayleigh", mode=1):
     thickness = proposed_state.voronoi_cell_extents
@@ -40,11 +46,12 @@ def forward_sw(proposed_state, periods, wave="rayleigh", mode=1):
         flat_earth=False,
     )
 
+
 def forward_rf(proposed_state):
     vs = proposed_state.vs
     h = proposed_state.voronoi_cell_extents
     data = SynthObs.return_rfdata(h, vs, vpvs=VP_VS, x=None)
-    return data['srf'][1,:]
+    return data["srf"][1, :]
 
 
 thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
@@ -95,24 +102,25 @@ targets = [
 ]
 
 fwd_functions = [
-    (forward_sw, [periods1, "rayleigh", 1]), 
+    (forward_sw, [periods1, "rayleigh", 1]),
     (forward_sw, [periods1, "love", 1]),
-    (forward_sw, [periods2, "rayleigh", 2]), 
+    (forward_sw, [periods2, "rayleigh", 2]),
     (forward_sw, [periods2, "love", 2]),
-    (forward_sw, [periods3, "rayleigh", 3]), 
+    (forward_sw, [periods3, "rayleigh", 3]),
     (forward_sw, [periods3, "love", 3]),
-    (forward_sw, [periods4, "rayleigh", 4]), 
+    (forward_sw, [periods4, "rayleigh", 4]),
     (forward_sw, [periods4, "love", 4]),
-    forward_rf
+    forward_rf,
 ]
 
 param_vs = UniformParameter(
-    "vs", 
+    "vs",
     vmin=[2.7, 3.2, 3.75],
     vmax=[4, 4.75, 5],
     perturb_std=0.15,
     position=[0, 40, 80],
 )
+
 
 def param_vs_initialize(param, positions):
     vmin, vmax = param.get_vmin_vmax(positions)
@@ -123,10 +131,13 @@ def param_vs_initialize(param, positions):
         vmin_i = vmin if np.isscalar(vmin) else vmin[i]
         vmax_i = vmax if np.isscalar(vmax) else vmax[i]
         if val < vmin_i or val > vmax_i:
-            if val > vmax_i: val = vmax_i
-            if val < vmin_i: val = vmin_i
+            if val > vmax_i:
+                val = vmax_i
+            if val < vmin_i:
+                val = vmin_i
             sorted_values[i] = param.perturb_value(positions[i], val)
     return sorted_values
+
 
 param_vs.set_custom_initialize(param_vs_initialize)
 free_parameters = [param_vs]

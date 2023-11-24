@@ -3,36 +3,38 @@ from numbers import Number
 from copy import deepcopy
 from collections import defaultdict
 from ._markov_chain import MarkovChain, BaseMarkovChain
-from .samplers import VanillaSampler 
+from .samplers import VanillaSampler
 
 
 class BaseBayesianInversion:
     def __init__(
-        self, 
-        walkers_starting_models: List[Any], 
-        perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]], 
-        log_prior_func: Callable[[Any], Number], 
-        log_likelihood_func: Callable[[Any], Number], 
-        n_chains: int = 10, 
-        n_cpus: int = 10, 
+        self,
+        walkers_starting_models: List[Any],
+        perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
+        log_prior_func: Callable[[Any], Number],
+        log_likelihood_func: Callable[[Any], Number],
+        n_chains: int = 10,
+        n_cpus: int = 10,
     ):
         self.walkers_starting_models = walkers_starting_models
-        self.perturbation_funcs = [_preprocess_func(func) for func in perturbation_funcs]
+        self.perturbation_funcs = [
+            _preprocess_func(func) for func in perturbation_funcs
+        ]
         self.log_prior_func = _preprocess_func(log_prior_func)
         self.log_likelihood_func = _preprocess_func(log_likelihood_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
             BaseMarkovChain(
-                i, 
-                walkers_starting_models[i], 
-                perturbation_funcs, 
-                self.log_prior_func, 
-                self.log_likelihood_func, 
+                i,
+                walkers_starting_models[i],
+                perturbation_funcs,
+                self.log_prior_func,
+                self.log_likelihood_func,
             )
             for i in range(n_chains)
         ]
-        
+
     @property
     def chains(self) -> List[BaseMarkovChain]:
         return self._chains
@@ -55,7 +57,7 @@ class BaseBayesianInversion:
             burnin_iterations=burnin_iterations,
             save_every=save_every,
             verbose=verbose,
-            print_every=print_every, 
+            print_every=print_every,
         )
 
     def get_results(self, concatenate_chains=True):
@@ -67,7 +69,7 @@ class BaseBayesianInversion:
                 else:
                     results_model[key].append(saved_values)
         return results_model
-        
+
 
 class BayesianInversion(BaseBayesianInversion):
     def __init__(
@@ -85,7 +87,7 @@ class BayesianInversion(BaseBayesianInversion):
         self.n_cpus = n_cpus
         self._chains = [
             MarkovChain(
-                i, 
+                i,
                 deepcopy(self.parameterization),
                 deepcopy(self.targets),
                 self.fwd_functions,
@@ -131,8 +133,10 @@ def _preprocess_func(func):
         f = func
     return _FunctionWrapper(f, args, kwargs)
 
+
 class _FunctionWrapper(object):
     """Function wrapper to make it pickleable (credit to emcee)"""
+
     def __init__(self, f, args, kwargs):
         self.f = f
         self.args = args or []

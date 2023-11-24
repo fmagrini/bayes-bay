@@ -17,16 +17,17 @@ class BaseMarkovChain:
     Parameters
     ----------
     starting_model : object
-        The `starting_model` will be passed to `perturbation_funcs` and 
+        The `starting_model` will be passed to `perturbation_funcs` and
     """
+
     def __init__(
-        self, 
-        id: Union[int, str], 
-        starting_model: Any, 
-        perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]], 
-        log_prior_func: Callable[[Any], Number], 
-        log_likelihood_func: Callable[[Any], Number], 
-        temperature: int = 1, 
+        self,
+        id: Union[int, str],
+        starting_model: Any,
+        perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
+        log_prior_func: Callable[[Any], Number],
+        log_likelihood_func: Callable[[Any], Number],
+        temperature: int = 1,
     ):
         self.id = id
         self.current_model = starting_model
@@ -37,7 +38,7 @@ class BaseMarkovChain:
         self.log_likelihood_func = log_likelihood_func
         self._init_statistics()
         self._init_saved_models()
-    
+
     @property
     def temperature(self):
         return self._temperature
@@ -45,11 +46,11 @@ class BaseMarkovChain:
     @temperature.setter
     def temperature(self, value):
         self._temperature = value
-    
+
     @property
     def saved_models(self):
         return getattr(self, "_saved_models", None)
-    
+
     def _init_saved_models(self):
         self._saved_models = {"model": []}
 
@@ -60,10 +61,10 @@ class BaseMarkovChain:
         self._proposed_counts_total = 0
         self._accepted_counts_total = 0
         self._fwd_failure_counts_total = 0
-    
+
     def _save_model(self):
         self.saved_models["model"].append(self.current_model)
-    
+
     def _save_statistics(self, perturb_i, accepted):
         perturb_type = self.perturbation_types[perturb_i]
         self._proposed_counts[perturb_type] += 1
@@ -72,7 +73,10 @@ class BaseMarkovChain:
         self._accepted_counts_total += 1 if accepted else 0
 
     def _print_statistics(self):
-        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (self.id, self._proposed_counts_total)
+        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (
+            self.id,
+            self._proposed_counts_total,
+        )
         acceptance_rate = (
             self._accepted_counts_total / self._proposed_counts_total * 100
         )
@@ -98,26 +102,26 @@ class BaseMarkovChain:
         log_prior_old = self.log_prior_func(self.current_model)
         log_prior_new = self.log_prior_func(new_model)
         return log_prior_new - log_prior_old
-    
+
     def _log_likelihood_ratio(self, new_model, i_perturb):
         log_likelihood_old = self.log_likelihood_func(self.current_model)
         log_likelihood_new = self.log_likelihood_func(new_model)
         tempered_ratio = (log_likelihood_new - log_likelihood_old) / self.temperature
-        return tempered_ratio       # TODO proofread this tempering!
+        return tempered_ratio  # TODO proofread this tempering!
 
     def _next_iteration(self, save_model):
         for i in range(500):
             # choose one perturbation function and type
             i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
             perturb_func = self.perturbation_funcs[i_perturb]
-            
+
             # perturb and calculate the log proposal ratio
             try:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
             except Exception as e:
                 # print("LOG:", e)
                 continue
-            
+
             # calculate the log posterior ratio
             log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
             try:
@@ -127,22 +131,22 @@ class BaseMarkovChain:
                 self._fwd_failure_counts_total += 1
                 continue
             log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
-            
+
             # decide whether to accept
             log_probability_ratio = log_proposal_ratio + log_posterior_ratio
             accepted = log_probability_ratio > math.log(random.random())
             if save_model and self.temperature == 1:
                 self._save_model()
-            
+
             # finalize perturbation based on whether it's accepted
             if accepted:
                 self.current_model = new_model
-            
+
             # save statistics
             self._save_statistics(i_perturb, accepted)
             return
         raise RuntimeError("Chain getting stuck")
-    
+
     def advance_chain(
         self,
         n_iterations=1000,
@@ -167,11 +171,11 @@ class BaseMarkovChain:
 class MarkovChain(BaseMarkovChain):
     def __init__(
         self,
-        id: Union[int, str], 
-        parameterization: Parameterization, 
-        targets: List[Target], 
-        fwd_functions: Callable[[State], numpy.ndarray], 
-        temperature: int = 1, 
+        id: Union[int, str],
+        parameterization: Parameterization,
+        targets: List[Target],
+        fwd_functions: Callable[[State], numpy.ndarray],
+        temperature: int = 1,
     ):
         self.id = id
         self.parameterization = parameterization
@@ -185,23 +189,31 @@ class MarkovChain(BaseMarkovChain):
         self._init_statistics()
         self._init_saved_models()
         self.initialize()
-    
+
     def _log_prior_ratio(self, new_model, i_perturb):
         return self.log_prior_ratio_funcs[i_perturb](self.current_model, new_model)
-    
+
     def _log_likelihood_ratio(self, new_model, i_perturb):
         # tempered by self.temperature
         log_like_ratio = self._log_like_ratio_func(self.current_model, new_model)
         return log_like_ratio / self.temperature
-    
+
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
-        log_priors_from_parameterization = self.parameterization.log_prior_ratio_functions
+        log_priors_from_parameterization = (
+            self.parameterization.log_prior_ratio_functions
+        )
         funcs_from_log_likelihood = self._log_like_ratio_func.perturbation_functions
-        log_priors_from_log_likelihood = self._log_like_ratio_func.log_prior_ratio_functions
-        self.perturbation_funcs = funcs_from_parameterization + funcs_from_log_likelihood
+        log_priors_from_log_likelihood = (
+            self._log_like_ratio_func.log_prior_ratio_functions
+        )
+        self.perturbation_funcs = (
+            funcs_from_parameterization + funcs_from_log_likelihood
+        )
         self.perturbation_types = [f.type for f in self.perturbation_funcs]
-        self.log_prior_ratio_funcs = log_priors_from_parameterization + log_priors_from_log_likelihood
+        self.log_prior_ratio_funcs = (
+            log_priors_from_parameterization + log_priors_from_log_likelihood
+        )
 
     def initialize(self):
         self.current_model = self.parameterization.initialize()

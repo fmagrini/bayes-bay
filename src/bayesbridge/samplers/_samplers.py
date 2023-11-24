@@ -14,52 +14,50 @@ class Sampler:
         self._extra_on_initialize = []
         self._extra_on_advance_chain_end = []
         self.on_advance_chain_end = self.decorate(self.on_advance_chain_end)
-    
-    def initialize(self, chains: List[MarkovChain]):           # called by external
+
+    def initialize(self, chains: List[MarkovChain]):  # called by external
         self.on_initialize(chains)
         self._chains = chains
         for func in self._extra_on_initialize:
             func(self, chains)
-            
+
     def add_on_initialize(
-        self, 
-        func: Callable[["Sampler", List[MarkovChain]], None], 
+        self,
+        func: Callable[["Sampler", List[MarkovChain]], None],
     ):
         self._extra_on_initialize.append(func)
-        
-    def add_on_advance_chain_end(
-        self, 
-        func: Callable[["Sampler"], None]
-    ):
+
+    def add_on_advance_chain_end(self, func: Callable[["Sampler"], None]):
         self._extra_on_advance_chain_end.append(func)
-    
+
     def decorate(self, on_advance_chain_end):
         def wrapper(*args, **kwargs):
             on_advance_chain_end(*args, **kwargs)
             for func in self._extra_on_advance_chain_end:
                 func(self)
+
         return wrapper
-    
+
     @abstractmethod
-    def on_initialize(self, chains):        # customized depending on individual sampler
+    def on_initialize(self, chains):  # customized depending on individual sampler
         raise NotImplementedError
-    
+
     @abstractmethod
-    def on_advance_chain_end(self):         # customized depending on individual sampler
+    def on_advance_chain_end(self):  # customized depending on individual sampler
         raise NotImplementedError
-    
+
     @abstractmethod
-    def run(self):     # customized depending on individual sampler; called by external
+    def run(self):  # customized depending on individual sampler; called by external
         raise NotImplementedError
-    
+
     @property
     def chains(self):
         return self._chains
-    
+
     @property
     def iteration(self):
         return self._iteration
-    
+
     def advance_chain(
         self,
         n_iterations,
@@ -100,13 +98,13 @@ class VanillaSampler(Sampler):
 
     def on_initialize(self, chains):
         pass
-    
+
     def on_advance_chain_end(self):
         pass
-    
+
     def run(
         self,
-        n_iterations, 
+        n_iterations,
         n_cpus=10,
         burnin_iterations=0,
         save_every=100,
@@ -119,9 +117,9 @@ class VanillaSampler(Sampler):
             burnin_iterations=burnin_iterations,
             save_every=save_every,
             verbose=verbose,
-            print_every=print_every, 
+            print_every=print_every,
         )
-        
+
 
 class ParallelTempering(Sampler):
     def __init__(
@@ -138,7 +136,7 @@ class ParallelTempering(Sampler):
     def on_initialize(self, chains):
         n_chains = len(chains)
         temperatures = np.ones(
-                max(2, int(n_chains * self._chains_with_unit_tempeature)) - 1
+            max(2, int(n_chains * self._chains_with_unit_tempeature)) - 1
         )
         if n_chains - temperatures.size > 0:
             size = n_chains - temperatures.size
@@ -158,10 +156,12 @@ class ParallelTempering(Sampler):
     ):
         while True:
             n_it = min(self._swap_every, n_iterations - self.iteration)
-            burnin_it = max(0, min(self._swap_every, burnin_iterations - self.iteration))
+            burnin_it = max(
+                0, min(self._swap_every, burnin_iterations - self.iteration)
+            )
             self.advance_chain(
                 n_iterations=n_it,
-                n_cpus=n_cpus, 
+                n_cpus=n_cpus,
                 burnin_iterations=burnin_it,
                 save_every=save_every,
                 verbose=verbose,
@@ -170,7 +170,7 @@ class ParallelTempering(Sampler):
             if self.iteration >= n_iterations:
                 break
         return self.chains
-       
+
     def on_advance_chain_end(self):
         for i in range(len(self.chains)):
             chain1, chain2 = np.random.choice(self.chains, 2, replace=False)

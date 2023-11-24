@@ -20,13 +20,14 @@ class State:
     AssertionError
         when the length of ``voronoi_sites`` isn't aligned with ``n_voronoi_cells``
     """
+
     n_voronoi_cells: int
     voronoi_sites: np.ndarray
     param_values: Dict[str, np.ndarray] = field(default_factory=dict)
     noise_std: Number = None
     noise_correlation: Number = None
     cache: Dict[str, Any] = field(default_factory=dict)
-    
+
     def __post_init__(self):
         if not isinstance(self.n_voronoi_cells, int):
             raise TypeError("n_voronoi_cells should be an int")
@@ -34,14 +35,17 @@ class State:
             raise TypeError("voronoi_sites should be a numpy ndarray")
         if not isinstance(self.param_values, dict):
             raise TypeError("param_values should be a dict")
-        assert len(self.voronoi_sites) == self.n_voronoi_cells, \
-            "lengths of voronoi_sites should be the same as n_voronoi_cells"
+        assert (
+            len(self.voronoi_sites) == self.n_voronoi_cells
+        ), "lengths of voronoi_sites should be the same as n_voronoi_cells"
         for name, values in self.param_values.items():
             self.set_param_values(name, values)
-        
+
     def set_param_values(self, param_name, values):
         if param_name in ["n_voronoi_cells", "voronoi_sites"]:
-            raise AttributeError(f"'{param_name}' attribute already exists on the State object.")
+            raise AttributeError(
+                f"'{param_name}' attribute already exists on the State object."
+            )
         if not isinstance(values, np.ndarray):
             raise TypeError("parameter values should be a numpy ndarray")
         self.param_values[param_name] = values
@@ -49,13 +53,13 @@ class State:
 
     def get_param_values(self, name):
         return getattr(self, name, None)
-    
+
     def has_cache(self, name: str) -> bool:
         return name in self.cache
-    
+
     def load_cache(self, name: str) -> Any:
         return self.cache[name]
-    
+
     def store_cache(self, name: str, value: Any):
         self.cache[name] = value
 
@@ -64,7 +68,7 @@ class State:
 
     def items(self):
         return vars(self).items()
-    
+
     def clone(self) -> "State":
         _n_voronoi_cells = self.n_voronoi_cells
         _voronoi_sites = self.voronoi_sites.copy()
@@ -74,17 +78,32 @@ class State:
         for k, v in self.param_values.items():
             _param_values[k] = v.copy()
         return State(
-            _n_voronoi_cells, 
-            _voronoi_sites, 
-            _param_values, 
-            _noise_std, 
-            _noise_corr, 
+            _n_voronoi_cells,
+            _voronoi_sites,
+            _param_values,
+            _noise_std,
+            _noise_corr,
         )
 
     def __hash__(self):
         voronoi_sites_sum = np.sum(self.voronoi_sites)
         voronoi_sites_min = np.min(self.voronoi_sites)
         voronoi_sites_max = np.max(self.voronoi_sites)
-        voronoi_sites_hash = hash((voronoi_sites_sum, voronoi_sites_min, voronoi_sites_max))
-        param_values_hash = hash(frozenset((k, np.sum(v), np.min(v), np.max(v)) for k, v in self.param_values.items()))
-        return hash((self.n_voronoi_cells, voronoi_sites_hash, param_values_hash, self.noise_std, self.noise_correlation))
+        voronoi_sites_hash = hash(
+            (voronoi_sites_sum, voronoi_sites_min, voronoi_sites_max)
+        )
+        param_values_hash = hash(
+            frozenset(
+                (k, np.sum(v), np.min(v), np.max(v))
+                for k, v in self.param_values.items()
+            )
+        )
+        return hash(
+            (
+                self.n_voronoi_cells,
+                voronoi_sites_hash,
+                param_values_hash,
+                self.noise_std,
+                self.noise_correlation,
+            )
+        )

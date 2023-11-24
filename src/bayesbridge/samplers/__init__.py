@@ -3,7 +3,7 @@ from ._samplers import Sampler, VanillaSampler, ParallelTempering, SimulatedAnne
 
 __all__ = [
     "Sampler",
-    "VanillaSampler", 
-    "ParallelTempering", 
-    "SimulatedAnnealing", 
+    "VanillaSampler",
+    "ParallelTempering",
+    "SimulatedAnnealing",
 ]

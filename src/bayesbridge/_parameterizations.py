@@ -104,7 +104,7 @@ class Voronoi1D(Parameterization):
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = [
             Voronoi1DPerturbation(
-                parameters=self.parameters, 
+                parameters=self.parameters,
                 voronoi_site_bounds=self.voronoi_site_bounds,
                 voronoi_site_perturb_std=self.voronoi_site_perturb_std,
                 position=self.position,

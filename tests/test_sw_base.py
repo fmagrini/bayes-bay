@@ -21,25 +21,27 @@ VORONOI_POS_MIN = 0
 VORONOI_POS_MAX = 130
 N_CHAINS = 10
 
+
 def forward_sw(model, periods, wave="rayleigh", mode=1):
     k = int(len(model) / 2)
     sites = model[:k]
     vs = model[k:]
     depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:]-depths[:-1], 0))
+    thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
-            thickness,
-            vp,
-            vs,
-            rho,
-            periods,
-            wave=wave,
-            mode=mode,
-            velocity="phase",
-            flat_earth=False,
-        )
+        thickness,
+        vp,
+        vs,
+        rho,
+        periods,
+        wave=wave,
+        mode=mode,
+        velocity="phase",
+        flat_earth=False,
+    )
+
 
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
@@ -59,23 +61,28 @@ def log_prior(model):
     vs = model[k:]
     # p(k) and p(c|k) are to be cancelled out in acceptance criteria
     # p(v|k) prior on param value given #layers
-    log_p_v_k = float("-inf") \
-        if any(vs > VS_UNIFORM_MAX) or any(vs < VS_UNIFORM_MIN) \
-            else - k * math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
+    log_p_v_k = (
+        float("-inf")
+        if any(vs > VS_UNIFORM_MAX) or any(vs < VS_UNIFORM_MIN)
+        else -k * math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
+    )
     return log_p_v_k
+
 
 def log_likelihood(model):
     rayleigh_dpred = forward_sw(model, periods1, "rayleigh", 1)
     rayleigh_residual = rayleigh1_dobs - rayleigh_dpred
     rayleigh_loglike = -0.5 * np.sum(
-        (rayleigh_residual/RAYLEIGH_STD)**2 + math.log(2 * np.pi * RAYLEIGH_STD**2)
+        (rayleigh_residual / RAYLEIGH_STD) ** 2
+        + math.log(2 * np.pi * RAYLEIGH_STD**2)
     )
     love_dpred = forward_sw(model, periods1, "love", 1)
     love_residual = love1_dobs - love_dpred
     love_loglike = -0.5 * np.sum(
-        (love_residual/LOVE_STD) ** 2 + math.log(2 * np.pi * LOVE_STD**2)
+        (love_residual / LOVE_STD) ** 2 + math.log(2 * np.pi * LOVE_STD**2)
     )
     return rayleigh_loglike + love_loglike
+
 
 def log_posterior(model):
     return log_likelihood(model) + log_prior(model)
@@ -87,7 +94,7 @@ def perturbation_vs(model):
     sites = model[:k]
     vs = model[k:]
     # randomly choose a Voronoi site to perturb the value
-    isite = random.randint(0, k-1)
+    isite = random.randint(0, k - 1)
     # randomly perturb the value
     while True:
         random_deviate = random.normalvariate(0, VS_PERTURB_STD)
@@ -102,20 +109,24 @@ def perturbation_vs(model):
     log_proposal_ratio = 0
     return new_model, log_proposal_ratio
 
+
 def perturbation_voronoi_site(model):
     k = int(len(model) / 2)
     sites = model[:k]
     vs = model[k:]
     # randomly choose a Voronoi site to perturb the position
-    isite = random.randint(0, k-1)
+    isite = random.randint(0, k - 1)
     old_site = sites[isite]
     # randomly perturb the position
     while True:
         random_deviate = random.normalvariate(0, VORONOI_PERTURB_STD)
         new_site = old_site + random_deviate
-        if new_site < VORONOI_POS_MIN or new_site > VORONOI_POS_MAX or \
-            np.any(np.abs(new_site - sites) < 1e-2):
-                continue
+        if (
+            new_site < VORONOI_POS_MIN
+            or new_site > VORONOI_POS_MAX
+            or np.any(np.abs(new_site - sites) < 1e-2)
+        ):
+            continue
         break
     # integrate into a new model variable
     new_sites = sites.copy()
@@ -126,6 +137,7 @@ def perturbation_voronoi_site(model):
     new_model = np.hstack((new_sites, new_vs))
     log_proposal_ratio = 0
     return new_model, log_proposal_ratio
+
 
 def perturbation_birth(model):
     k = int(len(model) / 2)
@@ -150,8 +162,9 @@ def perturbation_birth(model):
     new_vs = new_vs[isort]
     new_model = np.hstack((new_sites, new_vs))
     # calculate proposal ratio
-    log_proposal_ratio = - math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
+    log_proposal_ratio = -math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
     return new_model, log_proposal_ratio
+
 
 def perturbation_death(model):
     k = int(len(model) / 2)
@@ -160,7 +173,7 @@ def perturbation_death(model):
     if k == LAYERS_MIN:
         raise ValueError("Minimum layers reached")
     # randomly choose an existing Voronoi site to remove
-    isite = random.randint(0, k-1)
+    isite = random.randint(0, k - 1)
     # integrate into a new model variable
     new_sites = np.delete(sites, isite)
     new_vs = np.delete(vs, isite)
@@ -183,16 +196,16 @@ for i in range(N_CHAINS):
 
 # -------------- Define BayesianInversion
 inversion = bb.BaseBayesianInversion(
-    walkers_starting_models=walkers_start, 
+    walkers_starting_models=walkers_start,
     perturbation_funcs=[
-        perturbation_vs, 
-        perturbation_voronoi_site, 
-        perturbation_birth, 
-        perturbation_death, 
-    ], 
-    log_prior_func=log_prior, 
-    log_likelihood_func=log_likelihood, 
-    n_chains=1, 
-    n_cpus=1, 
+        perturbation_vs,
+        perturbation_voronoi_site,
+        perturbation_birth,
+        perturbation_death,
+    ],
+    log_prior_func=log_prior,
+    log_likelihood_func=log_likelihood,
+    n_chains=1,
+    n_cpus=1,
 )
 inversion.run()

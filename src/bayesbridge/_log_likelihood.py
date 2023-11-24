@@ -17,15 +17,15 @@ class LogLikelihood:
         self._init_perturbation_funcs()
         self._cache_misfit_det = OrderedDict()
         self._max_cache_size = 10
-        
+
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
         return self._perturbation_funcs
-    
+
     @property
     def log_prior_ratio_functions(self) -> List[Callable[[State], Number]]:
         return self._log_prior_ratio_funcs
-    
+
     def log_likelihood_ratio(self, old_model, new_model):
         old_misfit, old_log_det = self._get_misfit_and_det(old_model)
         new_misfit, new_log_det = self._get_misfit_and_det(new_model)
@@ -34,7 +34,7 @@ class LogLikelihood:
 
     def __call__(self, old_misfit, temperature) -> Any:
         return self.log_likelihood_ratio(old_misfit, temperature)
-    
+
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []
         self._log_prior_ratio_funcs = []

@@ -8,13 +8,13 @@ from ._base_perturbation import Perturbation
 
 class NoisePerturbation(Perturbation):
     def __init__(
-        self, 
-        std_min: Number, 
-        std_max: Number, 
-        std_perturb_std: Number, 
-        correlation_min: Number = None, 
-        correlation_max: Number = None, 
-        correlation_perturb_std: Number = None, 
+        self,
+        std_min: Number,
+        std_max: Number,
+        std_perturb_std: Number,
+        correlation_min: Number = None,
+        correlation_max: Number = None,
+        correlation_perturb_std: Number = None,
     ):
         self._std_min = std_min
         self._std_max = std_max
@@ -38,6 +38,6 @@ class NoisePerturbation(Perturbation):
         new_model = model.clone()
         setattr(self, f"noise_{to_be_perturbed}", new_value)
         return new_model, 0
-        
+
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         return 0

@@ -21,6 +21,7 @@ VORONOI_POS_MIN = 0
 VORONOI_POS_MAX = 130
 N_CHAINS = 10
 
+
 def forward_sw(model: bb.State, periods, wave="rayleigh", mode=1):
     k = model.n_voronoi_cells
     sites = model.voronoi_sites
@@ -29,21 +30,22 @@ def forward_sw(model: bb.State, periods, wave="rayleigh", mode=1):
         thickness = model.load_cache("thickness")
     else:
         depths = (sites[:-1] + sites[1:]) / 2
-        thickness = np.hstack((depths[0], depths[1:]-depths[:-1], 0))
+        thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
         model.store_cache("thickness", thickness)
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
-            thickness,
-            vp,
-            vs,
-            rho,
-            periods,
-            wave=wave,
-            mode=mode,
-            velocity="phase",
-            flat_earth=False,
-        )
+        thickness,
+        vp,
+        vs,
+        rho,
+        periods,
+        wave=wave,
+        mode=mode,
+        velocity="phase",
+        flat_earth=False,
+    )
+
 
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
@@ -59,21 +61,22 @@ love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 # -------------- Define bayesbridge objects
 targets = [
-    bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2), 
+    bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2),
     bb.Target("love1", love1_dobs, covariance_mat_inv=1 / LOVE_STD**2),
 ]
 
 fwd_functions = [
-    (forward_sw, [periods1, "rayleigh", 1]), 
-    (forward_sw, [periods1, "love", 1]), 
+    (forward_sw, [periods1, "rayleigh", 1]),
+    (forward_sw, [periods1, "love", 1]),
 ]
 
 param_vs = bb.parameters.UniformParameter(
-    name="vs", 
-    vmin=VS_UNIFORM_MIN, 
-    vmax=VS_UNIFORM_MAX, 
-    perturb_std=VS_PERTURB_STD, 
+    name="vs",
+    vmin=VS_UNIFORM_MIN,
+    vmax=VS_UNIFORM_MAX,
+    perturb_std=VS_PERTURB_STD,
 )
+
 
 def param_vs_initialize(param, positions):
     vmin, vmax = param.get_vmin_vmax(positions)
@@ -86,30 +89,33 @@ def param_vs_initialize(param, positions):
         vmin_i = vmin if np.isscalar(vmin) else vmin[i]
         vmax_i = vmax if np.isscalar(vmax) else vmax[i]
         if val < vmin_i or val > vmax_i:
-            if val > vmax_i: val = vmax_i
-            if val < vmin_i: val = vmin_i
+            if val > vmax_i:
+                val = vmax_i
+            if val < vmin_i:
+                val = vmin_i
             sorted_values[i] = param.perturb_value(positions[i], val)
     return sorted_values
+
 
 param_vs.set_custom_initialize(param_vs_initialize)
 free_parameters = [param_vs]
 
 parameterization = bb.Voronoi1D(
-    voronoi_site_bounds=(VORONOI_POS_MIN, VORONOI_POS_MAX), 
-    voronoi_site_perturb_std=VORONOI_PERTURB_STD, 
-    free_params=free_parameters, 
-    n_voronoi_cells=None, 
-    n_voronoi_cells_min=LAYERS_MIN, 
-    n_voronoi_cells_max=LAYERS_MAX, 
-    birth_from="prior",     # or "prior"
+    voronoi_site_bounds=(VORONOI_POS_MIN, VORONOI_POS_MAX),
+    voronoi_site_perturb_std=VORONOI_PERTURB_STD,
+    free_params=free_parameters,
+    n_voronoi_cells=None,
+    n_voronoi_cells_min=LAYERS_MIN,
+    n_voronoi_cells_max=LAYERS_MAX,
+    birth_from="prior",  # or "prior"
 )
 
 # -------------- Run inversion
 inversion = bb.BayesianInversion(
-    parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
-    n_chains=N_CHAINS, 
-    n_cpus=N_CHAINS
+    parameterization=parameterization,
+    targets=targets,
+    fwd_functions=fwd_functions,
+    n_chains=N_CHAINS,
+    n_cpus=N_CHAINS,
 )
 inversion.run()

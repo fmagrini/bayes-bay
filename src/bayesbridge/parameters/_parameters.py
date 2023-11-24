@@ -25,7 +25,9 @@ class Parameter(ABC):
         self.init_params = kwargs
 
     @abstractmethod
-    def initialize(self, positions: Union[np.ndarray, Number]) -> Union[np.ndarray, Number]:
+    def initialize(
+        self, positions: Union[np.ndarray, Number]
+    ) -> Union[np.ndarray, Number]:
         raise NotImplementedError
 
     @abstractmethod
@@ -39,19 +41,21 @@ class Parameter(ABC):
     @abstractmethod
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         raise NotImplementedError
-    
+
     @abstractmethod
-    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+    def log_prior_ratio_perturbation_voronoi_site(
+        self, old_position, new_position, value
+    ):
         raise NotImplementedError
-    
+
     @abstractmethod
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
         raise NotImplementedError
-    
+
     @abstractmethod
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
         raise NotImplementedError
-    
+
     def set_custom_initialize(self, initialize_func):
         """
         Set a custom initialization function.
@@ -67,18 +71,21 @@ class Parameter(ABC):
         if not callable(initialize_func):
             raise ValueError("initialize_func must be a callable function.")
         self.initialize = partial(self._initializer, initialize_func)
-    
+
     def _initializer(self, initialize_func, *args, **kwargs):
         return initialize_func(self, *args, **kwargs)
-    
+
     def _init_pos_dependent_hyper_param(self, hyper_param):
         # to be called after self.position is assigned
-        return hyper_param if np.isscalar(hyper_param) else \
-            partial(interpolate_linear_1d, x=self.position, y=hyper_param)
-    
+        return (
+            hyper_param
+            if np.isscalar(hyper_param)
+            else partial(interpolate_linear_1d, x=self.position, y=hyper_param)
+        )
+
     def _get_pos_dependent_hyper_param(self, hyper_param, position):
         return hyper_param if np.isscalar(hyper_param) else hyper_param(position)
-    
+
     def __repr__(self):
         string = "%s(" % self.init_params["name"]
         for k, v in self.init_params.items():
@@ -125,8 +132,9 @@ class UniformParameter(Parameter):
         self._vmin = self._init_pos_dependent_hyper_param(vmin)
         self._vmax = self._init_pos_dependent_hyper_param(vmax)
         self._delta = self._init_pos_dependent_hyper_param(
-            np.array(vmax, dtype=float) - np.array(vmin, dtype=float))
-        self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)        
+            np.array(vmax, dtype=float) - np.array(vmin, dtype=float)
+        )
+        self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
 
     def get_delta(self, position):
         return self._get_pos_dependent_hyper_param(self._delta, position)
@@ -142,8 +150,10 @@ class UniformParameter(Parameter):
 
     def get_perturb_std(self, position):
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
-    
-    def initialize(self, positions: Union[np.ndarray, Number]) -> Union[np.ndarray, Number]:
+
+    def initialize(
+        self, positions: Union[np.ndarray, Number]
+    ) -> Union[np.ndarray, Number]:
         vmin, vmax = self.get_vmin_vmax(positions)
         if isinstance(positions, Number):
             return random.uniform(vmin, vmax)
@@ -159,8 +169,8 @@ class UniformParameter(Parameter):
             new_value = value + random_deviate
             if new_value >= vmin and new_value <= vmax:
                 return new_value
-    
-    def log_pdf(self, position, value): 
+
+    def log_pdf(self, position, value):
         vmin, vmax = self.get_vmin_vmax(position)
         if vmin <= value <= vmax:
             return -math.log(vmax - vmin)
@@ -169,15 +179,17 @@ class UniformParameter(Parameter):
 
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         return 0
-    
-    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+
+    def log_prior_ratio_perturbation_voronoi_site(
+        self, old_position, new_position, value
+    ):
         old_delta = self.get_delta(old_position)
         new_delta = self.get_delta(new_position)
         return math.log(old_delta / new_delta)
-    
+
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
-        return - math.log(self.get_delta(new_position))
-    
+        return -math.log(self.get_delta(new_position))
+
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
         return math.log(self.get_delta(removed_position))
 
@@ -191,8 +203,8 @@ class GaussianParameter(Parameter):
             std=std,
             perturb_std=perturb_std,
         )
-        self.name=name
-        
+        self.name = name
+
         # type standardization and validation
         self.position = (
             position if position is None else np.array(position, dtype=float)
@@ -215,18 +227,18 @@ class GaussianParameter(Parameter):
             assert np.isscalar(perturb_std) or perturb_std.size == self.position.size, (
                 "`perturb_std` " + message
             )
-        
+
         # variables below: either a scalar or a function
         self._mean = self._init_pos_dependent_hyper_param(mean)
         self._std = self._init_pos_dependent_hyper_param(std)
         self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
-        
+
     def get_mean(self, position):
         return self._get_pos_dependent_hyper_param(self._mean, position)
-    
+
     def get_std(self, position):
         return self._get_pos_dependent_hyper_param(self._std, position)
-        
+
     def get_perturb_std(self, position):
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
 
@@ -240,7 +252,7 @@ class GaussianParameter(Parameter):
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
-    
+
     def log_pdf(self, position, value):
         mean = self.get_mean(position)
         var = self.get_std(position) ** 2
@@ -249,41 +261,44 @@ class GaussianParameter(Parameter):
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         mean = self.get_mean(position)
         std = self.get_std(position)
-        return (old_value - mean)**2 - (new_value - mean)**2 / (2*std**2)
-    
-    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+        return (old_value - mean) ** 2 - (new_value - mean) ** 2 / (2 * std**2)
+
+    def log_prior_ratio_perturbation_voronoi_site(
+        self, old_position, new_position, value
+    ):
         old_mean = self.get_mean(old_position)
         new_mean = self.get_mean(new_position)
         old_std = self.get_std(old_position)
         new_std = self.get_std(new_position)
-        return math.log(old_std / new_std) + \
-            (new_std**2*(value-old_mean)**2 - old_std**2*(value-new_mean) / \
-                2*old_std**2*new_std**2)
-    
+        return math.log(old_std / new_std) + (
+            new_std**2 * (value - old_mean) ** 2
+            - old_std**2 * (value - new_mean) / 2 * old_std**2 * new_std**2
+        )
+
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
         mean = self.get_mean(new_position)
         std = self.get_std(new_position)
-        return -math.log(std*SQRT_TWO_PI) - (new_value - mean)**2 / (2*std)
-    
+        return -math.log(std * SQRT_TWO_PI) - (new_value - mean) ** 2 / (2 * std)
+
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
         mean = self.get_mean(removed_position)
         std = self.get_std(removed_position)
-        return math.log(std*SQRT_TWO_PI) + (removed_value-mean)**2 / (2*std)
+        return math.log(std * SQRT_TWO_PI) + (removed_value - mean) ** 2 / (2 * std)
 
 
 class ParameterFromPrior(Parameter):
     def __init__(
-        self, 
-        name: str, 
-        log_prior: Callable[[Number, Number], Number], 
-        initialize: Callable[[np.ndarray], np.ndarray], 
-        perturb_value: Callable[[Number, Number], Number], 
+        self,
+        name: str,
+        log_prior: Callable[[Number, Number], Number],
+        initialize: Callable[[np.ndarray], np.ndarray],
+        perturb_value: Callable[[Number, Number], Number],
     ):
         super().__init__(
-            name=name, 
+            name=name,
             log_prior=log_prior,
-            initialize=initialize, 
-            perturb_value=perturb_value, 
+            initialize=initialize,
+            perturb_value=perturb_value,
         )
         self.name = name
         self._log_prior = log_prior
@@ -295,22 +310,24 @@ class ParameterFromPrior(Parameter):
 
     def perturb_value(self, position, value):
         return self._perturb_value(position, value)
-    
+
     def log_pdf(self, position, value):
         return self._log_prior(position, value)
-        
+
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
         new_log_prior = self._log_prior(position, new_value)
-        old_log_prior = self._log_prior(position, old_value)    
+        old_log_prior = self._log_prior(position, old_value)
         return new_log_prior - old_log_prior
 
-    def log_prior_ratio_perturbation_voronoi_site(self, old_position, new_position, value):
+    def log_prior_ratio_perturbation_voronoi_site(
+        self, old_position, new_position, value
+    ):
         new_log_prior = self._log_prior(new_position, value)
         old_log_prior = self._log_prior(old_position, value)
         return new_log_prior - old_log_prior
-    
+
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
         return self._log_prior(new_position, new_value)
-    
+
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
-        return - self._log_prior(removed_position, removed_value)
+        return -self._log_prior(removed_position, removed_value)

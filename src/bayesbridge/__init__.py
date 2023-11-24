@@ -9,12 +9,12 @@ from . import samplers, parameters, perturbations
 
 
 __all__ = [
-    "State", 
+    "State",
     "Voronoi1D",
     "Target",
     "LogLikelihood",
-    "MarkovChain", 
+    "MarkovChain",
     "BaseMarkovChain",
-    "BayesianInversion", 
+    "BayesianInversion",
     "BaseBayesianInversion",
 ]
