@@ -1,7 +1,8 @@
-from typing import List, Callable, Tuple, Any
+from typing import List, Callable, Tuple, Any, Dict
 from numbers import Number
 from copy import deepcopy
 from collections import defaultdict
+
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler
 
@@ -60,7 +61,7 @@ class BaseBayesianInversion:
             print_every=print_every,
         )
 
-    def get_results(self, concatenate_chains=True):
+    def get_results(self, concatenate_chains=True) -> Dict[str, list]:
         results_model = defaultdict(list)
         for chain in self.chains:
             for key, saved_values in chain.saved_models.items():
@@ -94,25 +95,6 @@ class BayesianInversion(BaseBayesianInversion):
             )
             for i in range(n_chains)
         ]
-
-    def get_results(self, concatenate_chains=True):
-        results_model = defaultdict(list)
-        results_targets = {}
-        for target_name in self.chains[0].saved_targets:
-            results_targets[target_name] = defaultdict(list)
-        for chain in self.chains:
-            for key, saved_values in chain.saved_models.items():
-                if concatenate_chains and isinstance(saved_values, list):
-                    results_model[key].extend(saved_values)
-                else:
-                    results_model[key].append(saved_values)
-            for target_name, target in chain.saved_targets.items():
-                for key, saved_values in target.items():
-                    if concatenate_chains:
-                        results_targets[target_name][key].extend(saved_values)
-                    else:
-                        results_targets[target_name][key].append(saved_values)
-        return results_model, results_targets
 
 
 def _preprocess_func(func):

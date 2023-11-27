@@ -62,12 +62,19 @@ class State:
 
     def store_cache(self, name: str, value: Any):
         self.cache[name] = value
+    
+    def _vars(self):
+        return {k: v for k, v in vars(self).items() if 
+                not (k == "noise_std" and v is None) and 
+                not (k == "noise_correlation" and v is None) and
+                k != "param_values" and
+                k != "cache"}
 
     def __iter__(self):
-        return iter(vars(self))
+        return iter(self._vars())
 
     def items(self):
-        return vars(self).items()
+        return self._vars().items()
 
     def clone(self) -> "State":
         _n_voronoi_cells = self.n_voronoi_cells
@@ -93,9 +100,8 @@ class State:
             (voronoi_sites_sum, voronoi_sites_min, voronoi_sites_max)
         )
         param_values_hash = hash(
-            frozenset(
-                (k, np.sum(v), np.min(v), np.max(v))
-                for k, v in self.param_values.items()
+            (
+                hash((k, np.sum(v), np.min(v), np.max(v))) for k, v in self.param_values
             )
         )
         return hash(

@@ -174,8 +174,7 @@ class ParallelTempering(Sampler):
 
     def on_advance_chain_end(self):
         for i in range(len(self.chains)):
-            (chain1, chain2): Tuple[BaseMarkovChain, BaseMarkovChain] = \
-                np.random.choice(self.chains, 2, replace=False)
+            chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
             T1, T2 = chain1.temperature, chain2.temperature
             log_like_ratio = chain1._log_likelihood_ratio(chain2.current_model)
             prob = (1 / T1 - 1 / T2) * log_like_ratio
