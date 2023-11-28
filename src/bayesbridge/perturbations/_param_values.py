@@ -40,3 +40,7 @@ class ParamPerturbation(Perturbation):
         return self.parameter.log_prior_ratio_perturbation_free_param(
             self._old_value, self._new_value, self._site
         )
+    
+    @property
+    def __name__(self) -> str:
+        return f"{self.type}({self.param_name})"

@@ -1,7 +1,6 @@
 import math
 from typing import Any, List, Callable, Tuple
 from numbers import Number
-from collections import OrderedDict
 
 from .exceptions import ForwardException
 from ._state import State
@@ -15,8 +14,6 @@ class LogLikelihood:
         self.fwd_functions = fwd_functions
         assert len(self.targets) == len(self.fwd_functions)
         self._init_perturbation_funcs()
-        self._cache_misfit_det = OrderedDict()
-        self._max_cache_size = 10
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
@@ -44,22 +41,15 @@ class LogLikelihood:
                 self._log_prior_ratio_funcs.append(target.prior_ratio_function)
 
     def _get_misfit_and_det(self, model: State) -> Tuple[Number, Number]:
-        model_hash = hash(model)
-        if model_hash in self._cache_misfit_det:
-            return self._cache_misfit_det[model_hash]
-        else:
-            misfit = 0
-            log_det = 0
-            for target, fwd_func in zip(self.targets, self.fwd_functions):
-                try:
-                    dpred = fwd_func(model)
-                except Exception as e:
-                    raise ForwardException(e)
-                residual = dpred - target.dobs
-                misfit += residual @ target.covariance_times_vector(residual)
-                if target.is_hierarchical:
-                    log_det += math.log(target.determinant_covariance())
-            self._cache_misfit_det[model_hash] = misfit, log_det
-            if len(self._cache_misfit_det) > self._max_cache_size:
-                self._cache_misfit_det.popitem(last=False)
-            return misfit, log_det
+        misfit = 0
+        log_det = 0
+        for target, fwd_func in zip(self.targets, self.fwd_functions):
+            try:
+                dpred = fwd_func(model)
+            except Exception as e:
+                raise ForwardException(e)
+            residual = dpred - target.dobs
+            misfit += residual @ target.covariance_times_vector(residual)
+            if target.is_hierarchical:
+                log_det += math.log(target.determinant_covariance())
+        return misfit, log_det

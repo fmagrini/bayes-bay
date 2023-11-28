@@ -30,8 +30,8 @@ class BirthPerturbation1D(Perturbation):
             raise DimensionalityException("Birth")
         old_sites = model.voronoi_sites
         # randomly choose a new Voronoi site position
+        lb, ub = self.voronoi_site_bounds
         while True:
-            lb, ub = self.voronoi_site_bounds
             new_site = random.uniform(lb, ub)
             self._new_site = new_site
             # abort if it's too close to existing positions
@@ -41,7 +41,7 @@ class BirthPerturbation1D(Perturbation):
         # intialize parameter values
         unsorted_values = self.initialize_newborn_cell(new_site, old_sites, model)
         # structure new sites and values into new model
-        new_sites = np.hstack((old_sites, new_site))
+        new_sites = np.append(old_sites, new_site)
         isort = np.argsort(new_sites)
         new_sites = new_sites[isort]
         new_values = dict()
@@ -115,7 +115,7 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
         for param_name, param in self.parameters.items():
             old_values = model.get_param_values(param_name)
             new_value = param.initialize(new_site)
-            new_born_values[param_name] = np.hstack((old_values, new_value))
+            new_born_values[param_name] = np.append(old_values, new_value)
             self._all_new_values[param_name] = new_value
         return new_born_values
 
@@ -129,7 +129,7 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
         return ratio
 
 
-class DeathPerturbation1D(Perturbation):  # TODO
+class DeathPerturbation1D(Perturbation):
     def __init__(
         self,
         parameters: Dict[str, Parameter],

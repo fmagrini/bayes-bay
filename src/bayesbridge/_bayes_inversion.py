@@ -12,8 +12,10 @@ class BaseBayesianInversion:
         self,
         walkers_starting_models: List[Any],
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
-        log_prior_func: Callable[[Any], Number],
-        log_likelihood_func: Callable[[Any], Number],
+        log_prior_func: Callable[[Any], Number] = None,
+        log_likelihood_func: Callable[[Any], Number] = None,
+        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None, 
+        log_like_ratio_func: Callable[[Any, Any], Number] = None, 
         n_chains: int = 10,
         n_cpus: int = 10,
     ):
@@ -23,6 +25,10 @@ class BaseBayesianInversion:
         ]
         self.log_prior_func = _preprocess_func(log_prior_func)
         self.log_likelihood_func = _preprocess_func(log_likelihood_func)
+        self.log_prior_ratio_funcs = [
+            _preprocess_func(func) for func in log_prior_ratio_funcs
+        ] if log_prior_ratio_funcs is not None else None
+        self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
@@ -32,6 +38,8 @@ class BaseBayesianInversion:
                 perturbation_funcs,
                 self.log_prior_func,
                 self.log_likelihood_func,
+                self.log_prior_ratio_funcs, 
+                self.log_like_ratio_func, 
             )
             for i in range(n_chains)
         ]
@@ -62,13 +70,21 @@ class BaseBayesianInversion:
         )
 
     def get_results(self, concatenate_chains=True) -> Dict[str, list]:
-        results_model = defaultdict(list)
-        for chain in self.chains:
-            for key, saved_values in chain.saved_models.items():
-                if concatenate_chains and isinstance(saved_values, list):
-                    results_model[key].extend(saved_values)
+        if hasattr(self.chains[0].saved_models, "items"):
+            results_model = defaultdict(list)
+            for chain in self.chains:
+                for key, saved_values in chain.saved_models.items():
+                    if concatenate_chains and isinstance(saved_values, list):
+                        results_model[key].extend(saved_values)
+                    else:
+                        results_model[key].append(saved_values)
+        else:
+            results_model = []
+            for chain in self.chains:
+                if concatenate_chains:
+                    results_model.extend(chain.saved_models)
                 else:
-                    results_model[key].append(saved_values)
+                    results_model.append(chain.saved_models)
         return results_model
 
 
@@ -98,6 +114,7 @@ class BayesianInversion(BaseBayesianInversion):
 
 
 def _preprocess_func(func):
+    if func is None: return None
     f = None
     args = []
     kwargs = {}
@@ -124,5 +141,5 @@ class _FunctionWrapper(object):
         self.args = args or []
         self.kwargs = kwargs or {}
 
-    def __call__(self, x):
-        return self.f(x, *self.args, **self.kwargs)
+    def __call__(self, *args):
+        return self.f(*args, *self.args, **self.kwargs)
