@@ -17,8 +17,9 @@ LAYERS_MIN = 3
 LAYERS_MAX = 15
 LAYERS_INIT_RANGE = 0.3
 VS_PERTURB_STD = 0.15
-VS_UNIFORM_MIN = 2.7
-VS_UNIFORM_MAX = 5
+VS_UNIFORM_MIN = [2.7, 3.2, 3.75]
+VS_UNIFORM_MAX = [4, 4.75, 5]
+VS_UNIFORM_POS = [0, 40, 80]
 VORONOI_PERTURB_STD = 8
 VORONOI_POS_MIN = 0
 VORONOI_POS_MAX = 130
@@ -56,21 +57,15 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
         flat_earth=False,
     )
 
-def forward_sw_rayleigh(model):
-    return forward_sw(model, periods1, "rayleigh", 1)
-
-def forward_sw_love(model):
-    return forward_sw(model, periods1, "love", 1)
-
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
 true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
 true_model = bb.State(len(true_vs), true_voronoi_positions, {"vs": true_vs})
 
 periods1 = np.linspace(4, 80, 20)
-rayleigh1 = forward_sw_rayleigh(true_model)
+rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
-love1 = forward_sw_love(true_model)
+love1 = forward_sw(true_model, periods1, "love", 1)
 love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 
@@ -80,13 +75,17 @@ targets = [
     bb.Target("love1", love1_dobs, covariance_mat_inv=1 / LOVE_STD**2),
 ]
 
-fwd_functions = [forward_sw_rayleigh, forward_sw_love]
+fwd_functions = [
+    (forward_sw, [periods1, "rayleigh", 1]),
+    (forward_sw, [periods1, "love", 1]),
+]
 
 param_vs = bb.parameters.UniformParameter(
     name="vs",
     vmin=VS_UNIFORM_MIN,
     vmax=VS_UNIFORM_MAX,
     perturb_std=VS_PERTURB_STD,
+    position=VS_UNIFORM_POS, 
 )
 
 
@@ -97,7 +96,15 @@ def param_vs_initialize(
     vmin, vmax = param.get_vmin_vmax(positions)
     if isinstance(positions, (float, int)):
         return random.uniform(vmin, vmax)
-    return np.sort(np.random.uniform(vmin, vmax, positions.size))
+    sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
+    for i in range (len(sorted_vals)):
+        val = sorted_vals[i]
+        vmin_i = vmin if np.isscalar(vmin) else vmin[i]
+        vmax_i = vmax if np.isscalar(vmax) else vmax[i]
+        if val < vmin_i or val > vmax_i:
+            if val > vmax_i: sorted_vals[i] = vmax_i
+            if val < vmin_i: sorted_vals[i] = vmin_i
+    return sorted_vals
 
 
 param_vs.set_custom_initialize(param_vs_initialize)

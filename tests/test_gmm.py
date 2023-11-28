@@ -6,7 +6,7 @@ import bayesbridge as bb
 
 
 # -------------- Setting up constants, fwd func, data
-DATA_FILE = "rf_sw_1_000_000_saved_models.npy"
+DATA_FILE = "toy_sw_standard_api_saved_models.npy"
 N_DATA = 100
 DATA_Y_STD = 0.005
 LAYERS_MIN = 3

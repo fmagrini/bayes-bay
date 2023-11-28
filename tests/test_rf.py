@@ -81,19 +81,15 @@ def param_vs_initialize(
     vmin, vmax = param.get_vmin_vmax(positions)
     if isinstance(positions, (float, int)):
         return random.uniform(vmin, vmax)
-    values = np.random.uniform(vmin, vmax, positions.size)
-    sorted_values = np.sort(values)
-    for i in range(len(sorted_values)):
-        val = sorted_values[i]
+    sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
+    for i in range (len(sorted_vals)):
+        val = sorted_vals[i]
         vmin_i = vmin if np.isscalar(vmin) else vmin[i]
         vmax_i = vmax if np.isscalar(vmax) else vmax[i]
         if val < vmin_i or val > vmax_i:
-            if val > vmax_i:
-                val = vmax_i
-            if val < vmin_i:
-                val = vmin_i
-            sorted_values[i] = param.perturb_value(positions[i], val)
-    return sorted_values
+            if val > vmax_i: sorted_vals[i] = vmax_i
+            if val < vmin_i: sorted_vals[i] = vmin_i
+    return sorted_vals
 
 
 param_vs.set_custom_initialize(param_vs_initialize)
@@ -118,10 +114,10 @@ inversion = bb.BayesianInversion(
     n_cpus=N_CHAINS,
 )
 inversion.run(
-    n_iterations=1_000_000,
-    burnin_iterations=400_000,
-    save_every=1_000,
-    print_every=5_000,
+    n_iterations=100_000,
+    burnin_iterations=40_000,
+    save_every=1_00,
+    print_every=5_00,
 )
 
 
@@ -153,7 +149,7 @@ for d in np.cumsum(true_thickness):
     axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
-prefix = "rf_1_000_000"
+prefix = "test_rf"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)

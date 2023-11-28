@@ -56,25 +56,24 @@ class Target:
     def is_hierarchical(self):
         return self.perturbation_function is not None
 
-    def covariance_times_vector(self, vector):
+    def covariance_times_vector(self, model: State, vector: np.ndarray):
         if hasattr(self, "covariance_mat_inv"):
             if np.isscalar(self.covariance_mat_inv):
                 return self.covariance_mat_inv * vector
             else:
                 return self.covariance_mat_inv @ vector
         elif self.correlation is None:
-            return 1 / self._proposed_state["std"] ** 2 * vector
+            return 1 / model.noise_std ** 2 * vector
         else:
-            std = self._proposed_state["std"]
-            r = self._proposed_state["correlation"]
+            std = model.noise_std
+            r = model.noise_correlation
             n = self.dobs.size
             mat = inverse_covariance(std, r, n)
             return mat @ vector
 
-    def determinant_covariance(self):
-        std = self._proposed_state["std"]
-        r = self._proposed_state["correlation"]
+    def determinant_covariance(self, model: State):
+        std = model.noise_std
+        r = model.noise_correlation
         n = self.dobs.size
         det = std ** (2 * n) * (1 - r**2) ** (n - 1)
-        self._proposed_state["determinant_covariance"] = det
         return det

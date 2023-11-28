@@ -147,7 +147,8 @@ class BaseMarkovChain:
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model, i_perturb)
                 tempered_loglike_ratio = log_likelihood_ratio / self.temperature
-            except Exception:
+            except Exception as e:
+                raise e
                 self._fwd_failure_counts_total += 1
                 continue
             log_posterior_ratio = log_prior_ratio + tempered_loglike_ratio
@@ -199,7 +200,6 @@ class MarkovChain(BaseMarkovChain):
     ):
         self.id = id
         self.parameterization = parameterization
-        self.parameterization.initialize()
         self.log_like_ratio_func = LogLikelihood(
             targets=targets,
             fwd_functions=fwd_functions,

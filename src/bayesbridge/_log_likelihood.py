@@ -38,7 +38,7 @@ class LogLikelihood:
         for target in self.targets:
             if target.is_hierarchical:
                 self._perturbation_funcs.append(target.perturbation_function)
-                self._log_prior_ratio_funcs.append(target.prior_ratio_function)
+                self._log_prior_ratio_funcs.append(target.log_prior_ratio_function)
 
     def _get_misfit_and_det(self, model: State) -> Tuple[Number, Number]:
         misfit = 0
@@ -49,7 +49,7 @@ class LogLikelihood:
             except Exception as e:
                 raise ForwardException(e)
             residual = dpred - target.dobs
-            misfit += residual @ target.covariance_times_vector(residual)
+            misfit += residual @ target.covariance_times_vector(model, residual)
             if target.is_hierarchical:
-                log_det += math.log(target.determinant_covariance())
+                log_det += math.log(target.determinant_covariance(model))
         return misfit, log_det
