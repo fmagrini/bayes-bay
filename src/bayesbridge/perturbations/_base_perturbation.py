@@ -20,7 +20,7 @@ class Perturbation:
     @property
     def type(self) -> str:
         return self.__class__.__name__
-    
+
     @property
     def __name__(self) -> str:
         return self.type

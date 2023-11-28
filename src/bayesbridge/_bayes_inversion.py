@@ -14,8 +14,8 @@ class BaseBayesianInversion:
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
         log_prior_func: Callable[[Any], Number] = None,
         log_likelihood_func: Callable[[Any], Number] = None,
-        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None, 
-        log_like_ratio_func: Callable[[Any, Any], Number] = None, 
+        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None,
+        log_like_ratio_func: Callable[[Any, Any], Number] = None,
         n_chains: int = 10,
         n_cpus: int = 10,
     ):
@@ -25,9 +25,11 @@ class BaseBayesianInversion:
         ]
         self.log_prior_func = _preprocess_func(log_prior_func)
         self.log_likelihood_func = _preprocess_func(log_likelihood_func)
-        self.log_prior_ratio_funcs = [
-            _preprocess_func(func) for func in log_prior_ratio_funcs
-        ] if log_prior_ratio_funcs is not None else None
+        self.log_prior_ratio_funcs = (
+            [_preprocess_func(func) for func in log_prior_ratio_funcs]
+            if log_prior_ratio_funcs is not None
+            else None
+        )
         self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
@@ -38,8 +40,8 @@ class BaseBayesianInversion:
                 perturbation_funcs,
                 self.log_prior_func,
                 self.log_likelihood_func,
-                self.log_prior_ratio_funcs, 
-                self.log_like_ratio_func, 
+                self.log_prior_ratio_funcs,
+                self.log_like_ratio_func,
             )
             for i in range(n_chains)
         ]
@@ -114,7 +116,8 @@ class BayesianInversion(BaseBayesianInversion):
 
 
 def _preprocess_func(func):
-    if func is None: return None
+    if func is None:
+        return None
     f = None
     args = []
     kwargs = {}

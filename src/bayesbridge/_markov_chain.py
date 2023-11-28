@@ -25,8 +25,8 @@ class BaseMarkovChain:
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
         log_prior_func: Callable[[Any], Number] = None,
         log_likelihood_func: Callable[[Any], Number] = None,
-        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None, 
-        log_like_ratio_func: Callable[[Any, Any], Number] = None, 
+        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None,
+        log_like_ratio_func: Callable[[Any, Any], Number] = None,
         temperature: int = 1,
     ):
         self.id = id
@@ -36,8 +36,9 @@ class BaseMarkovChain:
         self._temperature = temperature
         assert not (log_prior_func is None and log_prior_ratio_funcs is None)
         assert not (log_likelihood_func is None and log_like_ratio_func is None)
-        assert log_prior_ratio_funcs is None or \
-            len(log_prior_ratio_funcs) == len(perturbation_funcs)
+        assert log_prior_ratio_funcs is None or len(log_prior_ratio_funcs) == len(
+            perturbation_funcs
+        )
         self.log_prior_func = log_prior_func
         self.log_likelihood_func = log_likelihood_func
         self.log_prior_ratio_funcs = log_prior_ratio_funcs
@@ -138,7 +139,7 @@ class BaseMarkovChain:
             try:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
             except Exception:
-                i -= 1      # this doesn't have to go into failure counter
+                i -= 1  # this doesn't have to go into failure counter
                 continue
 
             # calculate the log posterior ratio
@@ -162,7 +163,9 @@ class BaseMarkovChain:
             if save_model and self.temperature == 1:
                 self._save_model()
             return
-        raise RuntimeError(f"Chain {self.id} failed in forward calculation for 500 times")
+        raise RuntimeError(
+            f"Chain {self.id} failed in forward calculation for 500 times"
+        )
 
     def advance_chain(
         self,

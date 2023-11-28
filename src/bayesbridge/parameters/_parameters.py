@@ -65,7 +65,7 @@ class Parameter(ABC):
 
         Example:
         def my_init(
-            param: bb.parameters.Parameter, 
+            param: bb.parameters.Parameter,
             positions: Union[np.ndarray, Number]
         ) -> Union[np.ndarray, Number]:
             print("This is my custom init!")
