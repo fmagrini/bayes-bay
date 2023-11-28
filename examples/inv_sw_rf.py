@@ -210,7 +210,7 @@ for d in np.cumsum(true_thickness):
     axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
-prefix = "test_rf_sw"
+prefix = "inv_rf_sw"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)
