@@ -19,6 +19,7 @@ author = 'InLab, BayesBridge development team'
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "myst_nb", 
 ]
 
 templates_path = ['_templates']
