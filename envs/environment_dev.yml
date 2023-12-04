@@ -11,11 +11,14 @@ dependencies:
     - nox
     - sphinx
     - sphinx-book-theme
+    - sphinx-design
+    - sphinx-togglebutton
+    - sphinx-copybutton
+    - myst-nb
     - flake8
     - black
     - wheel
     - setuptools
     - cython
     - pytest
-    - geo-espresso
     - git+https://github.com/miili/pysurf96.git
