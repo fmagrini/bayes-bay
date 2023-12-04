@@ -12,6 +12,10 @@ from ._state import State
 
 class BaseMarkovChain:
     """
+    Low level interface for a Markov Chain.
+    
+    This class assumes you have 
+    
     Parameters
     ----------
     starting_model : object

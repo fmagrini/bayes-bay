@@ -37,9 +37,11 @@ experiments.
    :caption: Reference
 
    api/index
+   changelog
 
 .. toctree::
    :maxdepth: 1
    :caption: Development
 
    developer
+   licence

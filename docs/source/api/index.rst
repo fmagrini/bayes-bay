@@ -10,6 +10,19 @@ to use a particular item, you're in the right place.
 If you're new to BayesBridge, we recommend :ref:`our tutorial page <basic-usage>` for easy-to-follow usage 
 guides.
 
+
+Low level inversion API
+-----------------------
+
+
+.. autosummary::
+    :toctree: generated/
+    :nosignatures:
+
+    bayesbridge.BaseBayesianInversion
+    bayesbridge.BaseMarkovChain
+
+
 High level inversion API
 ------------------------
 
@@ -22,63 +35,65 @@ High level inversion API
     bayesbridge.State
     bayesbridge.Target
 
+
 Parameterizations
 ^^^^^^^^^^^^^^^^^
 
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
+.. toggle::
 
-    bayesbridge.Voronoi1D
+    .. autosummary::
+        :toctree: generated/
+        :nosignatures:
+
+        bayesbridge.Parameterization
+        bayesbridge.Voronoi1D
+
 
 Parameters
 ^^^^^^^^^^
 
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
+.. toggle::
 
-    bayesbridge.parameters.Parameter
-    bayesbridge.parameters.UniformParameter
-    bayesbridge.parameters.GaussianParameter
-    bayesbridge.parameters.ParameterFromPrior
+    .. autosummary::
+        :toctree: generated/
+        :nosignatures:
+
+        bayesbridge.parameters.Parameter
+        bayesbridge.parameters.UniformParameter
+        bayesbridge.parameters.GaussianParameter
+        bayesbridge.parameters.ParameterFromPrior
+
 
 Perturbations
 ^^^^^^^^^^^^^
 
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
+.. toggle::
 
-    bayesbridge.perturbations.Perturbation
-    bayesbridge.perturbations.ParamPerturbation
-    bayesbridge.perturbations.Voronoi1DPerturbation
-    bayesbridge.perturbations.BirthPerturbation1D
-    bayesbridge.perturbations.BirthFromPrior1D
-    bayesbridge.perturbations.BirthFromNeighbour1D
-    bayesbridge.perturbations.DeathPerturbation1D
-    bayesbridge.perturbations.DeathFromPrior1D
-    bayesbridge.perturbations.DeathFromNeighbour1D
+    .. autosummary::
+        :toctree: generated/
+        :nosignatures:
+
+        bayesbridge.perturbations.Perturbation
+        bayesbridge.perturbations.ParamPerturbation
+        bayesbridge.perturbations.Voronoi1DPerturbation
+        bayesbridge.perturbations.BirthPerturbation1D
+        bayesbridge.perturbations.BirthFromPrior1D
+        bayesbridge.perturbations.BirthFromNeighbour1D
+        bayesbridge.perturbations.DeathPerturbation1D
+        bayesbridge.perturbations.DeathFromPrior1D
+        bayesbridge.perturbations.DeathFromNeighbour1D
+
 
 Samplers
 ^^^^^^^^
 
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
+.. toggle::
 
-    bayesbridge.samplers.Sampler
-    bayesbridge.samplers.VanillaSampler
-    bayesbridge.samplers.ParallelTempering
-    bayesbridge.samplers.SimulatedAnnealing
+    .. autosummary::
+        :toctree: generated/
+        :nosignatures:
 
-Low level inversion API
------------------------
-
-
-.. autosummary::
-    :toctree: generated/
-    :nosignatures:
-
-    bayesbridge.BaseBayesianInversion
-    bayesbridge.BaseMarkovChain
+        bayesbridge.samplers.Sampler
+        bayesbridge.samplers.VanillaSampler
+        bayesbridge.samplers.ParallelTempering
+        bayesbridge.samplers.SimulatedAnnealing

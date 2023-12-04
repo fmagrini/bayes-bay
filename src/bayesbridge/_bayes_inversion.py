@@ -8,6 +8,29 @@ from .samplers import VanillaSampler
 
 
 class BaseBayesianInversion:
+    r"""
+    A low-level class for performing Bayesian inversion using Markov Chain Monte Carlo 
+    (MCMC) methods.
+
+    This class provides the basic structure for setting up and running MCMC 
+    simulations, given user-provided definition of prior and likelihood functions, the 
+    initialization of walkers, and the execution of the MCMC algorithm.
+    
+    Parameters
+    ----------
+    walkers_starting_models: List[Any]
+        a list of starting models for each chain. The models can be of any type so long
+        as they are consistent with what is accepted as arguments in the perturbation
+        functions and probability functions. The length of this list must be equal to 
+        the number of chains, i.e. ``n_chains``
+    perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]]
+        a list of perturbation functions. Each of which takes in a model (whichever the
+        allowed type is, as long as it's consistent with ``walkers_starting_models`` 
+        and other probability functions), produces a new model and log of the
+        corresponding proposal probability ratio.
+    log_prior_func: Callable[[Any], Number], default to None
+        a log prior function, 
+    """
     def __init__(
         self,
         walkers_starting_models: List[Any],

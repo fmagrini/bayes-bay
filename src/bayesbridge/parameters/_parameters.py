@@ -57,20 +57,25 @@ class Parameter(ABC):
         raise NotImplementedError
 
     def set_custom_initialize(self, initialize_func):
-        """
+        r"""
         Set a custom initialization function.
 
-        Parameters:
-        initialize_func (callable): The function to use for initialization. This function should take no arguments.
+        Parameters
+        ----------
+        initialize_func: callable
+            The function to use for initialization. This function should take no arguments.
 
-        Example:
-        def my_init(
-            param: bb.parameters.Parameter,
-            positions: Union[np.ndarray, Number]
-        ) -> Union[np.ndarray, Number]:
-            print("This is my custom init!")
+        Examples
+        --------
+        .. code-block:: python
+    
+            def my_init(
+                param: bb.parameters.Parameter,
+                positions: Union[np.ndarray, Number]
+            ) -> Union[np.ndarray, Number]:
+                print("This is my custom init!")
 
-        my_object.set_custom_initialize(my_init)
+            my_object.set_custom_initialize(my_init)
         """
         if not callable(initialize_func):
             raise ValueError("initialize_func must be a callable function.")

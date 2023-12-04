@@ -23,6 +23,7 @@ extensions = [
     "sphinx_togglebutton",
     "sphinx_copybutton",
     "myst_nb", 
+    "sphinx.ext.napoleon",
 ]
 
 templates_path = ['_templates']
@@ -31,6 +32,8 @@ exclude_patterns = []
 
 # settings for the sphinx-copybutton extension
 copybutton_prompt_text = ">>> "
+
+autodoc_typehints = 'none'
 
 
 # -- Options for HTML output -------------------------------------------------
