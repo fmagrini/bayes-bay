@@ -12,6 +12,21 @@ bayesbridge.perturbations.Voronoi1DPerturbation
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: Voronoi1DPerturbation.type
+
+
+
+
+
+
+    .. automethod:: Voronoi1DPerturbation.log_prior_ratio
+
+
+
+    .. automethod:: Voronoi1DPerturbation.perturb
+
+
+
 
 
 
@@ -83,22 +98,6 @@ bayesbridge.perturbations.Voronoi1DPerturbation
 
 
 
-
-
-
-
-    .. autoattribute:: Voronoi1DPerturbation.type
-
-
-
-
-
-
-    .. automethod:: Voronoi1DPerturbation.log_prior_ratio
-
-
-
-    .. automethod:: Voronoi1DPerturbation.perturb
 
 
 

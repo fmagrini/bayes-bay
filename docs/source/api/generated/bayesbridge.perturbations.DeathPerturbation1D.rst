@@ -12,6 +12,29 @@ bayesbridge.perturbations.DeathPerturbation1D
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: DeathPerturbation1D.type
+
+
+
+
+
+
+    .. automethod:: DeathPerturbation1D.log_prior_ratio
+
+
+
+    .. automethod:: DeathPerturbation1D.perturb
+
+
+
+    .. automethod:: DeathPerturbation1D.proposal_ratio
+
+
+
+    .. automethod:: DeathPerturbation1D.remove_cell_values
+
+
+
 
 
 
@@ -81,30 +104,6 @@ bayesbridge.perturbations.DeathPerturbation1D
 
 
 
-
-
-
-
-    .. autoattribute:: DeathPerturbation1D.type
-
-
-
-
-
-
-    .. automethod:: DeathPerturbation1D.log_prior_ratio
-
-
-
-    .. automethod:: DeathPerturbation1D.perturb
-
-
-
-    .. automethod:: DeathPerturbation1D.proposal_ratio
-
-
-
-    .. automethod:: DeathPerturbation1D.remove_cell_values
 
 
 

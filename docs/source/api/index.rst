@@ -34,6 +34,7 @@ High level inversion API
     bayesbridge.MarkovChain
     bayesbridge.State
     bayesbridge.Target
+    bayesbridge.LogLikelihood
 
 
 Parameterizations

@@ -12,69 +12,6 @@ bayesbridge.BayesianInversion
     .. rubric:: Reference Details
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     .. autoattribute:: BayesianInversion.chains
 
 
@@ -87,6 +24,68 @@ bayesbridge.BayesianInversion
 
 
     .. automethod:: BayesianInversion.run
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

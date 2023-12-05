@@ -12,6 +12,21 @@ bayesbridge.perturbations.ParamPerturbation
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: ParamPerturbation.type
+
+
+
+
+
+
+    .. automethod:: ParamPerturbation.log_prior_ratio
+
+
+
+    .. automethod:: ParamPerturbation.perturb
+
+
+
 
 
 
@@ -77,22 +92,6 @@ bayesbridge.perturbations.ParamPerturbation
 
 
 
-
-
-
-
-    .. autoattribute:: ParamPerturbation.type
-
-
-
-
-
-
-    .. automethod:: ParamPerturbation.log_prior_ratio
-
-
-
-    .. automethod:: ParamPerturbation.perturb
 
 
 

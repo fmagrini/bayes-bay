@@ -6,8 +6,23 @@ import numpy as np
 
 @dataclass
 class State:
-    """Data structure that stores the necessary information to perform the forward
-    operation
+    """Data structure that stores a model state, including all the necessary 
+    information to perform the forward operation
+
+    Parameters
+    ----------
+    n_voronoi_cells : int
+        number of Voronoi cells
+    voronoi_sites : np.ndarray
+        array containing the Voronoi site positions
+    param_values : Dict[str, np.ndarray]
+        dictionary containing parameter values
+    noise_std : Number, optional
+        standard deviation of the noise
+    noise_correlation : Number, optional
+        correlation of the noise
+    cache : Dict[str, Any], optional
+        cache for storing intermediate results
 
     Raises
     ------
@@ -41,7 +56,16 @@ class State:
         for name, values in self.param_values.items():
             self.set_param_values(name, values)
 
-    def set_param_values(self, param_name, values):
+    def set_param_values(self, param_name: str, values: np.ndarray):
+        """Changes the value(s) of a parameter
+
+        Parameters
+        ----------
+        param_name : str
+            the parameter name (i.e. the key in the ``param_values`` dict)
+        values : np.ndarray
+            the value(s) to be set for the given ``param_name``
+        """
         if param_name in ["n_voronoi_cells", "voronoi_sites"]:
             raise AttributeError(
                 f"'{param_name}' attribute already exists on the State object."
@@ -51,16 +75,61 @@ class State:
         self.param_values[param_name] = values
         setattr(self, param_name, values)
 
-    def get_param_values(self, name):
-        return getattr(self, name, None)
+    def get_param_values(self, param_name: str) -> np.ndarray:
+        """Get the value(s) of a parameter
+
+        Parameters
+        ----------
+        param_name : str
+            the parameter name (i.e. the key in the ``param_values`` dict)
+
+        Returns
+        -------
+        np.ndarray
+            the value(s) of the given ``param_name``
+        """
+        return getattr(self, param_name, None)
 
     def has_cache(self, name: str) -> bool:
+        """Indicates whether there is cache value stored for the given ``name``
+
+        Parameters
+        ----------
+        name : str
+            the cache name to look up
+
+        Returns
+        -------
+        bool
+            whether there is cache stored for the given ``name``
+        """
         return name in self.cache
 
     def load_cache(self, name: str) -> Any:
+        """Load the cached value for the given ``name``
+
+        Parameters
+        ----------
+        name : str
+            the cache name to look up
+
+        Returns
+        -------
+        Any
+            the cache stored for the given ``name``
+        """
         return self.cache[name]
 
     def store_cache(self, name: str, value: Any):
+        """Store the given value to cache
+
+        Parameters
+        ----------
+        name : str
+            the cache name to store
+        value : Any
+            the cache value to store
+        """
         self.cache[name] = value
 
     def _vars(self):
@@ -77,9 +146,24 @@ class State:
         return iter(self._vars())
 
     def items(self):
+        """Key-value pairs of all the values in the current model, expanding all
+        parameter values, excluding cache
+
+        Returns
+        -------
+        dict_items
+            the key-value dict pairs of all the attributes
+        """
         return self._vars().items()
 
     def clone(self) -> "State":
+        """Creates a clone of the current State itself
+
+        Returns
+        -------
+        State
+            the clone of self
+        """
         _n_voronoi_cells = self.n_voronoi_cells
         _voronoi_sites = self.voronoi_sites.copy()
         _noise_std = self.noise_std

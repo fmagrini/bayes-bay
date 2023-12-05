@@ -12,6 +12,29 @@ bayesbridge.perturbations.DeathFromPrior1D
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: DeathFromPrior1D.type
+
+
+
+
+
+
+    .. automethod:: DeathFromPrior1D.log_prior_ratio
+
+
+
+    .. automethod:: DeathFromPrior1D.perturb
+
+
+
+    .. automethod:: DeathFromPrior1D.proposal_ratio
+
+
+
+    .. automethod:: DeathFromPrior1D.remove_cell_values
+
+
+
 
 
 
@@ -81,30 +104,6 @@ bayesbridge.perturbations.DeathFromPrior1D
 
 
 
-
-
-
-
-    .. autoattribute:: DeathFromPrior1D.type
-
-
-
-
-
-
-    .. automethod:: DeathFromPrior1D.log_prior_ratio
-
-
-
-    .. automethod:: DeathFromPrior1D.perturb
-
-
-
-    .. automethod:: DeathFromPrior1D.proposal_ratio
-
-
-
-    .. automethod:: DeathFromPrior1D.remove_cell_values
 
 
 

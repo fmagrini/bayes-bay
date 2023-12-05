@@ -12,71 +12,6 @@ bayesbridge.Target
     .. rubric:: Reference Details
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     .. autoattribute:: Target.is_hierarchical
 
     .. autoattribute:: Target.log_prior_ratio_function
@@ -93,6 +28,70 @@ bayesbridge.Target
 
 
     .. automethod:: Target.determinant_covariance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

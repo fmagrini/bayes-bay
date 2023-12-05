@@ -12,6 +12,29 @@ bayesbridge.perturbations.BirthPerturbation1D
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: BirthPerturbation1D.type
+
+
+
+
+
+
+    .. automethod:: BirthPerturbation1D.initialize_newborn_cell
+
+
+
+    .. automethod:: BirthPerturbation1D.log_prior_ratio
+
+
+
+    .. automethod:: BirthPerturbation1D.perturb
+
+
+
+    .. automethod:: BirthPerturbation1D.proposal_ratio
+
+
+
 
 
 
@@ -81,30 +104,6 @@ bayesbridge.perturbations.BirthPerturbation1D
 
 
 
-
-
-
-
-    .. autoattribute:: BirthPerturbation1D.type
-
-
-
-
-
-
-    .. automethod:: BirthPerturbation1D.initialize_newborn_cell
-
-
-
-    .. automethod:: BirthPerturbation1D.log_prior_ratio
-
-
-
-    .. automethod:: BirthPerturbation1D.perturb
-
-
-
-    .. automethod:: BirthPerturbation1D.proposal_ratio
 
 
 

@@ -19,32 +19,89 @@ from ._utils_bayes import _interpolate_result
 
 
 class Parameterization(ABC):
+    """Parameterization class that can be configured by users to generate perturbation
+    functions for easier inference setup
+    """
     @property
     @abstractmethod
     def trans_d(self) -> bool:
+        """indicates whether the current configuration allows changes in the
+        discretization itself
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def parameters(self) -> Dict[str, Parameter]:
+        """all the unknown parameters under this parameterization setting
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
+        """a list of perturbation functions allowed in the current parameterization 
+        configurations, each of which takes in a model :class:`State` and returns a new 
+        model and a log proposal ratio value
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def log_prior_ratio_functions(self, old_model: State, new_model) -> Number:
+    def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
+        """a list of log prior ratio functions corresponding to each of the 
+        :meth:`perturbation_functions`
+        """
         raise NotImplementedError
 
     @abstractmethod
     def initialize(self) -> State:
+        """initializes the parameterization (if it's trans dimensional) and the 
+        parameter values
+
+        Returns
+        -------
+        State
+            an initial model state
+        """
         raise NotImplementedError
 
 
 class Voronoi1D(Parameterization):
+    """One dimensional Voronoi nuclei parameterization
+    
+    Parameters
+    ----------
+    voronoi_site_bounds : Tuple[Number, Number]
+        the minimum and maximum values of the 1D voronoi site positions
+    voronoi_site_perturb_std : Union[Number, np.ndarray]
+        the perturbation standard deviation of the Voronoi site positions
+    position : np.ndarray, optional
+        the breaking points for varied ``voronoi_site_perturb_std``. Activated only
+        when the ``voronoi_site_bounds`` and / or ``voronoi_site_perturb_std`` is
+        not a scalar, by default None
+    n_voronoi_cells : Number, optional
+        the number of Voronoi cells. Needs to be None if this is a 
+        trans-dimensional parameterization, by default None
+    free_params : List[Parameter], optional
+        a list of unknown parameters, by default None
+    n_voronoi_cells_min : Number, optional
+        the minimum number of Voronoi cells, by default None
+    n_voronoi_cells_max : Number, optional
+        the maximum number of Voronoi cells, by default None
+    voronoi_cells_init_range : Number, optional
+        the range in which the initialization of Voronoi cell numbers will be in
+        (i.e. the number of Voronoi cells will be uniformly sampled from the range:
+        :math:`(ncells_{min}, ncells_{min}+ninitrange*(ncells_{max}-ncells_{min})`, 
+        assuming :math:`ncells_{min} = \\text{n_voronoi_cells_min}`, 
+        :math:`ncells_{max} = \\text{n_voronoi_cells_max}` and 
+        :math:`ninitrange = \\text{n_voronoi_cells_min}`,
+        by default 0.2
+    birth_from : str, optional
+        whether to initialize newly-born Voronoi cell parameter values from 
+        randomly sampling or from a perturbation based on the nearest neighbour, by 
+        default "neighbour"
+    """
     def __init__(
         self,
         voronoi_site_bounds: Tuple[Number, Number],
@@ -75,13 +132,26 @@ class Voronoi1D(Parameterization):
 
     @property
     def trans_d(self) -> bool:
+        """indicates whether the current configuration allows changes in the
+        discretization itself
+        """
         return self._trans_d
 
     @property
     def parameters(self) -> Dict[str, Parameter]:
+        """all the unknown parameters under this parameterization setting
+        """
         return self.free_params
 
     def initialize(self) -> State:
+        """initializes the parameterization (if it's trans dimensional) and the 
+        parameter values
+
+        Returns
+        -------
+        State
+            an initial model state
+        """
         # initialize number of cells
         if self.trans_d:
             cells_range = self._voronoi_cells_init_range
@@ -144,19 +214,44 @@ class Voronoi1D(Parameterization):
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
+        """a list of perturbation functions allowed in the current parameterization 
+        configurations, each of which takes in a model :class:`State` and returns a new 
+        model and a log proposal ratio value
+        """
         return self._perturbation_funcs
 
     @property
     def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
+        """a list of log prior ratio functions corresponding to each of the 
+        :meth:`perturbation_functions`
+        """
         return self._log_prior_ratio_funcs
 
     @staticmethod
     def get_ensemble_statistics(
-        samples_voronoi_cell_extents,
-        samples_param_values,
-        interp_positions,
+        samples_voronoi_cell_extents: list,
+        samples_param_values: list,
+        interp_positions: np.ndarray,
         percentiles=(10, 90),
-    ):
+    ) -> dict:
+        """get the mean, median, std and percentiles of the given ensemble
+
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : list
+            a list of voronoi cell extents (thicknesses in the 1D case)
+        samples_param_values : list
+            a list of physical parameter values to draw statistics from
+        interp_positions : _type_
+            points to interpolate
+        percentiles : tuple, optional
+            percentiles to calculate, by default (10, 90)
+
+        Returns
+        -------
+        dict
+            a dictionary with these keys: "mean", "median", "std" and "percentile"
+        """
         interp_params = Voronoi1D.interpolate_samples(
             samples_voronoi_cell_extents, samples_param_values, interp_positions
         )
@@ -170,13 +265,33 @@ class Voronoi1D(Parameterization):
 
     @staticmethod
     def plot_ensemble_statistics(
-        samples_voronoi_cell_extents,
-        samples_param_values,
-        interp_positions,
+        samples_voronoi_cell_extents: list,
+        samples_param_values: list,
+        interp_positions: np.ndarray,
         percentiles=(10, 90),
         ax=None,
         **kwargs,
     ):
+        """plot the mean, median, std and percentiles from the given samples
+
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : list
+            a list of voronoi cell extents (thicknesses in the 1D case)
+        samples_param_values : list
+            a list of physical parameter values to draw statistics from
+        interp_positions : _type_
+            points to interpolate
+        percentiles : tuple, optional
+            percentiles to calculate, by default (10, 90)
+        ax : matplotlib.axes.Axes, optional
+            an optional user-provided ax, by default None
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            the resulting plot that has the statistics on it
+        """
         statistics = Voronoi1D.get_ensemble_statistics(
             samples_voronoi_cell_extents,
             samples_param_values,
@@ -211,6 +326,22 @@ class Voronoi1D(Parameterization):
     def interpolate_samples(
         samples_voronoi_cell_extents, samples_param_values, interp_positions
     ):
+        """interpolates the samples given the site positions and interpolate points
+
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : list
+            a list of voronoi cell extents (thicknesses in the 1D case)
+        samples_param_values : list
+            a list of physical parameter values to draw statistics from
+        interp_positions : _type_
+            points to interpolate
+
+        Returns
+        -------
+        np.ndarray
+            the resulting samples
+        """
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
         for i, (sample_extents, sample_values) in enumerate(
             zip(samples_voronoi_cell_extents, samples_param_values)
@@ -222,23 +353,24 @@ class Voronoi1D(Parameterization):
 
     @staticmethod
     def plot_param_samples(
-        samples_voronoi_cell_extents, samples_param_values, ax=None, **kwargs
+        samples_voronoi_cell_extents: list,
+        samples_param_values: list,
+        ax=None, 
+        **kwargs
     ):
-        """Plot multiple 1D Earth models based on sampled parameters.
+        """plot multiple 1D Earth models based on sampled parameters.
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : ndarray
-            A 2D numpy array where each row represents a sample of thicknesses (or Voronoi cell extents)
-
+        samples_voronoi_cell_extents : list
+            a list of voronoi cell extents (thicknesses in the 1D case)
         samples_param_values : ndarray
-            A 2D numpy array where each row represents a sample of parameter values (e.g., velocities)
-
+            a 2D numpy array where each row represents a sample of parameter values 
+            (e.g., velocities)
         ax : Axes, optional
-            An optional Axes object to plot on
-
+            an optional Axes object to plot on
         kwargs : dict, optional
-            Additional keyword arguments to pass to ax.step
+            additional keyword arguments to pass to ax.step
 
         Returns
         -------
@@ -275,19 +407,16 @@ class Voronoi1D(Parameterization):
 
     @staticmethod
     def plot_hist_n_voronoi_cells(samples_n_voronoi_cells, ax=None, **kwargs):
-        """
-        Plot a histogram of the distribution of the number of Voronoi cells.
+        """plot a histogram of the distribution of the number of Voronoi cells.
 
         Parameters
         ----------
         samples_n_voronoi_cells : list or ndarray
-            List or array containing the number of Voronoi cells in each sample
-
+            list or array containing the number of Voronoi cells in each sample
         ax : Axes, optional
-            An optional Axes object to plot on
-
+            an optional Axes object to plot on
         kwargs : dict, optional
-            Additional keyword arguments to pass to ax.hist
+            additional keyword arguments to pass to ax.hist
 
         Returns
         -------
@@ -336,25 +465,24 @@ class Voronoi1D(Parameterization):
         ax=None,
         **kwargs,
     ):
-        """
-        Plot a 2D histogram (depth profile) of points including the interfaces.
+        """plot a 2D histogram (depth profile) of points including the interfaces.
 
         Parameters
         ----------
         samples_voronoi_cell_extents : ndarray
-            A 2D numpy array where each row represents a sample of thicknesses (or Voronoi cell extents)
-
+            A 2D numpy array where each row represents a sample of thicknesses (or 
+            Voronoi cell extents)
         samples_param_values : ndarray
-            A 2D numpy array where each row represents a sample of parameter values (e.g., velocities)
-
+            A 2D numpy array where each row represents a sample of parameter values 
+            (e.g., velocities)
         bins : int or [int, int], optional
-            The number of bins to use along each axis (default is 100). If you pass a single int, it will use that
-            many bins for both axes. If you pass a list of two ints, it will use the first for the x-axis (velocity)
+            The number of bins to use along each axis (default is 100). If you pass a 
+            single int, it will use that
+            many bins for both axes. If you pass a list of two ints, it will use the 
+            first for the x-axis (velocity)
             and the second for the y-axis (depth).
-
         ax : Axes, optional
             An optional Axes object to plot on
-
         kwargs : dict, optional
             Additional keyword arguments to pass to ax.hist2d
 
@@ -390,6 +518,22 @@ class Voronoi1D(Parameterization):
         ax=None,
         **kwargs,
     ):
+        """plot the 1D depth distribution
+
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : list
+            a list of voronoi cell extents (thicknesses in the 1D case)
+        bins : int, optional
+            number of vertical bins, by default 100
+        ax : matplotlib.axes.Axes, optional
+            an optional user-provided ax, by default None
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            the resulting plot that has the depth distribution on it
+        """
         if ax is None:
             _, ax = plt.subplots()
         depths = []

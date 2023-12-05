@@ -12,6 +12,29 @@ bayesbridge.perturbations.BirthFromNeighbour1D
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: BirthFromNeighbour1D.type
+
+
+
+
+
+
+    .. automethod:: BirthFromNeighbour1D.initialize_newborn_cell
+
+
+
+    .. automethod:: BirthFromNeighbour1D.log_prior_ratio
+
+
+
+    .. automethod:: BirthFromNeighbour1D.perturb
+
+
+
+    .. automethod:: BirthFromNeighbour1D.proposal_ratio
+
+
+
 
 
     .. automethod:: BirthFromNeighbour1D.__call__
@@ -79,30 +102,6 @@ bayesbridge.perturbations.BirthFromNeighbour1D
 
 
 
-
-
-
-
-    .. autoattribute:: BirthFromNeighbour1D.type
-
-
-
-
-
-
-    .. automethod:: BirthFromNeighbour1D.initialize_newborn_cell
-
-
-
-    .. automethod:: BirthFromNeighbour1D.log_prior_ratio
-
-
-
-    .. automethod:: BirthFromNeighbour1D.perturb
-
-
-
-    .. automethod:: BirthFromNeighbour1D.proposal_ratio
 
 
 

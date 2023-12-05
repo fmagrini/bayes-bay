@@ -12,6 +12,21 @@ bayesbridge.perturbations.Perturbation
     .. rubric:: Reference Details
 
 
+    .. autoattribute:: Perturbation.type
+
+
+
+
+
+
+    .. automethod:: Perturbation.log_prior_ratio
+
+
+
+    .. automethod:: Perturbation.perturb
+
+
+
 
 
 
@@ -77,22 +92,6 @@ bayesbridge.perturbations.Perturbation
 
 
 
-
-
-
-
-    .. autoattribute:: Perturbation.type
-
-
-
-
-
-
-    .. automethod:: Perturbation.log_prior_ratio
-
-
-
-    .. automethod:: Perturbation.perturb
 
 
 
