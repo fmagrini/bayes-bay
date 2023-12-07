@@ -92,7 +92,7 @@ class Target:
         """
         return self.perturbation_function is not None
 
-    def covariance_times_vector(self, model: State, vector: np.ndarray) -> np.ndarray:
+    def inverse_covariance_times_vector(self, model: State, vector: np.ndarray) -> np.ndarray:
         """Calculates the dot product of the covariance inverse matrix with a given
         vector
 
