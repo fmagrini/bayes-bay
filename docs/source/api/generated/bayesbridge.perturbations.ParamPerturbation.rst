@@ -31,7 +31,13 @@ bayesbridge.perturbations.ParamPerturbation
 
 
 
+
+
     .. automethod:: ParamPerturbation.__call__
+
+
+
+
 
 
 

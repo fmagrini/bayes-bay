@@ -39,7 +39,13 @@ bayesbridge.perturbations.DeathFromNeighbour1D
 
 
 
+
+
     .. automethod:: DeathFromNeighbour1D.__call__
+
+
+
+
 
 
 

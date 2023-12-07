@@ -23,11 +23,11 @@ bayesbridge.Target
 
 
 
-    .. automethod:: Target.covariance_times_vector
-
-
-
     .. automethod:: Target.determinant_covariance
+
+
+
+    .. automethod:: Target.inverse_covariance_times_vector
 
 
 

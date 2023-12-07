@@ -29,6 +29,10 @@ bayesbridge.samplers.ParallelTempering
 
 
 
+    .. automethod:: ParallelTempering.add_on_iteration_end
+
+
+
     .. automethod:: ParallelTempering.advance_chain
 
 
@@ -49,7 +53,23 @@ bayesbridge.samplers.ParallelTempering
 
 
 
+    .. automethod:: ParallelTempering.on_iteration_end
+
+
+
     .. automethod:: ParallelTempering.run
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

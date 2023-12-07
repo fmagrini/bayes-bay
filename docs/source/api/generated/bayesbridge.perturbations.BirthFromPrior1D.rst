@@ -39,7 +39,13 @@ bayesbridge.perturbations.BirthFromPrior1D
 
 
 
+
+
     .. automethod:: BirthFromPrior1D.__call__
+
+
+
+
 
 
 

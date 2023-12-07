@@ -29,6 +29,10 @@ bayesbridge.samplers.SimulatedAnnealing
 
 
 
+    .. automethod:: SimulatedAnnealing.add_on_iteration_end
+
+
+
     .. automethod:: SimulatedAnnealing.advance_chain
 
 
@@ -49,7 +53,21 @@ bayesbridge.samplers.SimulatedAnnealing
 
 
 
+    .. automethod:: SimulatedAnnealing.on_iteration_end
+
+
+
     .. automethod:: SimulatedAnnealing.run
+
+
+
+
+
+
+
+
+
+
 
 
 

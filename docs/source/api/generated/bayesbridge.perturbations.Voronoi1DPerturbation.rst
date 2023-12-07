@@ -31,7 +31,13 @@ bayesbridge.perturbations.Voronoi1DPerturbation
 
 
 
+
+
     .. automethod:: Voronoi1DPerturbation.__call__
+
+
+
+
 
 
 

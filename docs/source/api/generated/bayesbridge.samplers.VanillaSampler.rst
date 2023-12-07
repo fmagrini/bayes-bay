@@ -29,6 +29,10 @@ bayesbridge.samplers.VanillaSampler
 
 
 
+    .. automethod:: VanillaSampler.add_on_iteration_end
+
+
+
     .. automethod:: VanillaSampler.advance_chain
 
 
@@ -49,7 +53,21 @@ bayesbridge.samplers.VanillaSampler
 
 
 
+    .. automethod:: VanillaSampler.on_iteration_end
+
+
+
     .. automethod:: VanillaSampler.run
+
+
+
+
+
+
+
+
+
+
 
 
 

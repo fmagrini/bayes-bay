@@ -39,7 +39,13 @@ bayesbridge.perturbations.DeathFromPrior1D
 
 
 
+
+
     .. automethod:: DeathFromPrior1D.__call__
+
+
+
+
 
 
 

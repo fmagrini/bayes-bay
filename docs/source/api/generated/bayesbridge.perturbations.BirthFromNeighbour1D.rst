@@ -37,7 +37,15 @@ bayesbridge.perturbations.BirthFromNeighbour1D
 
 
 
+
+
+
+
     .. automethod:: BirthFromNeighbour1D.__call__
+
+
+
+
 
 
 

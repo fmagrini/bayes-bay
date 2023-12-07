@@ -29,6 +29,10 @@ bayesbridge.samplers.Sampler
 
 
 
+    .. automethod:: Sampler.add_on_iteration_end
+
+
+
     .. automethod:: Sampler.advance_chain
 
 
@@ -49,7 +53,21 @@ bayesbridge.samplers.Sampler
 
 
 
+    .. automethod:: Sampler.on_iteration_end
+
+
+
     .. automethod:: Sampler.run
+
+
+
+
+
+
+
+
+
+
 
 
 
