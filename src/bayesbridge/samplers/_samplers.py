@@ -93,6 +93,7 @@ class Sampler(ABC):
             MarkovChain.advance_chain,
             n_iterations=n_iterations,
             burnin_iterations=burnin_iterations,
+            on_iteration_end=self.on_iteration_end,
             save_every=save_every,
             verbose=verbose,
             print_every=print_every,
@@ -211,6 +212,40 @@ class ParallelTempering(Sampler):
 
 
 class SimulatedAnnealing(Sampler):
-    def __init__(self):
+    def __init__(self, temperature_start=10):
         super().__init__()
+        self.temperature_start = temperature_start
         raise NotImplementedError
+
+    
+    def on_iteration_end(self, markov_chain):
+        return self.temperature_start \
+            * math.exp(-self.cooling_rate * markov_chain.explored_models)
+    
+    def run(
+        self,
+        n_iterations,
+        n_cpus=10,
+        burnin_iterations=0,
+        save_every=100,
+        verbose=True,
+        print_every=100,
+    ):
+        self.cooling_rate = math.log(self.temperature_start) / burnin_iterations
+        self.advance_chain(
+            n_iterations=n_iterations,
+            n_cpus=n_cpus,
+            burnin_iterations=burnin_iterations,
+            save_every=save_every,
+            verbose=verbose,
+            print_every=print_every
+            )
+        return self.chains
+
+        
+        
+        
+        
+        
+        
+        
