@@ -7,7 +7,7 @@ Created on Wed Dec 21 15:56:00 2022
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable, Union
+from typing import Callable, Union, Tuple
 from numbers import Number
 import random
 from functools import partial
@@ -21,6 +21,8 @@ SQRT_TWO_PI = math.sqrt(TWO_PI)
 
 
 class Parameter(ABC):
+    """Base class for an unknown parameter
+    """
     def __init__(self, **kwargs):
         self.init_params = kwargs
 
@@ -28,41 +30,155 @@ class Parameter(ABC):
     def initialize(
         self, positions: Union[np.ndarray, Number]
     ) -> Union[np.ndarray, Number]:
+        """initializes the values of this parameter given one or more positions
+
+        Parameters
+        ----------
+        positions : Union[np.ndarray, Number]
+            an array of positions or one position
+
+        Returns
+        -------
+        Union[np.ndarray, Number]
+            an array of values or one value corresponding to the given positions
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def perturb_value(self, position, value):
+    def perturb_value(self, position: Number, value: Number) -> Number:
+        """perturb the value of a given position from the given current value
+
+        Parameters
+        ----------
+        position : Number
+            the position of the value to be perturbed
+        value : Number
+            the current value to be perturbed from
+            
+        Returns
+        -------
+        Number
+            the new value of this parameter at the given position
+        """
         raise NotImplementedError
 
     @abstractmethod
     def log_prior(self, position, value):
+        """calculates the log of the prior probability density for the given position
+        and value
+
+        Parameters
+        ----------
+        position : Number
+            the position of the value
+        value : Number
+            the value to calculate the probability density for
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+    def log_prior_ratio_perturbation_free_param(
+        self, 
+        old_value: Number, 
+        new_value: Number, 
+        position: Number, 
+    ) -> Number:
+        """calculates the log prior ratio when the free parameter is perturbed
+
+        Parameters
+        ----------
+        old_value : Number
+            the value for this parameter before perturbation
+        new_value : Number
+            the value for this parameter after perturbation
+        position : Number
+            the position of the value perturbed
+            
+        Returns
+        -------
+        Number
+            the log prior ratio in the free parameter perturbration case
+        """
         raise NotImplementedError
 
     @abstractmethod
     def log_prior_ratio_perturbation_voronoi_site(
-        self, old_position, new_position, value
-    ):
-        raise NotImplementedError
-
-    @abstractmethod
-    def log_prior_ratio_perturbation_birth(self, new_position, new_value):
-        raise NotImplementedError
-
-    @abstractmethod
-    def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
-        raise NotImplementedError
-
-    def set_custom_initialize(self, initialize_func):
-        r"""
-        Set a custom initialization function.
+        self, 
+        old_position: Number, 
+        new_position: Number, 
+        value: Number, 
+    ) -> Number:
+        """calculates the log prior ratio when the Voronoi site position is perturbed
 
         Parameters
         ----------
-        initialize_func: callable
+        old_position : Number
+            the position before perturbation
+        new_position : Number
+            the position after perturbation
+        position : Number
+            the position of the value perturbed
+        
+        Returns
+        -------
+        Number
+            the log prior ratio in the Voronoi site perturbation case
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def log_prior_ratio_perturbation_birth(
+        self, 
+        new_position: Number, 
+        new_value: Number
+    ) -> Number:
+        """calculates the log prior ratio when a new cell is born
+
+        Parameters
+        ----------
+        new_position : Number
+            the position of the new-born cell
+        new_value : Number
+            the value of the new-born cell
+
+        Returns
+        -------
+        Number
+            the log prior ratio in the birth perturbation case
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def log_prior_ratio_perturbation_death(
+        self, 
+        removed_position: Number, 
+        removed_value: Number
+    ) -> Number:
+        """calculates the log prior ratio when a cell is removed
+
+        Parameters
+        ----------
+        removed_position : Number
+            the position of the cell removed
+        removed_value : Number
+            the value of the cell removed
+
+        Returns
+        -------
+        Number
+            the log prior ratio in the death perturbation case
+        """
+        raise NotImplementedError
+
+    def set_custom_initialize(
+        self, 
+        initialize_func: Callable[["Parameter", Union[np.ndarray, Number]], Union[np.ndarray, Number]]
+    ):
+        r"""set a custom initialization function
+
+        Parameters
+        ----------
+        initialize_func: Callable[[bayesbridge.parameters.Parameter, Union[np.ndarray, Number]], Union[np.ndarray, Number]]
             The function to use for initialization. This function should take no arguments.
 
         Examples
@@ -106,7 +222,34 @@ class Parameter(ABC):
 
 
 class UniformParameter(Parameter):
-    def __init__(self, name, vmin, vmax, perturb_std, position=None):
+    """Class for defining an unknown parameter that follows the uniform distribution 
+    as prior
+
+    Parameters
+    ----------
+    name : str
+        name of the current parameter, for display and storing purposes
+    vmin : Union[Number, np.ndarray]
+        the lower bound for this parameter. This can either be a scalar or an array
+        if the hyper parameters vary with positions
+    vmax : Union[Number, np.ndarray]
+        the upper bound for this parameter. This can either be a scalar or an array
+        if the hyper parameters vary with positions
+    perturb_std : Union[Number, np.ndarray]
+        perturbation standard deviation for this parameter. This can either be a 
+        scalar or an array if the hyper parameters vary with positions
+    position : np.ndarray, optional
+        positions corresponding to position-dependent hyper parameters (``vmin``,
+        ``vmax``, ``perturb_std``), by default None
+    """
+    def __init__(
+        self, 
+        name: str, 
+        vmin: Union[Number, np.ndarray], 
+        vmax: Union[Number, np.ndarray], 
+        perturb_std: Union[Number, np.ndarray], 
+        position: np.ndarray = None, 
+    ):
         super().__init__(
             name=name,
             position=position,
@@ -146,9 +289,33 @@ class UniformParameter(Parameter):
         self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
 
     def get_delta(self, position):
+        """get the difference between ``vmax`` and ``vmin`` at the given position
+
+        Parameters
+        ----------
+        position : Number
+            the position at which the uniform distribution range will be returned
+
+        Returns
+        -------
+        float
+            the different between ``vmax`` and ``vmin`` at the given position
+        """
         return self._get_pos_dependent_hyper_param(self._delta, position)
 
-    def get_vmin_vmax(self, position):
+    def get_vmin_vmax(self, position: Union[Number, np.ndarray]) -> Tuple[Number, Number]:
+        """get the lower and upper bounds at the given position(s)
+
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) as which the uniform distribution bounds will be returned
+
+        Returns
+        -------
+        Tuple[float, float]
+            the lower (``vmin``) and upper (``vmax``) bounds at the given position(s)
+        """
         # It can return a scalar or an array or both
         # e.g.
         # >>> p.get_vmin_vmax(np.array([9.2, 8.7]))
