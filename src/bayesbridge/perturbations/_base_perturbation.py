@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Tuple
 from numbers import Number
 
 from .._state import State
 
 
-class Perturbation:
+class Perturbation(ABC):
     @abstractmethod
     def perturb(self, model: State) -> Tuple[State, Number]:
         raise NotImplementedError
