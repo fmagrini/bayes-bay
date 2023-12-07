@@ -65,15 +65,10 @@ love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 # -------------- Implement distribution functions
 def log_prior(model):
-    k = int(len(model) / 2)
-    vs = model[k:]
+    k = len(model) // 2
     # p(k) and p(c|k) are to be cancelled out in acceptance criteria
     # p(v|k) prior on param value given #layers
-    log_p_v_k = (
-        float("-inf")
-        if any(vs > VS_UNIFORM_MAX) or any(vs < VS_UNIFORM_MIN)
-        else -k * math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
-    )
+    log_p_v_k = -k * math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
     return log_p_v_k
 
 
@@ -221,7 +216,7 @@ inversion.run(
 
 # saving plots, models and targets
 def _calc_thickness(model: np.ndarray):
-    k = int(len(model) / 2)
+    k = len(model) // 2
     sites = model[:k]
     depths = (sites[:-1] + sites[1:]) / 2
     thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))

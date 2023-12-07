@@ -61,7 +61,7 @@ class BaseMarkovChain:
         log_likelihood_func: Callable[[Any], Number] = None,
         log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None,
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
-        temperature: int = 1,
+        temperature: float = 1,
     ):
         self.id = id
         self.current_model = starting_model
@@ -280,7 +280,7 @@ class MarkovChain(BaseMarkovChain):
         parameterization: Parameterization,
         targets: List[Target],
         fwd_functions: Callable[[State], numpy.ndarray],
-        temperature: int = 1,
+        temperature: float = 1,
     ):
         self.id = id
         self.parameterization = parameterization
