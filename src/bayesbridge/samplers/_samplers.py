@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Callable, List, Tuple
 from functools import partial
 import multiprocessing
@@ -9,12 +9,20 @@ import numpy as np
 from .._markov_chain import MarkovChain, BaseMarkovChain
 
 
-class Sampler:
+class Sampler(ABC):
     def __init__(self):
         self._iteration = 0
         self._extra_on_initialize = []
+        self._extra_on_iteration_end = []
         self._extra_on_advance_chain_end = []
-        self.on_advance_chain_end = self.decorate(self.on_advance_chain_end)
+        self.on_iteration_end = self.decorate(
+            self.on_iteration_end, 
+            self._extra_on_iteration_end
+        )
+        self.on_advance_chain_end = self.decorate(
+            self.on_advance_chain_end, 
+            self._extra_on_advance_chain_end
+        )
 
     def initialize(self, chains: List[MarkovChain]):  # called by external
         self.on_initialize(chains)
@@ -27,14 +35,17 @@ class Sampler:
         func: Callable[["Sampler", List[MarkovChain]], None],
     ):
         self._extra_on_initialize.append(func)
+        
+    def add_on_iteration_end(self, func: Callable[["MarkovChain"], None]):
+        self._extra_on_iteration_end.append(func)
 
     def add_on_advance_chain_end(self, func: Callable[["Sampler"], None]):
         self._extra_on_advance_chain_end.append(func)
 
-    def decorate(self, on_advance_chain_end):
+    def decorate(self, func_to_decorate, funcs_to_add):
         def wrapper(*args, **kwargs):
-            on_advance_chain_end(*args, **kwargs)
-            for func in self._extra_on_advance_chain_end:
+            func_to_decorate(*args, **kwargs)
+            for func in funcs_to_add:
                 func(self)
 
         return wrapper
@@ -42,9 +53,19 @@ class Sampler:
     @abstractmethod
     def on_initialize(self, chains):  # customized depending on individual sampler
         raise NotImplementedError
+    
+    @abstractmethod
+    def on_iteration_end(self):       # customized depending on individual sampler
+        raise NotImplementedError
 
     @abstractmethod
     def on_advance_chain_end(self):  # customized depending on individual sampler
+        """
+        
+        In the object init stage, this method is to be overwritten by a decorated 
+        function, in which all the functions in ``self._extra_on_advance_chain_end``
+        are to be called immediately after this method.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -99,6 +120,9 @@ class VanillaSampler(Sampler):
 
     def on_initialize(self, chains):
         pass
+    
+    def on_iteration_end(self):
+        pass
 
     def on_advance_chain_end(self):
         pass
@@ -146,6 +170,19 @@ class ParallelTempering(Sampler):
         )
         super()._assign_temperatures_to_chains(temperatures, chains)
 
+    def on_iteration_end(self):
+        pass
+
+    def on_advance_chain_end(self):
+        for i in range(len(self.chains)):
+            chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
+            T1, T2 = chain1.temperature, chain2.temperature
+            log_like_ratio = chain1._log_likelihood_ratio(chain2.current_model)
+            prob = (1 / T1 - 1 / T2) * log_like_ratio
+            if prob > math.log(random.random()):
+                chain1.temperature = T2
+                chain2.temperature = T1
+
     def run(
         self,
         n_iterations,
@@ -171,16 +208,6 @@ class ParallelTempering(Sampler):
             if self.iteration >= n_iterations:
                 break
         return self.chains
-
-    def on_advance_chain_end(self):
-        for i in range(len(self.chains)):
-            chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
-            T1, T2 = chain1.temperature, chain2.temperature
-            log_like_ratio = chain1._log_likelihood_ratio(chain2.current_model)
-            prob = (1 / T1 - 1 / T2) * log_like_ratio
-            if prob > math.log(random.random()):
-                chain1.temperature = T2
-                chain2.temperature = T1
 
 
 class SimulatedAnnealing(Sampler):

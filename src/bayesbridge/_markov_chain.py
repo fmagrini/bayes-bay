@@ -208,11 +208,12 @@ class BaseMarkovChain:
 
     def advance_chain(
         self,
-        n_iterations=1000,
-        burnin_iterations=0,
-        save_every=100,
-        verbose=True,
-        print_every=100,
+        n_iterations: int = 1000,
+        burnin_iterations: int = 0,
+        save_every: int = 100,
+        verbose: bool = True,
+        print_every: int = 100,
+        on_iteration_end: Callable[["BaseMarkovChain"], None] = None, 
     ):
         """advance the chain for a given number of iterations
 
@@ -242,6 +243,7 @@ class BaseMarkovChain:
                 save_model = not (i - burnin_iterations) % save_every
 
             self._next_iteration(save_model)
+            on_iteration_end(self)
             if verbose and not i % print_every:
                 self._print_statistics()
 
