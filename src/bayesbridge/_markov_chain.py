@@ -95,7 +95,11 @@ class BaseMarkovChain:
         """All the models saved so far
         """
         return getattr(self, "_saved_models", None)
-
+    
+    @property
+    def statistics(self):
+        return self._statistics
+    
     def _init_saved_models(self):
         if isinstance(self.current_model, (State, dict)):
             self._saved_models = defaultdict(list)
