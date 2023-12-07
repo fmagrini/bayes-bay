@@ -216,11 +216,16 @@ class SimulatedAnnealing(Sampler):
         super().__init__()
         self.temperature_start = temperature_start
         raise NotImplementedError
-
+        
+    def on_initialize(self, chains):
+        pass
     
     def on_iteration_end(self, markov_chain):
-        return self.temperature_start \
-            * math.exp(-self.cooling_rate * markov_chain.explored_models)
+        iteration = markov_chain.statistics['n_explored_models']
+        return self.temperature_start * math.exp(-self.cooling_rate * iteration)
+
+    def on_advance_chain_end(self):
+        pass
     
     def run(
         self,
