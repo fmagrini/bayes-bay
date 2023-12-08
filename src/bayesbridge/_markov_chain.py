@@ -163,7 +163,7 @@ class BaseMarkovChain:
             log_prior_new = self.log_prior_func(new_model)
             return log_prior_new - log_prior_old
 
-    def _log_likelihood_ratio(self, new_model, i_perturb):
+    def _log_likelihood_ratio(self, new_model):
         if self.log_like_ratio_func is not None:
             return self.log_like_ratio_func(self.current_model, new_model)
         else:
@@ -187,10 +187,9 @@ class BaseMarkovChain:
             # calculate the log posterior ratio
             log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
             try:
-                log_likelihood_ratio = self._log_likelihood_ratio(new_model, i_perturb)
+                log_likelihood_ratio = self._log_likelihood_ratio(new_model)
                 tempered_loglike_ratio = log_likelihood_ratio / self.temperature
             except Exception as e:
-                raise e
                 self._fwd_failure_counts_total += 1
                 continue
             log_posterior_ratio = log_prior_ratio + tempered_loglike_ratio
@@ -217,7 +216,8 @@ class BaseMarkovChain:
         save_every: int = 100,
         verbose: bool = True,
         print_every: int = 100,
-        on_iteration_end: Callable[["BaseMarkovChain"], None] = None, 
+        on_begin_iteration: Callable[["BaseMarkovChain"], None] = None, 
+        on_end_iteration: Callable[["BaseMarkovChain"], None] = None, 
     ):
         """advance the chain for a given number of iterations
 
@@ -234,6 +234,10 @@ class BaseMarkovChain:
         print_every : int, optional
             the frequency in which we print the progress and information during the 
             sampling, by default 100
+        on_begin_iteration : Callable[["BaseMarkovChain"], None], optional
+            customized function that's to be run at before an iteration
+        on_end_iteration : Callable[["BaseMarkovChain"], None], optional
+            customized function that's to be run at after an iteration
 
         Returns
         -------
@@ -246,8 +250,9 @@ class BaseMarkovChain:
             else:
                 save_model = not (i - burnin_iterations) % save_every
 
+            on_begin_iteration(self)
             self._next_iteration(save_model)
-            on_iteration_end(self)
+            on_end_iteration(self)
             if verbose and not i % print_every:
                 self._print_statistics()
 
