@@ -30,3 +30,7 @@ cmake-build-debug/
 # Automation cache
 .nox
 .pytest_cache
+
+# Others
+refs
+examples/results

@@ -13,22 +13,30 @@ class Sampler(ABC):
     def __init__(self):
         self._iteration = 0
         self._extra_on_initialize = []
-        self._extra_on_iteration_end = []
-        self._extra_on_advance_chain_end = []
-        self.on_iteration_end = self.decorate(
-            self.on_iteration_end, 
-            self._extra_on_iteration_end
-        )
-        self.on_advance_chain_end = self.decorate(
-            self.on_advance_chain_end, 
-            self._extra_on_advance_chain_end
-        )
+        self._extra_on_begin_iteration = []
+        self._extra_on_end_iteration = []
+        self._extra_on_end_advance_chain = []
 
-    def initialize(self, chains: List[MarkovChain]):  # called by external
+    def initialize(self, chains: List[BaseMarkovChain]):  # called by external
         self.on_initialize(chains)
         self._chains = chains
         for func in self._extra_on_initialize:
             func(self, chains)
+    
+    def begin_iteration(self, chain: BaseMarkovChain):    # called by external
+        self.on_begin_iteration(chain)
+        for func in self._extra_on_begin_iteration:
+            func(self, chain)
+    
+    def end_iteration(self, chain: BaseMarkovChain):      # called by external
+        self.on_iteration_end(chain)
+        for func in self._extra_on_end_iteration:
+            func(self, chain)
+    
+    def end_advance_chain(self):                          # called by external
+        self.on_end_advance_chain()
+        for func in self._extra_on_end_advance_chain:
+            func(self)
 
     def add_on_initialize(
         self,
@@ -36,40 +44,33 @@ class Sampler(ABC):
     ):
         self._extra_on_initialize.append(func)
         
-    def add_on_iteration_end(self, func: Callable[["MarkovChain"], None]):
-        self._extra_on_iteration_end.append(func)
+    def add_on_begin_iteration(self, func: Callable[["Sampler", BaseMarkovChain], None]):
+        self._extra_on_begin_iteration.append(func)
+    
+    def add_on_end_iteration(self, func: Callable[["Sampler", BaseMarkovChain], None]):
+        self._extra_on_end_iteration.append(func)
 
-    def add_on_advance_chain_end(self, func: Callable[["Sampler"], None]):
-        self._extra_on_advance_chain_end.append(func)
-
-    def decorate(self, func_to_decorate, funcs_to_add):
-        def wrapper(*args, **kwargs):
-            func_to_decorate(*args, **kwargs)
-            for func in funcs_to_add:
-                func(self)
-
-        return wrapper
+    def add_on_end_advance_chain(self, func: Callable[["Sampler"], None]):
+        self._extra_on_end_advance_chain.append(func)
 
     @abstractmethod
-    def on_initialize(self, chains):  # customized depending on individual sampler
+    def on_initialize(self, chains):                        # customized by subclass
         raise NotImplementedError
     
     @abstractmethod
-    def on_iteration_end(self):       # customized depending on individual sampler
+    def on_begin_iteration(self, chain: BaseMarkovChain):   # customized by subclass
+        raise NotImplementedError
+    
+    @abstractmethod
+    def on_end_iteration(self, chain: BaseMarkovChain):     # customized by subclass
         raise NotImplementedError
 
     @abstractmethod
-    def on_advance_chain_end(self):  # customized depending on individual sampler
-        """
-        
-        In the object init stage, this method is to be overwritten by a decorated 
-        function, in which all the functions in ``self._extra_on_advance_chain_end``
-        are to be called immediately after this method.
-        """
+    def on_end_advance_chain(self):                         # customized by subclass
         raise NotImplementedError
 
     @abstractmethod
-    def run(self):  # customized depending on individual sampler; called by external
+    def run(self):                      # customized by subclass; called by external
         raise NotImplementedError
 
     @property
@@ -93,10 +94,11 @@ class Sampler(ABC):
             MarkovChain.advance_chain,
             n_iterations=n_iterations,
             burnin_iterations=burnin_iterations,
-            on_iteration_end=self.on_iteration_end,
             save_every=save_every,
             verbose=verbose,
             print_every=print_every,
+            on_begin_iteration=self.on_begin_iteration,
+            on_end_iteration=self.on_end_iteration,            
         )
         if n_cpus > 1:
             pool = multiprocessing.Pool(n_cpus)
@@ -105,27 +107,25 @@ class Sampler(ABC):
             pool.join()
         else:
             self._chains = [func(chain) for chain in self.chains]
-        self.on_advance_chain_end()
+        self.on_end_advance_chain()
         self._iteration += n_iterations
         return self.chains
-
-    def _assign_temperatures_to_chains(self, temperatures, chains):
-        for i, chain in enumerate(chains):
-            chain.temperature = temperatures[i]
-        self._chains = chains
 
 
 class VanillaSampler(Sampler):
     def __init__(self):
         super().__init__()
 
-    def on_initialize(self, chains):
+    def on_initialize(self, chains: List[BaseMarkovChain]):
         pass
     
-    def on_iteration_end(self):
+    def on_begin_iteration(self, chain: BaseMarkovChain):
+        pass
+    
+    def on_end_iteration(self, chain: BaseMarkovChain):
         pass
 
-    def on_advance_chain_end(self):
+    def on_end_advance_chain(self):
         pass
 
     def run(
@@ -159,7 +159,7 @@ class ParallelTempering(Sampler):
         self._chains_with_unit_tempeature = chains_with_unit_temperature
         self._swap_every = swap_every
 
-    def on_initialize(self, chains):
+    def on_initialize(self, chains: List[BaseMarkovChain]):
         n_chains = len(chains)
         temperatures = np.ones(
             max(2, int(n_chains * self._chains_with_unit_tempeature)) - 1
@@ -169,12 +169,16 @@ class ParallelTempering(Sampler):
         temperatures = np.concatenate(
             (temperatures, np.geomspace(1, self._temperature_max, size))
         )
-        super()._assign_temperatures_to_chains(temperatures, chains)
+        for i, chain in enumerate(chains):
+            chain.temperature = temperatures[i]
 
-    def on_iteration_end(self):
+    def on_begin_iteration(self, chain: BaseMarkovChain):
         pass
 
-    def on_advance_chain_end(self):
+    def on_end_iteration(self, chain: BaseMarkovChain):
+        pass
+
+    def on_end_advance_chain(self):
         for i in range(len(self.chains)):
             chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
             T1, T2 = chain1.temperature, chain2.temperature
@@ -215,16 +219,19 @@ class SimulatedAnnealing(Sampler):
     def __init__(self, temperature_start=10):
         super().__init__()
         self.temperature_start = temperature_start
-        raise NotImplementedError
         
-    def on_initialize(self, chains):
-        pass
+    def on_initialize(self, chains: List[BaseMarkovChain]):
+        for chain in chains:
+            chain.temperature = self.temperature_start
     
-    def on_iteration_end(self, markov_chain):
-        iteration = markov_chain.statistics['n_explored_models']
-        return self.temperature_start * math.exp(-self.cooling_rate * iteration)
+    def on_begin_iteration(self, chain: BaseMarkovChain):
+        iteration = chain.statistics['n_explored_models_total']
+        chain.temperature = self.temperature_start * math.exp(-self.cooling_rate * iteration)
 
-    def on_advance_chain_end(self):
+    def on_end_iteration(self, chain: BaseMarkovChain):
+        pass
+
+    def on_end_advance_chain(self):
         pass
     
     def run(
@@ -246,11 +253,3 @@ class SimulatedAnnealing(Sampler):
             print_every=print_every
             )
         return self.chains
-
-        
-        
-        
-        
-        
-        
-        
