@@ -47,3 +47,18 @@ class InitException(Exception):
 
     def __str__(self):
         return self.message
+
+
+class UserFunctionError(Exception):
+    """Exception raised when user-provided function raises an exception
+    """
+    def __init__(self, original_exc):
+        self.message = "error occurred when running the user-provided function - " + (
+            original_exc.message
+            if hasattr(original_exc, "message")
+            else f"{type(original_exc).__name__}: {str(original_exc)}"
+        )
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message

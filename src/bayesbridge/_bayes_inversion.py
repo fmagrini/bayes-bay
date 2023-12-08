@@ -9,6 +9,7 @@ from .samplers import VanillaSampler, Sampler
 from ._parameterizations import Parameterization
 from ._target import Target
 from ._state import State
+from .exceptions import UserFunctionError
 
 
 class BaseBayesianInversion:
@@ -261,4 +262,7 @@ class _FunctionWrapper(object):
         self.kwargs = kwargs or {}
 
     def __call__(self, *args):
-        return self.f(*args, *self.args, **self.kwargs)
+        try:
+            return self.f(*args, *self.args, **self.kwargs)
+        except Exception as e:
+            raise UserFunctionError(e)

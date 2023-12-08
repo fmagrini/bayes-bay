@@ -9,7 +9,7 @@ from ._base_perturbation import Perturbation
 from .._state import State
 from ..exceptions._exceptions import DimensionalityException
 from ..parameters._parameters import SQRT_TWO_PI, Parameter
-from .._utils_bayes import nearest_index, is_sorted
+from .._utils_bayes import nearest_index
 
 
 class BirthPerturbation1D(Perturbation):
@@ -42,14 +42,11 @@ class BirthPerturbation1D(Perturbation):
         unsorted_values = self.initialize_newborn_cell(new_site, old_sites, model)
         # structure new sites and values into new model
         new_sites = np.append(old_sites, new_site)
-        if is_sorted(new_sites):
-            new_values = unsorted_values
-        else:
-            isort = np.argsort(new_sites)
-            new_sites = new_sites[isort]
-            new_values = dict()
-            for name, values in unsorted_values.items():
-                new_values[name] = values[isort]
+        isort = np.argsort(new_sites)
+        new_sites = new_sites[isort]
+        new_values = dict()
+        for name, values in unsorted_values.items():
+            new_values[name] = values[isort]
         new_model = State(n_cells + 1, new_sites, new_values)
         # calculate proposal ratio
         proposal_ratio = self.proposal_ratio()

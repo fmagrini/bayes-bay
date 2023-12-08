@@ -11,7 +11,6 @@ import bayesbridge as bb
 # -------------- Setting up constants, fwd func, synth data
 VP_VS = 1.77
 RAYLEIGH_STD = 0.02
-LOVE_STD = 0.02
 RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -65,19 +64,15 @@ true_model = bb.State(len(true_vs), true_voronoi_positions, {"vs": true_vs})
 periods1 = np.linspace(4, 80, 20)
 rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
-love1 = forward_sw(true_model, periods1, "love", 1)
-love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 
 # -------------- Define bayesbridge objects
 targets = [
     bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    bb.Target("love1", love1_dobs, covariance_mat_inv=1 / LOVE_STD**2),
 ]
 
 fwd_functions = [
     (forward_sw, [periods1, "rayleigh", 1]),
-    (forward_sw, [periods1, "love", 1]),
 ]
 
 param_vs = bb.parameters.UniformParameter(

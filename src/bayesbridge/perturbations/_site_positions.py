@@ -8,7 +8,7 @@ import numpy as np
 from .._state import State
 from ..parameters._parameters import Parameter
 from ._base_perturbation import Perturbation
-from .._utils_bayes import interpolate_linear_1d, is_sorted
+from .._utils_bayes import interpolate_linear_1d
 
 
 class Voronoi1DPerturbation(Perturbation):
@@ -47,17 +47,12 @@ class Voronoi1DPerturbation(Perturbation):
             break
         # structure new sites into new model
         new_sites = old_sites.copy()
-        if is_sorted(new_sites):
-            new_values = dict()
-            for name, values in model.param_values.items():
-                new_values[name] = values.copy()
-        else:
-            new_sites[self._isite] = new_site
-            isort = np.argsort(new_sites)
-            new_sites = new_sites[isort]
-            new_values = dict()
-            for name, values in model.param_values.items():
-                new_values[name] = values[isort]
+        new_sites[self._isite] = new_site
+        isort = np.argsort(new_sites)
+        new_sites = new_sites[isort]
+        new_values = dict()
+        for name, values in model.param_values.items():
+            new_values[name] = values[isort]
         new_model = State(nsites, new_sites, new_values)
         # calculate proposal ratio
         proposal_ratio = self._proposal_ratio(old_site, new_site)

@@ -8,6 +8,11 @@ from ._log_likelihood import LogLikelihood
 from ._target import Target
 from ._parameterizations import Parameterization
 from ._state import State
+from .exceptions import (
+    DimensionalityException, 
+    ForwardException, 
+    UserFunctionError
+)
 
 
 class BaseMarkovChain:
@@ -115,7 +120,7 @@ class BaseMarkovChain:
             "n_accepted_models": defaultdict(int), 
             "n_explored_models_total": 0, 
             "n_accepted_models_total": 0, 
-            "n_fwd_failures_total": 0, 
+            "exceptions": defaultdict(int), 
         }
 
     def _save_model(self):
@@ -156,7 +161,7 @@ class BaseMarkovChain:
                 "\t%s: %d/%d (%.2f%%)"
                 % (perturb_type, _accepted, _explored, acceptance_rate)
             )
-        print("NUMBER OF FWD FAILURES: %d" % self.statistics["n_fwd_failures_total"])
+        # print("NUMBER OF FWD FAILURES: %d" % self.statistics["n_fwd_failures_total"])
 
     def _log_prior_ratio(self, new_model, i_perturb):
         if self.log_prior_ratio_funcs is not None:
@@ -183,18 +188,19 @@ class BaseMarkovChain:
             # perturb and calculate the log proposal ratio
             try:
                 new_model, log_proposal_ratio = perturb_func(self.current_model)
-            except Exception:
+            except (DimensionalityException, UserFunctionError) as e:
                 i -= 1  # this doesn't have to go into failure counter
+                self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
 
             # calculate the log posterior ratio
             log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model)
-                tempered_loglike_ratio = log_likelihood_ratio / self.temperature
-            except Exception as e:
-                self._statistics["n_fwd_failures_total"] += 1
+            except (ForwardException, UserFunctionError) as e:
+                self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
+            tempered_loglike_ratio = log_likelihood_ratio / self.temperature
             log_posterior_ratio = log_prior_ratio + tempered_loglike_ratio
 
             # decide whether to accept

@@ -42,6 +42,7 @@ class State:
     noise_std: Number = None
     noise_correlation: Number = None
     cache: Dict[str, Any] = field(default_factory=dict)
+    extra_storage: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if not isinstance(self.n_voronoi_cells, int):

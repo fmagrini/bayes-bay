@@ -226,7 +226,10 @@ class SimulatedAnnealing(Sampler):
     
     def on_begin_iteration(self, chain: BaseMarkovChain):
         iteration = chain.statistics['n_explored_models_total']
-        chain.temperature = self.temperature_start * math.exp(-self.cooling_rate * iteration)
+        if iteration < self.burnin_iterations:
+            chain.temperature = self.temperature_start * math.exp(-self.cooling_rate * iteration)
+        elif iteration == self.burnin_iterations:
+            chain.temperature = 1
 
     def on_end_iteration(self, chain: BaseMarkovChain):
         pass
@@ -243,7 +246,9 @@ class SimulatedAnnealing(Sampler):
         verbose=True,
         print_every=100,
     ):
-        self.cooling_rate = math.log(self.temperature_start) / burnin_iterations
+        self.burnin_iterations = burnin_iterations
+        if burnin_iterations != 0:
+            self.cooling_rate = math.log(self.temperature_start) / burnin_iterations
         self.advance_chain(
             n_iterations=n_iterations,
             n_cpus=n_cpus,
