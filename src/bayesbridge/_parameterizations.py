@@ -15,7 +15,7 @@ from .perturbations._birth_death import (
 )
 from .perturbations._param_values import ParamPerturbation
 from .perturbations._site_positions import Voronoi1DPerturbation
-from ._utils_bayes import _interpolate_result
+from ._utils_bayes import interpolate_result, compute_voronoi1d_cell_extents
 
 
 class Parameterization(ABC):
@@ -226,7 +226,53 @@ class Voronoi1D(Parameterization):
         :meth:`perturbation_functions`
         """
         return self._log_prior_ratio_funcs
-
+    
+    @staticmethod
+    def compute_cell_extents(voronoi_sites : np.ndarray, 
+                             lb=0, 
+                             ub=-1,
+                             fill_value=0):
+        """compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
+        boundaries are first drawn at the midpoint between consecutive Voronoi
+        nuclei. The extent is then derived from the distance between consecutive
+        boundaries.
+        
+        Parameters
+        ----------
+        voronoi_sites : np.ndarray of shape (n,)
+            Voronoi-site positions. These should be greater or equal to zero
+            
+        lb, ub : float
+            Lower and upper bounds used in the calculation of Voronoi-cell 
+            extents. Negative values for `lb` or `ub` denote an unbounded cell.
+            The extent of an unbounded cell is set to `fill_value`
+            
+        fill_value : float
+            Value attributed to unbounded Voronoi cells
+            
+        Returns
+        -------
+        np.ndarray
+            Voronoi-cell extents
+            
+        Examples
+        --------
+        >>> depth = np.array([2, 5.5, 8, 10])
+        
+        >>> Voronoi1D.compute_cell_extents(depth, lb=0, ub=-1, fill_value=np.nan)
+        array([3.75, 3.  , 2.25,  nan])
+        
+        >>> Voronoi1D.compute_cell_extents(depth, lb=-1, ub=-1, fill_value=np.nan)
+        array([ nan, 3.  , 2.25,  nan])
+        
+        >>> Voronoi1D.compute_cell_extents(depth, lb=0, ub=15, fill_value=np.nan)
+        array([3.75, 3.  , 2.25, 6.  ])
+        """
+        return compute_voronoi1d_cell_extents(voronoi_sites, 
+                                              lb=lb, 
+                                              ub=ub,
+                                              fill_value=fill_value)
+    
     @staticmethod
     def get_ensemble_statistics(
         samples_voronoi_cell_extents: list,
@@ -346,7 +392,7 @@ class Voronoi1D(Parameterization):
         for i, (sample_extents, sample_values) in enumerate(
             zip(samples_voronoi_cell_extents, samples_param_values)
         ):
-            interp_params[i, :] = _interpolate_result(
+            interp_params[i, :] = interpolate_result(
                 np.array(sample_extents), np.array(sample_values), interp_positions
             )
         return interp_params
