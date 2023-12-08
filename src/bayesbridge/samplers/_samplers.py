@@ -225,7 +225,7 @@ class SimulatedAnnealing(Sampler):
             chain.temperature = self.temperature_start
     
     def on_begin_iteration(self, chain: BaseMarkovChain):
-        iteration = chain.statistics['n_explored_models']
+        iteration = chain.statistics['n_explored_models_total']
         chain.temperature = self.temperature_start * math.exp(-self.cooling_rate * iteration)
 
     def on_end_iteration(self, chain: BaseMarkovChain):

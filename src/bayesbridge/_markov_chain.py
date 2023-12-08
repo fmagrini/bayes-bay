@@ -109,12 +109,14 @@ class BaseMarkovChain:
             self._saved_models = []
 
     def _init_statistics(self):
-        self._current_misfit = float("inf")
-        self._proposed_counts = defaultdict(int)
-        self._accepted_counts = defaultdict(int)
-        self._proposed_counts_total = 0
-        self._accepted_counts_total = 0
-        self._fwd_failure_counts_total = 0
+        self._statistics = {
+            "current_misfit": float("inf"), 
+            "n_explored_models": defaultdict(int), 
+            "n_accepted_models": defaultdict(int), 
+            "n_explored_models_total": 0, 
+            "n_accepted_models_total": 0, 
+            "n_fwd_failures_total": 0, 
+        }
 
     def _save_model(self):
         if isinstance(self.current_model, (State, dict)):
@@ -125,35 +127,36 @@ class BaseMarkovChain:
 
     def _save_statistics(self, perturb_i, accepted):
         perturb_type = self.perturbation_types[perturb_i]
-        self._proposed_counts[perturb_type] += 1
-        self._accepted_counts[perturb_type] += 1 if accepted else 0
-        self._proposed_counts_total += 1
-        self._accepted_counts_total += 1 if accepted else 0
+        self._statistics["n_explored_models"][perturb_type] += 1
+        self._statistics["n_accepted_models"][perturb_type] += 1 if accepted else 0
+        self._statistics["n_explored_models_total"] += 1
+        self._statistics["n_accepted_models_total"] += 1 if accepted else 0
 
     def _print_statistics(self):
-        head = "Chain ID: %s \nEXPLORED MODELS: %s - " % (
-            self.id,
-            self._proposed_counts_total,
-        )
-        acceptance_rate = (
-            self._accepted_counts_total / self._proposed_counts_total * 100
-        )
-        head += "ACCEPTANCE RATE: %d/%d (%.2f %%)" % (
-            self._accepted_counts_total,
-            self._proposed_counts_total,
+        head = f"Chain ID: {self.id}"
+        head += f"\nTEMPERATURE: {self.temperature}"
+        head += f"\nEXPLORED MODELS: {self.statistics['n_explored_models_total']}"
+        _accepted_total = self.statistics["n_accepted_models_total"]
+        _explored_total = self.statistics["n_explored_models_total"]
+        acceptance_rate = _accepted_total / _explored_total * 100
+        head += "\nACCEPTANCE RATE: %d/%d (%.2f %%)" % (
+            _accepted_total,
+            _explored_total,
             acceptance_rate,
         )
         print(head)
         print("PARTIAL ACCEPTANCE RATES:")
-        for perturb_type in sorted(self._proposed_counts):
-            proposed = self._proposed_counts[perturb_type]
-            accepted = self._accepted_counts[perturb_type]
-            acceptance_rate = accepted / proposed * 100
+        _accepted_all = self.statistics["n_accepted_models"]
+        _explored_all = self.statistics["n_explored_models"]
+        for perturb_type in sorted(self.statistics["n_explored_models"]):
+            _explored = _explored_all[perturb_type]
+            _accepted = _accepted_all[perturb_type]
+            acceptance_rate = _accepted / _explored * 100
             print(
                 "\t%s: %d/%d (%.2f%%)"
-                % (perturb_type, accepted, proposed, acceptance_rate)
+                % (perturb_type, _accepted, _explored, acceptance_rate)
             )
-        print("NUMBER OF FWD FAILURES: %d" % self._fwd_failure_counts_total)
+        print("NUMBER OF FWD FAILURES: %d" % self.statistics["n_fwd_failures_total"])
 
     def _log_prior_ratio(self, new_model, i_perturb):
         if self.log_prior_ratio_funcs is not None:
@@ -190,7 +193,7 @@ class BaseMarkovChain:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model)
                 tempered_loglike_ratio = log_likelihood_ratio / self.temperature
             except Exception as e:
-                self._fwd_failure_counts_total += 1
+                self._statistics["n_fwd_failures_total"] += 1
                 continue
             log_posterior_ratio = log_prior_ratio + tempered_loglike_ratio
 
