@@ -4,7 +4,7 @@ from libcpp cimport bool as bool_cpp
 from libc.math cimport fabs
 import numpy as np
 cimport numpy as np
-
+    
 
 @boundscheck(False)
 @wraparound(False) 
@@ -20,16 +20,20 @@ cpdef bool_cpp _is_sorted(long[:] argsort_indices):
 @boundscheck(False)
 @wraparound(False) 
 @cdivision(True)  
-cpdef _get_thickness(double[:] depth):
+cpdef compute_voronoi1d_cell_extents(double[:] depth, 
+                                     double lb=0, 
+                                     double ub=-1,
+                                     double fill_value=0):
     cdef ssize_t size = depth.shape[0]
     cdef int i
     cdef double d1, d2
     cdef double[:] thickness = np.zeros(size, dtype=np.double)
-    d1 = 0.
+    d1 = lb
     for i in range(size - 1):
         d2 = (depth[i] + depth[i+1]) / 2.
-        thickness[i] = d2 - d1
+        thickness[i] = d2 - d1 if d1>=0 else fill_value
         d1 = d2
+    thickness[i+1] = ub - d2 if ub>=0 else fill_value
     return np.asarray(thickness)
 
 
@@ -133,7 +137,6 @@ cpdef int nearest_index(double xp, double[:] x, ssize_t xlen):
     return i + 1
 
 
-
 @boundscheck(False)
 @wraparound(False) 
 cdef int floor_index(double xp, double[:] x, ssize_t xlen):
@@ -145,7 +148,7 @@ cdef int floor_index(double xp, double[:] x, ssize_t xlen):
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef _interpolate_result(double[:] x, double[:] y, double[:] x0):
+cpdef interpolate_result(double[:] x, double[:] y, double[:] x0):
     cdef size_t ilayer = 0
     cdef size_t i
     cdef size_t x0_len = x0.shape[0]
@@ -154,7 +157,6 @@ cpdef _interpolate_result(double[:] x, double[:] y, double[:] x0):
     cdef double interface_upper = x[0]
     cdef double x_i
     cdef double[:] ynew = np.zeros(x0_len, dtype=np.double)
-    
     
     for i in range(x0_len):
         x_i = x0[i]
@@ -168,35 +170,6 @@ cpdef _interpolate_result(double[:] x, double[:] y, double[:] x0):
                 interface_lower = interface_upper
                 interface_upper += x[ilayer]
     return np.asarray(ynew)
-
-#@boundscheck(False)
-#@wraparound(False) 
-#def interpolate_1d(xp, double[:] x, double[:] y, bool_cpp nearest=False):
-#    """ Linear or nearest neighbour interpolation in 1-D
-#    Parameters
-#    ----------
-#    xp : float, ndarray of floats
-#        Interpolation point(s)
-#        
-#    x, y : ndarray of floats
-#        Discrete set of known data points
-#    
-#    nearest : bool
-#        If True, nearest neighbour interpolation is performed. Default is False
-#    
-#    Returns
-#    -------
-#    yp : float
-#        Interpolated value(s)
-#    """
-#    func = _interpolate_nearest_1d if nearest else _interpolate_linear_1d
-#    if np.isscalar(xp):
-#        return func(xp, x, y)
-#    cdef int i, size = xp.shape[0]
-#    cdef double[:] yp = np.zeros(size, dtype=np.double)
-#    for i in range(size):
-#        yp[i] = func(xp[i], x, y)
-#    return np.asarray(yp)
 
 
 @boundscheck(False)
