@@ -10,6 +10,7 @@ __pycache__/
 dist/
 build/
 docs/build
+docs/source/api/generated
 
 # Python egg metadata, regenerated from source files by setuptools.
 */*.egg-info

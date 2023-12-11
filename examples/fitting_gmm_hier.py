@@ -48,7 +48,7 @@ targets = [
     bb.Target(
         "density", 
         data_y, 
-        noise_is_correlated=True, 
+        noise_is_correlated=False, 
         std_min=NOISE_STD_MIN,
         std_max=NOISE_STD_MAX,  
         std_perturb_std=NOISE_STD_PERTURB_STD, 

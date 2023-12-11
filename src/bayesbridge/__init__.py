@@ -11,7 +11,7 @@ from ._version import __version__
 
 __all__ = [
     "State",
-    "Parameterization", 
+    "Parameterization",
     "Voronoi1D",
     "Target",
     "LogLikelihood",

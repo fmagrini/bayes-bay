@@ -14,46 +14,46 @@ from .exceptions import UserFunctionError
 
 class BaseBayesianInversion:
     r"""
-    A low-level class for performing Bayesian inversion using Markov Chain Monte Carlo 
+    A low-level class for performing Bayesian inversion using Markov Chain Monte Carlo
     (McMC) methods.
 
-    This class provides the basic structure for setting up and running MCMC sampling, 
-    given user-provided definition of prior and likelihood functions and the 
+    This class provides the basic structure for setting up and running MCMC sampling,
+    given user-provided definition of prior and likelihood functions and the
     initialization of walkers.
-    
+
     Parameters
     ----------
     walkers_starting_models: List[Any]
         a list of starting models for each chain. The models can be of any type so long
         as they are consistent with what is accepted as arguments in the perturbation
-        functions and probability functions. The length of this list must be equal to 
+        functions and probability functions. The length of this list must be equal to
         the number of chains, i.e. ``n_chains``
     perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions. Each of which takes in a model (whichever the
-        allowed type is, as long as it's consistent with ``walkers_starting_models`` 
+        allowed type is, as long as it's consistent with ``walkers_starting_models``
         and other probability functions), produces a new model and log of the
         corresponding proposal probability ratio.
     log_prior_func: Callable[[Any], Number], optional
-        the log prior function :math:`log p(m)`. It takes in a model (the type of which 
-        is consistent with other arguments of this class) and returns the log of the 
-        prior density function. This will be used and cannot be None when 
+        the log prior function :math:`log p(m)`. It takes in a model (the type of which
+        is consistent with other arguments of this class) and returns the log of the
+        prior density function. This will be used and cannot be None when
         ``log_prior_ratio_funcs`` is None. Default to None
     log_likelihood_func: Callable[[Any], Number], optional
-        the log likelihood function :math:`\log p(d|m)`. It takes in a model (the type 
-        of which is consistent with other arguments of this class) and returns the log 
-        of the likelihood function. This will be used and cannot be None when 
+        the log likelihood function :math:`\log p(d|m)`. It takes in a model (the type
+        of which is consistent with other arguments of this class) and returns the log
+        of the likelihood function. This will be used and cannot be None when
         ``log_like_ratio_func`` is None. Default to None
     log_prior_ratio_funcs: List[Callable[[Any, Any], Number]], optional
-        a list of log prior ratio functions :math:`\log (\frac{p(m_2)}{p(m_1)})`. Each 
-        element of this list corresponds to each of the ``perturbation_funcs``. Each 
-        function takes in two models (of consistent type as other arguments of this 
-        class) and returns the log prior ratio as a number. This is utilised in the 
-        inversion by default, and ``log_prior_func`` gets used instead only when this 
+        a list of log prior ratio functions :math:`\log (\frac{p(m_2)}{p(m_1)})`. Each
+        element of this list corresponds to each of the ``perturbation_funcs``. Each
+        function takes in two models (of consistent type as other arguments of this
+        class) and returns the log prior ratio as a number. This is utilised in the
+        inversion by default, and ``log_prior_func`` gets used instead only when this
         argument is None. Default to None
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         the log likelihood ratio function :math:`\log (\frac{p(d|m_2)}{p(d|m_1)})`.
-        It takes in two models (of consistent type as other arguments of this class) 
-        and returns the log likelihood ratio as a number. This is utilised in the 
+        It takes in two models (of consistent type as other arguments of this class)
+        and returns the log likelihood ratio as a number. This is utilised in the
         inversion by default, and ``log_likelihood_func`` gets used instead only when
         this argument is None. Default to None
     n_chains: int, optional
@@ -62,6 +62,7 @@ class BaseBayesianInversion:
         the number of CPUs available. This is usually set to be equal to the number of
         chains if there are enough CPUs, default to 10
     """
+
     def __init__(
         self,
         walkers_starting_models: List[Any],
@@ -102,8 +103,7 @@ class BaseBayesianInversion:
 
     @property
     def chains(self) -> List[BaseMarkovChain]:
-        """The ``MarkovChain`` instances of the current Bayesian inversion
-        """
+        """The ``MarkovChain`` instances of the current Bayesian inversion"""
         return self._chains
 
     def run(
@@ -120,10 +120,10 @@ class BaseBayesianInversion:
         Parameters
         ----------
         sampler : bayesbridge.samplers.Sampler, optional
-            a sampler instance describing how chains intereact or modifie their 
-            properties during sampling, where it could be 
-            :class:`bayesbridge.samplers.VanillaSampler` (default), 
-            :class:`bayesbridge.samplers.ParallelTempering` 
+            a sampler instance describing how chains intereact or modifie their
+            properties during sampling, where it could be
+            :class:`bayesbridge.samplers.VanillaSampler` (default),
+            :class:`bayesbridge.samplers.ParallelTempering`
             and so on, or a customised sampler instance, by default None
         n_iterations : int, optional
             total number of iterations to run, by default 1000
@@ -134,7 +134,7 @@ class BaseBayesianInversion:
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
         print_every : int, optional
-            the frequency in which we print the progress and information during the 
+            the frequency in which we print the progress and information during the
             sampling, by default 100
         """
         if sampler is None:
@@ -150,9 +150,9 @@ class BaseBayesianInversion:
         )
 
     def get_results(
-        self, 
-        keys: Union[str, List[str]] = None, 
-        concatenate_chains: bool = True, 
+        self,
+        keys: Union[str, List[str]] = None,
+        concatenate_chains: bool = True,
     ) -> Union[Dict[str, list], list]:
         """To get the saved models
 
@@ -195,10 +195,10 @@ class BaseBayesianInversion:
 class BayesianInversion(BaseBayesianInversion):
     """A high-level class for performing Bayesian inversion using Markov Chain Monte
     Carlo (McMC) methods.
-    
+
     This is a subclass of :class:`BaseBayesianInversion`.
 
-    This class provides the basic structure for setting up and running McMC sampling, 
+    This class provides the basic structure for setting up and running McMC sampling,
     given user-configured parameterization settings, data targets and corresponding
     forward functions.
 
@@ -218,6 +218,7 @@ class BayesianInversion(BaseBayesianInversion):
         the number of CPUs available. This is usually set to be equal to the number of
         chains if there are enough CPUs
     """
+
     def __init__(
         self,
         parameterization: Parameterization,

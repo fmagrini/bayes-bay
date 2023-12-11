@@ -8,19 +8,15 @@ from ._log_likelihood import LogLikelihood
 from ._target import Target
 from ._parameterizations import Parameterization
 from ._state import State
-from .exceptions import (
-    DimensionalityException, 
-    ForwardException, 
-    UserFunctionError
-)
+from .exceptions import DimensionalityException, ForwardException, UserFunctionError
 
 
 class BaseMarkovChain:
     """
     Low-level interface for a Markov Chain.
-    
+
     Instantiation of this class is usually done by :class:`BaseBayesianInversion`.
-    
+
     Parameters
     ----------
     id : Union[int, str]
@@ -31,26 +27,26 @@ class BaseMarkovChain:
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
     log_prior_func: Callable[[Any], Number], optional
-        the log prior function :math:`\\log p(m)`. It takes in a model (the type of 
-        which is consistent with other arguments of this class) and returns the log of 
-        the prior density function. This will be used and cannot be None when 
+        the log prior function :math:`\\log p(m)`. It takes in a model (the type of
+        which is consistent with other arguments of this class) and returns the log of
+        the prior density function. This will be used and cannot be None when
         ``log_prior_ratio_funcs`` is None. Default to None
     log_likelihood_func: Callable[[Any], Number], optional
-        the log likelihood function :math:`\\log p(d|m)`. It takes in a model (the type 
-        of which is consistent with other arguments of this class) and returns the log 
-        of the likelihood function. This will be used and cannot be None when 
+        the log likelihood function :math:`\\log p(d|m)`. It takes in a model (the type
+        of which is consistent with other arguments of this class) and returns the log
+        of the likelihood function. This will be used and cannot be None when
         ``log_like_ratio_func`` is None. Default to None
     log_prior_ratio_funcs: List[Callable[[Any, Any], Number]], optional
-        a list of log prior ratio functions :math:`\\log (\\frac{p(m_2)}{p(m_1)})`. 
-        Each element of this list corresponds to each of the ``perturbation_funcs``. 
+        a list of log prior ratio functions :math:`\\log (\\frac{p(m_2)}{p(m_1)})`.
+        Each element of this list corresponds to each of the ``perturbation_funcs``.
         Each function takes in two models (of consistent type as other arguments of
-        this class) and returns the log prior ratio as a number. This is utilised in 
-        the inversion by default, and ``log_prior_func`` gets used instead only when 
+        this class) and returns the log prior ratio as a number. This is utilised in
+        the inversion by default, and ``log_prior_func`` gets used instead only when
         this argument is None. Default to None
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         the log likelihood ratio function :math:`\\log (\\frac{p(d|m_2)}{p(d|m_1)})`.
-        It takes in two models (of consistent type as other arguments of this class) 
-        and returns the log likelihood ratio as a number. This is utilised in the 
+        It takes in two models (of consistent type as other arguments of this class)
+        and returns the log likelihood ratio as a number. This is utilised in the
         inversion by default, and ``log_likelihood_func`` gets used instead only when
         this argument is None. Default to None
     temperature : int, optional
@@ -87,8 +83,7 @@ class BaseMarkovChain:
 
     @property
     def temperature(self) -> Number:
-        """The current temperature used in the log likelihood ratio
-        """
+        """The current temperature used in the log likelihood ratio"""
         return self._temperature
 
     @temperature.setter
@@ -97,14 +92,13 @@ class BaseMarkovChain:
 
     @property
     def saved_models(self) -> Union[Dict[str, list], list]:
-        """All the models saved so far
-        """
+        """All the models saved so far"""
         return getattr(self, "_saved_models", None)
-    
+
     @property
     def statistics(self):
         return self._statistics
-    
+
     def _init_saved_models(self):
         if isinstance(self.current_model, (State, dict)):
             self._saved_models = defaultdict(list)
@@ -113,18 +107,21 @@ class BaseMarkovChain:
 
     def _init_statistics(self):
         self._statistics = {
-            "current_misfit": float("inf"), 
-            "n_explored_models": defaultdict(int), 
-            "n_accepted_models": defaultdict(int), 
-            "n_explored_models_total": 0, 
-            "n_accepted_models_total": 0, 
-            "exceptions": defaultdict(int), 
+            "current_misfit": float("inf"),
+            "n_explored_models": defaultdict(int),
+            "n_accepted_models": defaultdict(int),
+            "n_explored_models_total": 0,
+            "n_accepted_models_total": 0,
+            "exceptions": defaultdict(int),
         }
 
     def _save_model(self):
         if isinstance(self.current_model, (State, dict)):
             for k in self.current_model:
-                self.saved_models[k].append(getattr(self.current_model, k))
+                try:
+                    self.saved_models[k].append(getattr(self.current_model, k))
+                except:
+                    self.saved_models[k].append(self.current_model.get_param_values(k))
         else:
             self.saved_models.append(self.current_model)
 
@@ -223,8 +220,8 @@ class BaseMarkovChain:
         save_every: int = 100,
         verbose: bool = True,
         print_every: int = 100,
-        on_begin_iteration: Callable[["BaseMarkovChain"], None] = None, 
-        on_end_iteration: Callable[["BaseMarkovChain"], None] = None, 
+        on_begin_iteration: Callable[["BaseMarkovChain"], None] = None,
+        on_end_iteration: Callable[["BaseMarkovChain"], None] = None,
     ):
         """advance the chain for a given number of iterations
 
@@ -239,7 +236,7 @@ class BaseMarkovChain:
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
         print_every : int, optional
-            the frequency in which we print the progress and information during the 
+            the frequency in which we print the progress and information during the
             sampling, by default 100
         on_begin_iteration : Callable[["BaseMarkovChain"], None], optional
             customized function that's to be run at before an iteration
@@ -269,11 +266,11 @@ class BaseMarkovChain:
 class MarkovChain(BaseMarkovChain):
     """
     High-level interface for a Markov Chain.
-    
+
     This is a subclass of :class:`BaseMarkovChain`.
-    
+
     Instantiation of this class is usually done by :class:`BayesianInversion`.
-    
+
     Parameters
     ----------
     id : Union[int, str]
@@ -290,6 +287,7 @@ class MarkovChain(BaseMarkovChain):
     temperature : int, optional
         used to temper the log likelihood, by default 1
     """
+
     def __init__(
         self,
         id: Union[int, str],
@@ -311,10 +309,12 @@ class MarkovChain(BaseMarkovChain):
         self._init_saved_models()
 
     def initialize(self):
-        """Initialize the parameterization and the parameter values. In other words, 
+        """Initialize the parameterization and the parameter values. In other words,
         to initialize the starting points of this chain.
         """
         self.current_model = self.parameterization.initialize()
+        for target in self.log_like_ratio_func.targets:
+            target.initialize(self.current_model)
 
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
