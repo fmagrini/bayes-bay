@@ -39,8 +39,8 @@ def read_version():
 
 ext_modules = [
     Extension(
-        name="bayesbridge._utils_bayes",
-        sources=["src/bayesbridge/_utils_bayes.pyx"],
+        name="bayesbridge._utils1d",
+        sources=["src/bayesbridge/_utils1d.pyx"],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         language="c++",

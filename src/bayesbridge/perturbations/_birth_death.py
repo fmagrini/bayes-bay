@@ -10,7 +10,7 @@ from ._base_perturbation import Perturbation
 from .._state import State
 from ..exceptions._exceptions import DimensionalityException
 from ..parameters._parameters import SQRT_TWO_PI, Parameter
-from .._utils_bayes import delete, insert_scalar, nearest_index
+from .._utils1d import delete, insert_scalar, nearest_index
 
 
 class BirthPerturbation1D(Perturbation):

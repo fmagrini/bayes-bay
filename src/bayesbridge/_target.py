@@ -4,7 +4,7 @@ import random
 import math
 import numpy as np
 
-from ._utils_bayes import inverse_covariance
+from ._utils1d import inverse_covariance
 from .perturbations._data_noise import NoisePerturbation
 from ._state import State
 

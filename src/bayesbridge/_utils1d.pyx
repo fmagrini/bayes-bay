@@ -232,16 +232,3 @@ cpdef insert_scalar(double[:] values, long index, double value):
     return np.asarray(new_values)
 
 
-@boundscheck(False)
-@wraparound(False) 
-cpdef delete(double[:] values, long index):
-    cdef size_t size = values.shape[0]
-    cdef double[:] new_values = np.zeros(size - 1, dtype=np.double)
-    cdef size_t i, j = 0
-    for i in range(size):
-        if i != index:
-            new_values[j] = values[i]
-            j += 1
-    return np.asarray(new_values)
-
-
