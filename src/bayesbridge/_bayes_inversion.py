@@ -149,11 +149,18 @@ class BaseBayesianInversion:
             print_every=print_every,
         )
 
-    def get_results(self, concatenate_chains=True) -> Union[Dict[str, list], list]:
+    def get_results(
+        self, 
+        keys: Union[str, List[str]] = None, 
+        concatenate_chains: bool = True, 
+    ) -> Union[Dict[str, list], list]:
         """To get the saved models
 
         Parameters
         ----------
+        keys : Union[str, List[str]]
+            one or more keys to retrieve from saved models. This will be ignored when
+            models are not of type :class:`State` or dict
         concatenate_chains : bool, optional
             whether to aggregate samples from all the Markov chains or to keep them
             seperate, by default True
@@ -164,14 +171,17 @@ class BaseBayesianInversion:
             a dictionary from name of the attribute stored to the values, or a list of
             saved models
         """
+        if isinstance(keys, str):
+            keys = [keys]
         if hasattr(self.chains[0].saved_models, "items"):
             results_model = defaultdict(list)
             for chain in self.chains:
                 for key, saved_values in chain.saved_models.items():
-                    if concatenate_chains and isinstance(saved_values, list):
-                        results_model[key].extend(saved_values)
-                    else:
-                        results_model[key].append(saved_values)
+                    if keys is None or key in keys:
+                        if concatenate_chains and isinstance(saved_values, list):
+                            results_model[key].extend(saved_values)
+                        else:
+                            results_model[key].append(saved_values)
         else:
             results_model = []
             for chain in self.chains:

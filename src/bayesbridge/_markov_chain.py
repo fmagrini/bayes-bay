@@ -108,8 +108,6 @@ class BaseMarkovChain:
     def _init_saved_models(self):
         if isinstance(self.current_model, (State, dict)):
             self._saved_models = defaultdict(list)
-            for k in self.current_model:
-                self._saved_models[k] = []
         else:
             self._saved_models = []
 

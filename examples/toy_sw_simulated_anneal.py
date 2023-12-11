@@ -127,16 +127,14 @@ inversion = bb.BayesianInversion(
 )
 inversion.run(
     sampler=bb.samplers.SimulatedAnnealing(), 
-    # n_iterations=5_000,
-    # burnin_iterations=2_000,
-    n_iterations=100_000,
-    burnin_iterations=25_000,
+    n_iterations=5_000,
+    burnin_iterations=2_000,
     save_every=100,
     print_every=500,
 )
 
 # saving plots, models and targets
-saved_models = inversion.get_results(True)
+saved_models = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
 all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi_sites"]]
 

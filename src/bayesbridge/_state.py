@@ -134,15 +134,18 @@ class State:
         self.cache[name] = value
 
     def _vars(self):
-        return {
+        all_vars = {
             k: v
             for k, v in vars(self).items()
             if not (k == "noise_std" and v is None)
             and not (k == "noise_correlation" and v is None)
             and k != "param_values"
             and k != "cache"
+            and k != "extra_storage"
         }
-
+        all_vars.update(self.extra_storage)
+        return all_vars
+    
     def __iter__(self):
         return iter(self._vars())
 
@@ -178,24 +181,4 @@ class State:
             _param_values,
             _noise_std,
             _noise_corr,
-        )
-
-    def __hash__(self):
-        voronoi_sites_sum = np.sum(self.voronoi_sites)
-        voronoi_sites_min = np.min(self.voronoi_sites)
-        voronoi_sites_max = np.max(self.voronoi_sites)
-        voronoi_sites_hash = hash(
-            (voronoi_sites_sum, voronoi_sites_min, voronoi_sites_max)
-        )
-        param_values_hash = hash(
-            (hash((k, np.sum(v), np.min(v), np.max(v))) for k, v in self.param_values)
-        )
-        return hash(
-            (
-                self.n_voronoi_cells,
-                voronoi_sites_hash,
-                param_values_hash,
-                self.noise_std,
-                self.noise_correlation,
-            )
         )

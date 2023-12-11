@@ -136,7 +136,7 @@ inversion.run(
 )
 
 # saving plots, models and targets
-saved_models = inversion.get_results(True)
+saved_models = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
 all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi_sites"]]
 
