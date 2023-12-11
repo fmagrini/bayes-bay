@@ -22,6 +22,7 @@ class Parameterization(ABC):
     """Parameterization class that can be configured by users to generate perturbation
     functions for easier inference setup
     """
+
     @property
     @abstractmethod
     def trans_d(self) -> bool:
@@ -33,15 +34,14 @@ class Parameterization(ABC):
     @property
     @abstractmethod
     def parameters(self) -> Dict[str, Parameter]:
-        """all the unknown parameters under this parameterization setting
-        """
+        """all the unknown parameters under this parameterization setting"""
         raise NotImplementedError
 
     @property
     @abstractmethod
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
-        """a list of perturbation functions allowed in the current parameterization 
-        configurations, each of which takes in a model :class:`State` and returns a new 
+        """a list of perturbation functions allowed in the current parameterization
+        configurations, each of which takes in a model :class:`State` and returns a new
         model and a log proposal ratio value
         """
         raise NotImplementedError
@@ -49,14 +49,14 @@ class Parameterization(ABC):
     @property
     @abstractmethod
     def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
-        """a list of log prior ratio functions corresponding to each of the 
+        """a list of log prior ratio functions corresponding to each of the
         :meth:`perturbation_functions`
         """
         raise NotImplementedError
 
     @abstractmethod
     def initialize(self) -> State:
-        """initializes the parameterization (if it's trans dimensional) and the 
+        """initializes the parameterization (if it's trans dimensional) and the
         parameter values
 
         Returns
@@ -69,7 +69,7 @@ class Parameterization(ABC):
 
 class Voronoi1D(Parameterization):
     """One dimensional Voronoi nuclei parameterization
-    
+
     Parameters
     ----------
     voronoi_site_bounds : Tuple[Number, Number]
@@ -81,7 +81,7 @@ class Voronoi1D(Parameterization):
         when the ``voronoi_site_bounds`` and / or ``voronoi_site_perturb_std`` is
         not a scalar, by default None
     n_voronoi_cells : Number, optional
-        the number of Voronoi cells. Needs to be None if this is a 
+        the number of Voronoi cells. Needs to be None if this is a
         trans-dimensional parameterization, by default None
     free_params : List[Parameter], optional
         a list of unknown parameters, by default None
@@ -92,16 +92,17 @@ class Voronoi1D(Parameterization):
     voronoi_cells_init_range : Number, optional
         the range in which the initialization of Voronoi cell numbers will be in
         (i.e. the number of Voronoi cells will be uniformly sampled from the range:
-        :math:`(ncells_{min}, ncells_{min}+ninitrange*(ncells_{max}-ncells_{min})`, 
-        assuming :math:`ncells_{min} = \\text{n_voronoi_cells_min}`, 
-        :math:`ncells_{max} = \\text{n_voronoi_cells_max}` and 
+        :math:`(ncells_{min}, ncells_{min}+ninitrange*(ncells_{max}-ncells_{min})`,
+        assuming :math:`ncells_{min} = \\text{n_voronoi_cells_min}`,
+        :math:`ncells_{max} = \\text{n_voronoi_cells_max}` and
         :math:`ninitrange = \\text{n_voronoi_cells_min}`,
         by default 0.2
     birth_from : str, optional
-        whether to initialize newly-born Voronoi cell parameter values from 
-        randomly sampling or from a perturbation based on the nearest neighbour, by 
+        whether to initialize newly-born Voronoi cell parameter values from
+        randomly sampling or from a perturbation based on the nearest neighbour, by
         default "neighbour"
     """
+
     def __init__(
         self,
         voronoi_site_bounds: Tuple[Number, Number],
@@ -139,12 +140,11 @@ class Voronoi1D(Parameterization):
 
     @property
     def parameters(self) -> Dict[str, Parameter]:
-        """all the unknown parameters under this parameterization setting
-        """
+        """all the unknown parameters under this parameterization setting"""
         return self.free_params
 
     def initialize(self) -> State:
-        """initializes the parameterization (if it's trans dimensional) and the 
+        """initializes the parameterization (if it's trans dimensional) and the
         parameter values
 
         Returns
@@ -214,65 +214,61 @@ class Voronoi1D(Parameterization):
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
-        """a list of perturbation functions allowed in the current parameterization 
-        configurations, each of which takes in a model :class:`State` and returns a new 
+        """a list of perturbation functions allowed in the current parameterization
+        configurations, each of which takes in a model :class:`State` and returns a new
         model and a log proposal ratio value
         """
         return self._perturbation_funcs
 
     @property
     def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
-        """a list of log prior ratio functions corresponding to each of the 
+        """a list of log prior ratio functions corresponding to each of the
         :meth:`perturbation_functions`
         """
         return self._log_prior_ratio_funcs
-    
+
     @staticmethod
-    def compute_cell_extents(voronoi_sites : np.ndarray, 
-                             lb=0, 
-                             ub=-1,
-                             fill_value=0):
+    def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):
         """compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
         boundaries are first drawn at the midpoint between consecutive Voronoi
         nuclei. The extent is then derived from the distance between consecutive
         boundaries.
-        
+
         Parameters
         ----------
         voronoi_sites : np.ndarray of shape (n,)
             Voronoi-site positions. These should be greater or equal to zero
-            
+
         lb, ub : float
-            Lower and upper bounds used in the calculation of Voronoi-cell 
+            Lower and upper bounds used in the calculation of Voronoi-cell
             extents. Negative values for `lb` or `ub` denote an unbounded cell.
             The extent of an unbounded cell is set to `fill_value`
-            
+
         fill_value : float
             Value attributed to unbounded Voronoi cells
-            
+
         Returns
         -------
         np.ndarray
             Voronoi-cell extents
-            
+
         Examples
         --------
         >>> depth = np.array([2, 5.5, 8, 10])
-        
+
         >>> Voronoi1D.compute_cell_extents(depth, lb=0, ub=-1, fill_value=np.nan)
         array([3.75, 3.  , 2.25,  nan])
-        
+
         >>> Voronoi1D.compute_cell_extents(depth, lb=-1, ub=-1, fill_value=np.nan)
         array([ nan, 3.  , 2.25,  nan])
-        
+
         >>> Voronoi1D.compute_cell_extents(depth, lb=0, ub=15, fill_value=np.nan)
         array([3.75, 3.  , 2.25, 6.  ])
         """
-        return compute_voronoi1d_cell_extents(voronoi_sites, 
-                                              lb=lb, 
-                                              ub=ub,
-                                              fill_value=fill_value)
-    
+        return compute_voronoi1d_cell_extents(
+            voronoi_sites, lb=lb, ub=ub, fill_value=fill_value
+        )
+
     @staticmethod
     def get_ensemble_statistics(
         samples_voronoi_cell_extents: list,
@@ -401,8 +397,8 @@ class Voronoi1D(Parameterization):
     def plot_param_samples(
         samples_voronoi_cell_extents: list,
         samples_param_values: list,
-        ax=None, 
-        **kwargs
+        ax=None,
+        **kwargs,
     ):
         """plot multiple 1D Earth models based on sampled parameters.
 
@@ -411,7 +407,7 @@ class Voronoi1D(Parameterization):
         samples_voronoi_cell_extents : list
             a list of voronoi cell extents (thicknesses in the 1D case)
         samples_param_values : ndarray
-            a 2D numpy array where each row represents a sample of parameter values 
+            a 2D numpy array where each row represents a sample of parameter values
             (e.g., velocities)
         ax : Axes, optional
             an optional Axes object to plot on
@@ -516,15 +512,15 @@ class Voronoi1D(Parameterization):
         Parameters
         ----------
         samples_voronoi_cell_extents : ndarray
-            A 2D numpy array where each row represents a sample of thicknesses (or 
+            A 2D numpy array where each row represents a sample of thicknesses (or
             Voronoi cell extents)
         samples_param_values : ndarray
-            A 2D numpy array where each row represents a sample of parameter values 
+            A 2D numpy array where each row represents a sample of parameter values
             (e.g., velocities)
         bins : int or [int, int], optional
-            The number of bins to use along each axis (default is 100). If you pass a 
+            The number of bins to use along each axis (default is 100). If you pass a
             single int, it will use that
-            many bins for both axes. If you pass a list of two ints, it will use the 
+            many bins for both axes. If you pass a list of two ints, it will use the
             first for the x-axis (velocity)
             and the second for the y-axis (depth).
         ax : Axes, optional

@@ -202,14 +202,14 @@ class State:
     def clone(self) -> "State":
         """Creates a clone of the current State itself, in which the following will be
         (deep-)copied over:
-        
+
         - :attr:`n_voronoi_cells`
         - :attr:`voronoi_sites`
         - :attr:`param_values`
         - :attr:`hyper_param_values`
-        
+
         And the following won't be copied at all:
-        
+
         - :attr:`cache`
         - :attr:`extra_storage`
 

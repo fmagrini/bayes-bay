@@ -21,8 +21,8 @@ SQRT_TWO_PI = math.sqrt(TWO_PI)
 
 
 class Parameter(ABC):
-    """Base class for an unknown parameter
-    """
+    """Base class for an unknown parameter"""
+
     def __init__(self, **kwargs):
         self.init_params = kwargs
 
@@ -54,7 +54,7 @@ class Parameter(ABC):
             the position of the value to be perturbed
         value : Number
             the current value to be perturbed from
-            
+
         Returns
         -------
         Number
@@ -78,10 +78,10 @@ class Parameter(ABC):
 
     @abstractmethod
     def log_prior_ratio_perturbation_free_param(
-        self, 
-        old_value: Number, 
-        new_value: Number, 
-        position: Number, 
+        self,
+        old_value: Number,
+        new_value: Number,
+        position: Number,
     ) -> Number:
         """calculates the log prior ratio when the free parameter is perturbed
 
@@ -93,7 +93,7 @@ class Parameter(ABC):
             the value for this parameter after perturbation
         position : Number
             the position of the value perturbed
-            
+
         Returns
         -------
         Number
@@ -103,10 +103,10 @@ class Parameter(ABC):
 
     @abstractmethod
     def log_prior_ratio_perturbation_voronoi_site(
-        self, 
-        old_position: Number, 
-        new_position: Number, 
-        value: Number, 
+        self,
+        old_position: Number,
+        new_position: Number,
+        value: Number,
     ) -> Number:
         """calculates the log prior ratio when the Voronoi site position is perturbed
 
@@ -118,7 +118,7 @@ class Parameter(ABC):
             the position after perturbation
         position : Number
             the position of the value perturbed
-        
+
         Returns
         -------
         Number
@@ -128,9 +128,7 @@ class Parameter(ABC):
 
     @abstractmethod
     def log_prior_ratio_perturbation_birth(
-        self, 
-        new_position: Number, 
-        new_value: Number
+        self, new_position: Number, new_value: Number
     ) -> Number:
         """calculates the log prior ratio when a new cell is born
 
@@ -150,9 +148,7 @@ class Parameter(ABC):
 
     @abstractmethod
     def log_prior_ratio_perturbation_death(
-        self, 
-        removed_position: Number, 
-        removed_value: Number
+        self, removed_position: Number, removed_value: Number
     ) -> Number:
         """calculates the log prior ratio when a cell is removed
 
@@ -171,8 +167,10 @@ class Parameter(ABC):
         raise NotImplementedError
 
     def set_custom_initialize(
-        self, 
-        initialize_func: Callable[["Parameter", Union[np.ndarray, Number]], Union[np.ndarray, Number]]
+        self,
+        initialize_func: Callable[
+            ["Parameter", Union[np.ndarray, Number]], Union[np.ndarray, Number]
+        ],
     ):
         r"""set a custom initialization function
 
@@ -184,7 +182,7 @@ class Parameter(ABC):
         Examples
         --------
         .. code-block:: python
-    
+
             def my_init(
                 param: bb.parameters.Parameter,
                 positions: Union[np.ndarray, Number]
@@ -222,7 +220,7 @@ class Parameter(ABC):
 
 
 class UniformParameter(Parameter):
-    """Class for defining an unknown parameter that follows the uniform distribution 
+    """Class for defining an unknown parameter that follows the uniform distribution
     as prior
 
     Parameters
@@ -236,19 +234,20 @@ class UniformParameter(Parameter):
         the upper bound for this parameter. This can either be a scalar or an array
         if the hyper parameters vary with positions
     perturb_std : Union[Number, np.ndarray]
-        perturbation standard deviation for this parameter. This can either be a 
+        perturbation standard deviation for this parameter. This can either be a
         scalar or an array if the hyper parameters vary with positions
     position : np.ndarray, optional
         positions corresponding to position-dependent hyper parameters (``vmin``,
         ``vmax``, ``perturb_std``), by default None
     """
+
     def __init__(
-        self, 
-        name: str, 
-        vmin: Union[Number, np.ndarray], 
-        vmax: Union[Number, np.ndarray], 
-        perturb_std: Union[Number, np.ndarray], 
-        position: np.ndarray = None, 
+        self,
+        name: str,
+        vmin: Union[Number, np.ndarray],
+        vmax: Union[Number, np.ndarray],
+        perturb_std: Union[Number, np.ndarray],
+        position: np.ndarray = None,
     ):
         super().__init__(
             name=name,
@@ -303,7 +302,9 @@ class UniformParameter(Parameter):
         """
         return self._get_pos_dependent_hyper_param(self._delta, position)
 
-    def get_vmin_vmax(self, position: Union[Number, np.ndarray]) -> Tuple[Number, Number]:
+    def get_vmin_vmax(
+        self, position: Union[Number, np.ndarray]
+    ) -> Tuple[Number, Number]:
         """get the lower and upper bounds at the given position(s)
 
         Parameters

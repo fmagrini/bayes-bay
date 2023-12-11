@@ -10,7 +10,7 @@ from ._target import Target
 
 class LogLikelihood:
     """High-level class that helps evaluate log likelihood ratio
-    
+
     Parameters
     ----------
     targets : bayesbridge.Target
@@ -19,10 +19,11 @@ class LogLikelihood:
         a lsit of forward functions corresponding to each data targets provided above.
         Each function takes in a model and produces a numpy array of data predictions.
     """
+
     def __init__(
-        self, 
-        targets: List[Target], 
-        fwd_functions: Callable[[State], np.ndarray], 
+        self,
+        targets: List[Target],
+        fwd_functions: Callable[[State], np.ndarray],
     ):
         self.targets = targets
         self.fwd_functions = fwd_functions
@@ -31,10 +32,10 @@ class LogLikelihood:
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
-        """A list of perturbation functions associated with the data noise of the 
+        """A list of perturbation functions associated with the data noise of the
         provided targets.
-        
-        Perturbation functions are included in this list only when the data noise of 
+
+        Perturbation functions are included in this list only when the data noise of
         the target(s) is explicitly set to be unknown(s).
         """
         return self._perturbation_funcs

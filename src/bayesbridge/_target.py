@@ -11,7 +11,7 @@ from ._state import State
 
 class Target:
     """Data target that can be configured to have noise level as knowns or unknowns
-    
+
     Parameters
     ----------
     name : str
@@ -19,7 +19,7 @@ class Target:
     dobs : np.ndarray
         data observations
     covariance_mat_inv : Union[Number, np.ndarray], optional
-        the inverse of the data covariance matrix, either a number or a full matrix, by 
+        the inverse of the data covariance matrix, either a number or a full matrix, by
         default None
     noise_is_correlated : bool, optional
         whether the noise between data points are correlated or not, by default False
@@ -28,16 +28,17 @@ class Target:
     std_max : Number, optional
         the maximum value of the standard deviation of data noise, by default 1
     std_perturb_std : Number, optional
-        the perturbation standard deviation of the standard deviation of data noise, by 
+        the perturbation standard deviation of the standard deviation of data noise, by
         default 0.1
     correlation_min : Number, optional
         the miminum value of the correlation of data noise, by default 0.01
     correlation_max : Number, optional
         the maximum value of the correlation of data noise, by default 1
     correlation_perturb_std : Number, optional
-        the perturbation standard deviation of the standard deviation of data noise, by 
+        the perturbation standard deviation of the standard deviation of data noise, by
         default 0.1
     """
+
     def __init__(
         self,
         name: str,
@@ -60,7 +61,7 @@ class Target:
         self.correlation_max = correlation_max
         if covariance_mat_inv is None:
             self._perturbation_func = NoisePerturbation(
-                target_name=name, 
+                target_name=name,
                 std_min=std_min,
                 std_max=std_max,
                 std_perturb_std=std_perturb_std,
@@ -79,22 +80,21 @@ class Target:
 
     @property
     def perturbation_function(self) -> Callable[[State], Tuple[State, Number]]:
-        """a list of perturbation functions generated based on whether there are 
+        """a list of perturbation functions generated based on whether there are
         unknown data noise values such as data noise standard deviation and correaltion
         """
         return self._perturbation_func
 
     @property
     def log_prior_ratio_function(self) -> Callable[[State], Number]:
-        """a list of log prior ratio functions corresponding to each of the 
+        """a list of log prior ratio functions corresponding to each of the
         perturbation functions
         """
         return self._perturbation_func.log_prior_ratio
 
     @property
     def is_hierarchical(self):
-        """whether the data noise parameters are unknown (i.e. to be inversed)
-        """
+        """whether the data noise parameters are unknown (i.e. to be inversed)"""
         return self.perturbation_function is not None
 
     def initialize(self, model: State):
@@ -108,10 +108,14 @@ class Target:
         noise_std = random.uniform(self.std_min, self.std_max)
         model.set_param_values((self.name, "noise_std"), noise_std)
         if self.noise_is_correlated:
-            noise_correlation = random.uniform(self.correlation_min, self.correlation_max)
+            noise_correlation = random.uniform(
+                self.correlation_min, self.correlation_max
+            )
             model.set_param_values((self.name, "noise_correlation"), noise_correlation)
 
-    def inverse_covariance_times_vector(self, model: State, vector: np.ndarray) -> np.ndarray:
+    def inverse_covariance_times_vector(
+        self, model: State, vector: np.ndarray
+    ) -> np.ndarray:
         """calculates the dot product of the covariance inverse matrix with a given
         vector
 
@@ -136,7 +140,7 @@ class Target:
             std = model.get_param_values((self.name, "noise_std"))
             correlation = model.get_param_values((self.name, "noise_correlation"))
             if correlation is None:
-                return 1 / std ** 2 * vector
+                return 1 / std**2 * vector
             else:
                 n = self.dobs.size
                 mat = inverse_covariance(std, correlation, n)

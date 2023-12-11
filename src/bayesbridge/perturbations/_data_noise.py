@@ -9,7 +9,7 @@ from ._base_perturbation import Perturbation
 class NoisePerturbation(Perturbation):
     def __init__(
         self,
-        target_name: str, 
+        target_name: str,
         std_min: Number,
         std_max: Number,
         std_perturb_std: Number,

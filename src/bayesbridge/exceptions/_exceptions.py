@@ -50,8 +50,8 @@ class InitException(Exception):
 
 
 class UserFunctionError(Exception):
-    """Exception raised when user-provided function raises an exception
-    """
+    """Exception raised when user-provided function raises an exception"""
+
     def __init__(self, original_exc):
         self.message = "error occurred when running the user-provided function - " + (
             original_exc.message

@@ -54,10 +54,7 @@ class Voronoi1DPerturbation(Perturbation):
         for name, values in model.param_values.items():
             new_values[name] = values[isort]
         new_model = State(
-            nsites, 
-            new_sites, 
-            new_values, 
-            model.hyper_param_values.copy()
+            nsites, new_sites, new_values, model.hyper_param_values.copy()
         )
         # calculate proposal ratio
         proposal_ratio = self._proposal_ratio(old_site, new_site)
