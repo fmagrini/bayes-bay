@@ -124,7 +124,10 @@ class BaseMarkovChain:
     def _save_model(self):
         if isinstance(self.current_model, (State, dict)):
             for k in self.current_model:
-                self.saved_models[k].append(getattr(self.current_model, k))
+                try:
+                    self.saved_models[k].append(getattr(self.current_model, k))
+                except:
+                    self.saved_models[k].append(self.current_model.get_param_values(k))
         else:
             self.saved_models.append(self.current_model)
 
@@ -315,6 +318,8 @@ class MarkovChain(BaseMarkovChain):
         to initialize the starting points of this chain.
         """
         self.current_model = self.parameterization.initialize()
+        for target in self.log_like_ratio_func.targets:
+            target.initialize(self.current_model)
 
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions

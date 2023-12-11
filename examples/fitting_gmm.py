@@ -8,12 +8,12 @@ import bayesbridge as bb
 # -------------- Setting up constants, fwd func, data
 DATA_FILE = "toy_sw_standard_api_saved_models.npy"
 N_DATA = 100
-DATA_Y_STD = 0.005
 LAYERS_MIN = 3
 LAYERS_MAX = 15
 VORONOI_PERTURB_STD = 3
 VORONOI_POS_MIN = 0
 VORONOI_POS_MAX = 130
+NOISE_STD = 0.005
 N_CHAINS = 10
 
 
@@ -42,7 +42,7 @@ def forward_gaussian_mixtures(model: bb.State):
 
 
 # -------------- Define bayesbridge objects
-targets = [bb.Target("density", data_y, covariance_mat_inv=1 / DATA_Y_STD**2)]
+targets = [bb.Target("density", data_y, covariance_mat_inv=1 / NOISE_STD**2)]
 fwd_functions = [forward_gaussian_mixtures]
 free_parameters = [
     bb.parameters.UniformParameter("std", vmin=1, vmax=20, perturb_std=0.1),

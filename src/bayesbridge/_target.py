@@ -1,5 +1,7 @@
 from typing import Callable, Tuple, Union
 from numbers import Number
+import random
+import math
 import numpy as np
 
 from ._utils_bayes import inverse_covariance
@@ -52,10 +54,13 @@ class Target:
         self.name = name
         self.dobs = np.array(dobs)
         self.noise_is_correlated = noise_is_correlated
-        self.std = None
-        self.correlation = None
+        self.std_min = std_min
+        self.std_max = std_max
+        self.correlation_min = correlation_min
+        self.correlation_max = correlation_max
         if covariance_mat_inv is None:
             self._perturbation_func = NoisePerturbation(
+                target_name=name, 
                 std_min=std_min,
                 std_max=std_max,
                 std_perturb_std=std_perturb_std,
@@ -74,26 +79,40 @@ class Target:
 
     @property
     def perturbation_function(self) -> Callable[[State], Tuple[State, Number]]:
-        """A list of perturbation functions generated based on whether there are 
+        """a list of perturbation functions generated based on whether there are 
         unknown data noise values such as data noise standard deviation and correaltion
         """
         return self._perturbation_func
 
     @property
     def log_prior_ratio_function(self) -> Callable[[State], Number]:
-        """A list of log prior ratio functions corresponding to each of the 
+        """a list of log prior ratio functions corresponding to each of the 
         perturbation functions
         """
         return self._perturbation_func.log_prior_ratio
 
     @property
     def is_hierarchical(self):
-        """Whether the data noise parameters are unknown (i.e. to be inversed)
+        """whether the data noise parameters are unknown (i.e. to be inversed)
         """
         return self.perturbation_function is not None
 
+    def initialize(self, model: State):
+        """initializes the noise hyper parameters
+
+        Parameters
+        ----------
+        model : State
+            the current model where initialized hyper parameters are to be updated to
+        """
+        noise_std = random.uniform(self.std_min, self.std_max)
+        model.set_param_values((self.name, "noise_std"), noise_std)
+        if self.noise_is_correlated:
+            noise_correlation = random.uniform(self.correlation_min, self.correlation_max)
+            model.set_param_values((self.name, "noise_correlation"), noise_correlation)
+
     def inverse_covariance_times_vector(self, model: State, vector: np.ndarray) -> np.ndarray:
-        """Calculates the dot product of the covariance inverse matrix with a given
+        """calculates the dot product of the covariance inverse matrix with a given
         vector
 
         Parameters
@@ -108,22 +127,23 @@ class Target:
         np.ndarray
             the result from the dot product operation
         """
-        if hasattr(self, "covariance_mat_inv"):
+        if not self.is_hierarchical:
             if np.isscalar(self.covariance_mat_inv):
                 return self.covariance_mat_inv * vector
             else:
                 return self.covariance_mat_inv @ vector
-        elif self.correlation is None:
-            return 1 / model.noise_std ** 2 * vector
         else:
-            std = model.noise_std
-            r = model.noise_correlation
-            n = self.dobs.size
-            mat = inverse_covariance(std, r, n)
-            return mat @ vector
+            std = model.get_param_values((self.name, "noise_std"))
+            correlation = model.get_param_values((self.name, "noise_correlation"))
+            if correlation is None:
+                return 1 / std ** 2 * vector
+            else:
+                n = self.dobs.size
+                mat = inverse_covariance(std, correlation, n)
+                return mat @ vector
 
-    def determinant_covariance(self, model: State) -> float:
-        """The determinant value of the covariance matrix
+    def log_determinant_covariance(self, model: State) -> float:
+        """the log determinant value of the covariance matrix
 
         Parameters
         ----------
@@ -133,10 +153,12 @@ class Target:
         Returns
         -------
         float
-            the determinant value
+            the log determinant value
         """
-        std = model.noise_std
-        r = model.noise_correlation
+        std = model.get_param_values((self.name, "noise_std"))
+        r = model.get_param_values((self.name, "noise_correlation"))
+        if r is None:
+            r = 0
         n = self.dobs.size
-        det = std ** (2 * n) * (1 - r**2) ** (n - 1)
-        return det
+        log_det = (2 * n) * math.log(std) + (n - 1) * math.log(1 - r**2)
+        return log_det

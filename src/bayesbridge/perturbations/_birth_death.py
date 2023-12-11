@@ -47,7 +47,12 @@ class BirthPerturbation1D(Perturbation):
         new_values = dict()
         for name, values in unsorted_values.items():
             new_values[name] = values[isort]
-        new_model = State(n_cells + 1, new_sites, new_values)
+        new_model = State(
+            n_cells + 1, 
+            new_sites, 
+            new_values, 
+            model.hyper_param_values.copy()
+        )
         # calculate proposal ratio
         proposal_ratio = self.proposal_ratio()
         return new_model, proposal_ratio
@@ -149,7 +154,12 @@ class DeathPerturbation1D(Perturbation):
         # remove parameter values for the removed site
         new_values = self.remove_cell_values(isite, model)
         # structure new sites and values into new model
-        new_model = State(n_cells - 1, self._new_sites, new_values)
+        new_model = State(
+            n_cells - 1, 
+            self._new_sites, 
+            new_values,
+            model.hyper_param_values.copy()
+        )
         self._new_model = new_model
         # calculate proposal ratio
         proposal_ratio = self.proposal_ratio()

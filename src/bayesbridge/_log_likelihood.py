@@ -74,5 +74,5 @@ class LogLikelihood:
             residual = dpred - target.dobs
             misfit += residual @ target.inverse_covariance_times_vector(model, residual)
             if target.is_hierarchical:
-                log_det += math.log(target.determinant_covariance(model))
+                log_det += target.log_determinant_covariance(model)
         return misfit, log_det
