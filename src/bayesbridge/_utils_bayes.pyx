@@ -8,7 +8,7 @@ cimport numpy as np
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef bool_cpp _is_sorted(long[:] argsort_indices):
+cpdef bool_cpp is_sorted(long[:] argsort_indices):
     cdef long i
     cdef ssize_t size = argsort_indices.shape[0]
     for i in range(size):

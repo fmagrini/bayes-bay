@@ -11,7 +11,6 @@ import bayesbridge as bb
 # -------------- Setting up constants, fwd func, synth data
 VP_VS = 1.77
 RAYLEIGH_STD = 0.02
-LOVE_STD = 0.02
 RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -48,9 +47,6 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
 def forward_sw_rayleigh(model):
     return forward_sw(model, periods1, "rayleigh", 1)
 
-def forward_sw_love(model):
-    return forward_sw(model, periods1, "love", 1)
-
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
 true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
@@ -59,8 +55,6 @@ true_model = np.hstack((true_thickness, true_vs))
 periods1 = np.linspace(4, 80, 20)
 rayleigh1 = forward_sw_rayleigh(true_model)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
-love1 = forward_sw_love(true_model)
-love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 
 # -------------- Implement distribution functions
@@ -79,12 +73,7 @@ def log_likelihood(model):
         (rayleigh_residual / RAYLEIGH_STD) ** 2
         + math.log(2 * np.pi * RAYLEIGH_STD**2)
     )
-    love_dpred = forward_sw_love(model)
-    love_residual = love1_dobs - love_dpred
-    love_loglike = -0.5 * np.sum(
-        (love_residual / LOVE_STD) ** 2 + math.log(2 * np.pi * LOVE_STD**2)
-    )
-    return rayleigh_loglike + love_loglike
+    return rayleigh_loglike
 
 
 # -------------- Implement perturbation functions
@@ -226,7 +215,7 @@ def _get_vs(model: np.ndarray):
     k = int(len(model) / 2)
     return model[k:]
 
-saved_models = inversion.get_results(True)
+saved_models = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
 all_thicknesses = [_calc_thickness(m) for m in saved_models]
 all_vs = [_get_vs(m) for m in saved_models]

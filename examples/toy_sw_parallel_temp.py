@@ -11,7 +11,6 @@ import bayesbridge as bb
 # -------------- Setting up constants, fwd func, synth data
 VP_VS = 1.77
 RAYLEIGH_STD = 0.02
-LOVE_STD = 0.02
 RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -65,49 +64,15 @@ true_model = bb.State(len(true_vs), true_voronoi_positions, {"vs": true_vs})
 periods1 = np.linspace(4, 80, 20)
 rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
-love1 = forward_sw(true_model, periods1, "love", 1)
-love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
-
-periods2 = np.linspace(0.05, 20, 20)
-rayleigh2 = forward_sw(true_model, periods2, "rayleigh", 2)
-rayleigh2_noisy = rayleigh2 + np.random.normal(0, RAYLEIGH_STD, rayleigh2.size)
-love2 = forward_sw(true_model, periods2, "love", 2)
-love2_noisy = love2 + np.random.normal(0, LOVE_STD, love2.size)
-
-periods3 = np.linspace(0.05, 10, 20)
-rayleigh3 = forward_sw(true_model, periods3, "rayleigh", 3)
-rayleigh3_noisy = rayleigh3 + np.random.normal(0, RAYLEIGH_STD, rayleigh3.size)
-love3 = forward_sw(true_model, periods3, "love", 3)
-love3_noisy = love3 + np.random.normal(0, LOVE_STD, love3.size)
-
-periods4 = np.linspace(0.05, 8, 20)
-rayleigh4 = forward_sw(true_model, periods4, "rayleigh", 4)
-rayleigh4_noisy = rayleigh4 + np.random.normal(0, RAYLEIGH_STD, rayleigh4.size)
-love4 = forward_sw(true_model, periods4, "love", 4)
-love4_noisy = love4 + np.random.normal(0, LOVE_STD, love4.size)
 
 
 # -------------- Define bayesbridge objects
 targets = [
     bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    bb.Target("love1", love1_dobs, covariance_mat_inv=1 / LOVE_STD**2),
-    bb.Target("rayleigh2", rayleigh2_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    bb.Target("love2", love2_noisy, covariance_mat_inv=1 / LOVE_STD**2),
-    bb.Target("rayleigh3", rayleigh3_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    bb.Target("love3", love3_noisy, covariance_mat_inv=1 / LOVE_STD**2),
-    bb.Target("rayleigh4", rayleigh4_noisy, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    bb.Target("love4", love4_noisy, covariance_mat_inv=1 / LOVE_STD**2),
 ]
 
 fwd_functions = [
     (forward_sw, [periods1, "rayleigh", 1]),
-    (forward_sw, [periods1, "love", 1]),
-    (forward_sw, [periods2, "rayleigh", 2]),
-    (forward_sw, [periods2, "love", 2]),
-    (forward_sw, [periods3, "rayleigh", 3]),
-    (forward_sw, [periods3, "love", 3]),
-    (forward_sw, [periods4, "rayleigh", 4]),
-    (forward_sw, [periods4, "love", 4]),
 ]
 
 param_vs = bb.parameters.UniformParameter(
@@ -151,24 +116,27 @@ parameterization = bb.Voronoi1D(
     birth_from="prior",  # or "neighbour"
 )
 
-# -------------- Run inversion
+
+# -------------- Define BayesianInversion
 inversion = bb.BayesianInversion(
-    parameterization=parameterization,
-    targets=targets,
-    fwd_functions=fwd_functions,
-    n_chains=N_CHAINS,
-    n_cpus=N_CHAINS,
+    parameterization=parameterization, 
+    targets=targets, 
+    fwd_functions=fwd_functions, 
+    n_chains=N_CHAINS, 
+    n_cpus=N_CHAINS, 
 )
 inversion.run(
-    bb.samplers.ParallelTempering(), 
+    sampler=bb.samplers.ParallelTempering(), 
+    # n_iterations=5_000,
+    # burnin_iterations=2_000,
     n_iterations=100_000,
-    burnin_iterations=40_000,
-    save_every=1_00,
-    print_every=5_00,
+    burnin_iterations=25_000,
+    save_every=100,
+    print_every=500,
 )
 
 # saving plots, models and targets
-saved_models = inversion.get_results(True)
+saved_models = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
 all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi_sites"]]
 
@@ -195,7 +163,7 @@ for d in np.cumsum(true_thickness):
     axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
-prefix = "inv_sw"
+prefix = "toy_sw_parallel_temp"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)

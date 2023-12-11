@@ -11,7 +11,6 @@ import bayesbridge as bb
 # -------------- Setting up constants, fwd func, synth data
 VP_VS = 1.77
 RAYLEIGH_STD = 0.02
-LOVE_STD = 0.02
 RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -60,9 +59,6 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
 def forward_sw_rayleigh(model):
     return forward_sw(model, periods1, "rayleigh", 1)
 
-def forward_sw_love(model):
-    return forward_sw(model, periods1, "love", 1)
-
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
 true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
@@ -71,17 +67,14 @@ true_model = bb.State(len(true_vs), true_voronoi_positions, {"vs": true_vs})
 periods1 = np.linspace(4, 80, 20)
 rayleigh1 = forward_sw_rayleigh(true_model)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
-love1 = forward_sw_love(true_model)
-love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 
 # -------------- Define bayesbridge objects
 targets = [
     bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2),
-    bb.Target("love1", love1_dobs, covariance_mat_inv=1 / LOVE_STD**2),
 ]
 
-fwd_functions = [forward_sw_rayleigh, forward_sw_love]
+fwd_functions = [forward_sw_rayleigh]
 
 param_vs = bb.parameters.UniformParameter(
     name="vs",
@@ -155,7 +148,7 @@ inversion.run(
 )
 
 # saving plots, models and targets
-saved_models = inversion.get_results(True)
+saved_models = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
 all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi_sites"]]
 
