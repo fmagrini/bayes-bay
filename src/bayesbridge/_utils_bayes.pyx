@@ -10,7 +10,7 @@ cimport numpy as np
 @wraparound(False) 
 cpdef bool_cpp is_sorted(long[:] argsort_indices):
     cdef long i
-    cdef ssize_t size = argsort_indices.shape[0]
+    cdef size_t size = argsort_indices.shape[0]
     for i in range(size):
         if argsort_indices[i] != i:
             return False
@@ -24,7 +24,7 @@ cpdef compute_voronoi1d_cell_extents(double[:] depth,
                                      double lb=0, 
                                      double ub=-1,
                                      double fill_value=0):
-    cdef ssize_t size = depth.shape[0]
+    cdef size_t size = depth.shape[0]
     cdef int i
     cdef double d1, d2
     cdef double[:] thickness = np.zeros(size, dtype=np.double)
@@ -44,7 +44,7 @@ cpdef (int, int) _closest_and_final_index(double[:] ndarray, double value):
     cdef int i
     cdef double vmin = fabs(ndarray[0] - value)
     cdef double v
-    cdef ssize_t size = ndarray.shape[0]
+    cdef size_t size = ndarray.shape[0]
     
     for i in range(1, size):
         v = fabs(ndarray[i] - value)
@@ -217,5 +217,21 @@ cpdef inverse_covariance(double sigma,
     return np.asarray(matrix)
     
 
-
+@boundscheck(False)
+@wraparound(False) 
+cpdef insert_scalar(double[:] values, 
+             long index,
+             double value):
+    cdef size_t size = values.shape[0] + 1
+    cdef double[:] new_values = np.zeros(size, dtype=np.double)
+    cdef size_t i = 0
+    cdef size_t j = 0
+    while i < size:
+        if i == index:
+            new_values[i] = value
+        else:
+            new_values[i] = values[j]
+            j += 1
+        i += 1
+    return np.asarray(new_values)
 
