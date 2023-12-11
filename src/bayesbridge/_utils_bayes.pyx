@@ -60,20 +60,6 @@ cpdef (int, int) _closest_and_final_index(double[:] ndarray, double value):
 @wraparound(False) 
 @cdivision(True)  
 cdef double _interpolate_linear_1d(double xp, double[:] x, double[:] y):
-    """ Linear interpolation in 1-D
-    Parameters
-    ----------
-    xp : float
-        Interpolation point
-    x, y : ndarray of floats
-        Discrete set of known data points
-        
-    Returns
-    -------
-    yp : float
-        Interpolated value
-    """
-    
     cdef size_t xlen = x.shape[0]
     cdef int i
     cdef double x0, x1, y0, y1
@@ -94,20 +80,6 @@ cdef double _interpolate_linear_1d(double xp, double[:] x, double[:] y):
 @wraparound(False) 
 @cdivision(True)  
 cdef double _interpolate_nearest_1d(double xp, double[:] x, double[:] y):
-    """ Nearest neighbour interpolation in 1-D
-    Parameters
-    ----------
-    xp : float
-        Interpolation point
-    x, y : ndarray of floats
-        Discrete set of known data points
-        
-    Returns
-    -------
-    yp : float
-        Interpolated value, corresponding to a discrete value yk such that
-        k = argmin(abs(xp - x))
-    """
     cdef ssize_t xlen = x.shape[0]
     cdef int i
     cdef double x0, x1, y0, y1
@@ -175,7 +147,7 @@ cpdef interpolate_result(double[:] x, double[:] y, double[:] x0):
 @boundscheck(False)
 @wraparound(False) 
 cpdef interpolate_linear_1d(xp, double[:] x, double[:] y):
-    """ Linear or nearest neighbour interpolation in 1-D
+    """ Linear interpolation in 1-D
     Parameters
     ----------
     xp : float, ndarray of floats
@@ -183,9 +155,6 @@ cpdef interpolate_linear_1d(xp, double[:] x, double[:] y):
         
     x, y : ndarray of floats
         Discrete set of known data points
-    
-    nearest : bool
-        If True, nearest neighbour interpolation is performed. Default is False
     
     Returns
     -------
@@ -204,7 +173,7 @@ cpdef interpolate_linear_1d(xp, double[:] x, double[:] y):
 @boundscheck(False)
 @wraparound(False) 
 cpdef interpolate_nearest_1d(xp, double[:] x, double[:] y):
-    """ Linear or nearest neighbour interpolation in 1-D
+    """ Nearest-neighbour interpolation in 1-D
     Parameters
     ----------
     xp : float, ndarray of floats
@@ -212,9 +181,6 @@ cpdef interpolate_nearest_1d(xp, double[:] x, double[:] y):
         
     x, y : ndarray of floats
         Discrete set of known data points
-    
-    nearest : bool
-        If True, nearest neighbour interpolation is performed. Default is False
     
     Returns
     -------
