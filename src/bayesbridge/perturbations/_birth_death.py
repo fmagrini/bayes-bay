@@ -3,13 +3,14 @@ from typing import Tuple, Dict, List
 from numbers import Number
 import random
 import math
+from bisect import bisect_left
 import numpy as np
 
 from ._base_perturbation import Perturbation
 from .._state import State
 from ..exceptions._exceptions import DimensionalityException
 from ..parameters._parameters import SQRT_TWO_PI, Parameter
-from .._utils_bayes import nearest_index
+from .._utils_bayes import delete, insert_scalar, nearest_index
 
 
 class BirthPerturbation1D(Perturbation):
@@ -40,13 +41,11 @@ class BirthPerturbation1D(Perturbation):
             break
         # intialize parameter values
         unsorted_values = self.initialize_newborn_cell(new_site, old_sites, model)
-        # structure new sites and values into new model
-        new_sites = np.append(old_sites, new_site)
-        isort = np.argsort(new_sites)
-        new_sites = new_sites[isort]
+        idx_insert = bisect_left(old_sites, new_site)
+        new_sites = insert_scalar(old_sites, idx_insert, new_site)
         new_values = dict()
-        for name, values in unsorted_values.items():
-            new_values[name] = values[isort]
+        for name, value in unsorted_values.items():
+            new_values[name] = insert_scalar(getattr(model, name), idx_insert, value)
         new_model = State(
             n_cells + 1, new_sites, new_values, model.hyper_param_values.copy()
         )
@@ -57,7 +56,7 @@ class BirthPerturbation1D(Perturbation):
     @abstractmethod
     def initialize_newborn_cell(
         self, new_site: Number, old_sites: List[Number], model: State
-    ) -> Dict[str, np.ndarray]:
+    ) -> Dict[str, float]:
         raise NotImplementedError
 
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
@@ -80,7 +79,7 @@ class BirthPerturbation1D(Perturbation):
 class BirthFromNeighbour1D(BirthPerturbation1D):
     def initialize_newborn_cell(
         self, new_site: Number, old_sites: List[Number], model: State
-    ) -> Dict[str, np.ndarray]:
+    ) -> Dict[str, float]:
         isite = nearest_index(xp=new_site, x=old_sites, xlen=old_sites.size)
         new_born_values = dict()
         self._all_old_values = dict()
@@ -88,7 +87,7 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
         for param_name, param in self.parameters.items():
             old_values = model.get_param_values(param_name)
             new_value = param.perturb_value(new_site, old_values[isite])
-            new_born_values[param_name] = np.hstack((old_values, new_value))
+            new_born_values[param_name] = new_value
             self._all_old_values[param_name] = old_values[isite]
             self._all_new_values[param_name] = new_value
         return new_born_values
@@ -111,13 +110,12 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
 class BirthFromPrior1D(BirthFromNeighbour1D):
     def initialize_newborn_cell(
         self, new_site: Number, old_sites: List[Number], model: State
-    ) -> Dict[str, np.ndarray]:
+    ) -> Dict[str, float]:
         self._all_new_values = dict()
         new_born_values = dict()
         for param_name, param in self.parameters.items():
-            old_values = model.get_param_values(param_name)
             new_value = param.initialize(new_site)
-            new_born_values[param_name] = np.append(old_values, new_value)
+            new_born_values[param_name] = new_value
             self._all_new_values[param_name] = new_value
         return new_born_values
 
@@ -147,7 +145,7 @@ class DeathPerturbation1D(Perturbation):
             raise DimensionalityException("Death")
         # randomly choose an existing Voronoi site to kill
         isite = random.randint(0, n_cells - 1)
-        self._new_sites = np.delete(model.voronoi_sites, isite)
+        self._new_sites = delete(model.voronoi_sites, isite)
         # remove parameter values for the removed site
         new_values = self.remove_cell_values(isite, model)
         # structure new sites and values into new model
@@ -168,7 +166,7 @@ class DeathPerturbation1D(Perturbation):
         for param_name in self.parameters:
             old_values = model.get_param_values(param_name)
             self._removed_values[param_name] = old_values[isite]
-            new_values[param_name] = np.delete(old_values, isite)
+            new_values[param_name] = delete(old_values, isite)
         return new_values
 
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:

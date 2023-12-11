@@ -199,9 +199,7 @@ cpdef interpolate_nearest_1d(xp, double[:] x, double[:] y):
 @boundscheck(False)
 @wraparound(False) 
 @cdivision(True)
-cpdef inverse_covariance(double sigma, 
-                         double r, 
-                         size_t n):
+cpdef inverse_covariance(double sigma, double r, size_t n):
     cdef size_t i
     cdef double factor = 1 / (sigma**2 * (1 - r**2))
     cdef double[:, ::1] matrix = np.zeros((n, n), dtype=np.double)
@@ -219,14 +217,12 @@ cpdef inverse_covariance(double sigma,
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef insert_scalar(double[:] values, 
-             long index,
-             double value):
-    cdef size_t size = values.shape[0] + 1
-    cdef double[:] new_values = np.zeros(size, dtype=np.double)
+cpdef insert_scalar(double[:] values, long index, double value):
+    cdef size_t new_size = values.shape[0] + 1
+    cdef double[:] new_values = np.zeros(new_size, dtype=np.double)
     cdef size_t i = 0
     cdef size_t j = 0
-    while i < size:
+    while i < new_size:
         if i == index:
             new_values[i] = value
         else:
@@ -234,4 +230,18 @@ cpdef insert_scalar(double[:] values,
             j += 1
         i += 1
     return np.asarray(new_values)
+
+
+@boundscheck(False)
+@wraparound(False) 
+cpdef delete(double[:] values, long index):
+    cdef size_t size = values.shape[0]
+    cdef double[:] new_values = np.zeros(size - 1, dtype=np.double)
+    cdef size_t i, j = 0
+    for i in range(size):
+        if i != index:
+            new_values[j] = values[i]
+            j += 1
+    return np.asarray(new_values)
+
 
