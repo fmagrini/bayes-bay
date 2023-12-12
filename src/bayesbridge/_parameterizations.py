@@ -30,6 +30,13 @@ class Parameterization(ABC):
         discretization itself
         """
         raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def fixed_discretization(self) -> bool:
+        """indicates whether the current configuration allows changes in the
+        discretization"""
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -72,6 +79,13 @@ class Voronoi1D(Parameterization):
 
     Parameters
     ----------
+    n_voronoi_cells : Number, optional
+        the number of Voronoi cells. Needs to be None if this is a trans-dimensional 
+        parameterization, by default None
+    voronoi_sites : Union[np.ndarray, None], optional
+        fixed voronoi site positions (if one would like them to be fixed). This should
+        be set to None if one needs the site positions to be perturbed (including site
+        position perturbation, birth and death). By default None
     voronoi_site_bounds : Tuple[Number, Number]
         the minimum and maximum values of the 1D voronoi site positions
     voronoi_site_perturb_std : Union[Number, np.ndarray]
@@ -80,9 +94,6 @@ class Voronoi1D(Parameterization):
         the breaking points for varied ``voronoi_site_perturb_std``. Activated only
         when the ``voronoi_site_bounds`` and / or ``voronoi_site_perturb_std`` is
         not a scalar, by default None
-    n_voronoi_cells : Number, optional
-        the number of Voronoi cells. Needs to be None if this is a
-        trans-dimensional parameterization, by default None
     free_params : List[Parameter], optional
         a list of unknown parameters, by default None
     n_voronoi_cells_min : Number, optional
@@ -105,21 +116,22 @@ class Voronoi1D(Parameterization):
 
     def __init__(
         self,
-        voronoi_site_bounds: Tuple[Number, Number],
-        voronoi_site_perturb_std: Union[Number, np.ndarray],
-        position: np.ndarray = None,
         n_voronoi_cells: Number = None,
+        voronoi_sites: Union[np.ndarray, None] = None, 
+        voronoi_site_bounds: Tuple[Number, Number] = (1, 15),
+        voronoi_site_perturb_std: Union[Number, np.ndarray] = 3,
+        position: np.ndarray = None,
         free_params: List[Parameter] = None,
         n_voronoi_cells_min: Number = None,
         n_voronoi_cells_max: Number = None,
         voronoi_cells_init_range: Number = 0.2,
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
     ):
+        self.n_voronoi_cells = n_voronoi_cells if voronoi_sites is None else len(voronoi_sites)
+        self.voronoi_sites = voronoi_sites
         self.voronoi_site_bounds = voronoi_site_bounds
         self.voronoi_site_perturb_std = voronoi_site_perturb_std
         self.position = position
-        self._trans_d = n_voronoi_cells is None
-        self._n_voronoi_cells = n_voronoi_cells
         self.n_voronoi_cells_min = n_voronoi_cells_min
         self.n_voronoi_cells_max = n_voronoi_cells_max
         self._voronoi_cells_init_range = voronoi_cells_init_range
@@ -134,9 +146,15 @@ class Voronoi1D(Parameterization):
     @property
     def trans_d(self) -> bool:
         """indicates whether the current configuration allows changes in the
-        discretization itself
+        number of dimensions
         """
-        return self._trans_d
+        return self.n_voronoi_cells is None
+    
+    @property
+    def fixed_discretization(self) -> bool:
+        """indicates whether the current configuration allows changes in the
+        discretization"""
+        return self.voronoi_sites is not None
 
     @property
     def parameters(self) -> Dict[str, Parameter]:
@@ -152,19 +170,21 @@ class Voronoi1D(Parameterization):
         State
             an initial model state
         """
-        # initialize number of cells
-        if self.trans_d:
-            cells_range = self._voronoi_cells_init_range
-            cells_min = self.n_voronoi_cells_min
-            cells_max = self.n_voronoi_cells_max
-            init_max = int((cells_max - cells_min) * cells_range + cells_min)
-            n_voronoi_cells = random.randint(cells_min, init_max)
+        if not self.trans_d:
+            n_voronoi_cells = self.n_voronoi_cells
+        if self.fixed_discretization:
+            voronoi_sites = self.voronoi_sites
         else:
-            n_voronoi_cells = self._n_voronoi_cells
-            del self._n_voronoi_cells
-        # initialize site positions
-        lb, ub = self.voronoi_site_bounds
-        voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
+            # initialize number of cells
+            if self.trans_d:
+                cells_range = self._voronoi_cells_init_range
+                cells_min = self.n_voronoi_cells_min
+                cells_max = self.n_voronoi_cells_max
+                init_max = int((cells_max - cells_min) * cells_range + cells_min)
+                n_voronoi_cells = random.randint(cells_min, init_max)
+            # initialize site positions
+            lb, ub = self.voronoi_site_bounds
+            voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
         # initialize parameter values
         param_vals = dict()
         for name, param in self.free_params.items():
@@ -179,7 +199,7 @@ class Voronoi1D(Parameterization):
                 voronoi_site_perturb_std=self.voronoi_site_perturb_std,
                 position=self.position,
             )
-        ]
+        ] if not self.fixed_discretization else []
         for name, param in self.parameters.items():
             self._perturbation_funcs.append(ParamPerturbation(name, param))
         if self.trans_d:
