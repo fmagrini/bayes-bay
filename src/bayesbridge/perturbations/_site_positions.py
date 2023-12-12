@@ -8,7 +8,7 @@ import numpy as np
 from .._state import State
 from ..parameters._parameters import Parameter
 from ._base_perturbation import Perturbation
-from .._utils1d import interpolate_linear_1d
+from .._utils_1d import interpolate_linear_1d
 
 
 class Voronoi1DPerturbation(Perturbation):
@@ -41,7 +41,6 @@ class Voronoi1DPerturbation(Perturbation):
             if (
                 new_site < site_min
                 or new_site > site_max
-                or np.any(np.abs(new_site - old_sites) < 1e-2)
             ):
                 continue
             break

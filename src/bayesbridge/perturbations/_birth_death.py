@@ -10,7 +10,7 @@ from ._base_perturbation import Perturbation
 from .._state import State
 from ..exceptions._exceptions import DimensionalityException
 from ..parameters._parameters import SQRT_TWO_PI, Parameter
-from .._utils1d import delete, insert_scalar, nearest_index
+from .._utils_1d import delete, insert_scalar, nearest_index
 
 
 class BirthPerturbation1D(Perturbation):
@@ -35,9 +35,6 @@ class BirthPerturbation1D(Perturbation):
         while True:
             new_site = random.uniform(lb, ub)
             self._new_site = new_site
-            # abort if it's too close to existing positions
-            if np.any(np.abs(new_site - old_sites) < 1e-2):
-                continue
             break
         # intialize parameter values
         unsorted_values = self.initialize_newborn_cell(new_site, old_sites, model)
