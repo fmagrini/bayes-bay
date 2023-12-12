@@ -8,7 +8,7 @@ import numpy as np
 from .._state import State
 from ..parameters._parameters import Parameter
 from ._base_perturbation import Perturbation
-from .._utils1d import interpolate_linear_1d
+from .._utils_1d import interpolate_linear_1d
 
 
 class Voronoi1DPerturbation(Perturbation):

@@ -15,7 +15,7 @@ from .perturbations._birth_death import (
 )
 from .perturbations._param_values import ParamPerturbation
 from .perturbations._site_positions import Voronoi1DPerturbation
-from ._utils1d import interpolate_result, compute_voronoi1d_cell_extents
+from ._utils_1d import interpolate_result, compute_voronoi1d_cell_extents
 
 
 class Parameterization(ABC):
