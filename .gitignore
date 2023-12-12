@@ -5,6 +5,7 @@ __pycache__/
 *.so
 *.cpp
 *.c
+*.html
 
 # Setuptools/distutils distribution folder.
 dist/
