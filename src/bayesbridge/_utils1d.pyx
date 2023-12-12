@@ -1,20 +1,77 @@
 cimport cython
 from cython cimport cdivision, boundscheck, wraparound
 from libcpp cimport bool as bool_cpp
+from libcpp.vector cimport vector
+from libcpp.utility cimport pair
+from libcpp.algorithm cimport sort as sortc
 from libc.math cimport fabs
 import numpy as np
 cimport numpy as np
     
 
+
 @boundscheck(False)
 @wraparound(False) 
-cpdef bool_cpp is_sorted(long[:] argsort_indices):
+cpdef bool_cpp is_sorted(double[:] arr):
     cdef long i
-    cdef size_t size = argsort_indices.shape[0]
-    for i in range(size):
-        if argsort_indices[i] != i:
+    cdef size_t size = arr.shape[0]
+    for i in range(size - 1):
+        if arr[i] > arr[i + 1]:
             return False
     return True
+
+
+@boundscheck(False)
+@wraparound(False) 
+cpdef argsort(double[:] arr):
+    cdef size_t size = arr.shape[0]
+    cdef long i, j
+    cdef long[:] indexes = np.arange(size, dtype=np.int64)
+    for i in range(1, size):
+        if arr[indexes[i]] < arr[indexes[i-1]]:
+            indexes[i], indexes[i-1] = indexes[i-1], indexes[i]
+            for j in range(i-1, 0, -1):
+                if arr[indexes[j]] < arr[indexes[j-1]]:
+                    indexes[j], indexes[j-1] = indexes[j-1], indexes[j]
+                else:
+                    break
+    return np.asarray(indexes)
+
+
+cpdef argsort2(double[:] arr):
+    cdef int n = arr.shape[0]
+    cdef vector[pair[double, int]] pairs
+
+    # Create pairs of (value, index)
+    for i in range(n):
+        pairs.push_back(pair[double, int](arr[i], i))
+
+    # Sort the pairs
+    sortc(pairs.begin(), pairs.end())
+
+    # Extract the indices
+    cdef long[:] result = np.zeros(n, dtype=np.int64)
+    for i in range(n):
+        result[i] = pairs[i].second
+
+    return result
+
+
+@boundscheck(False)
+@wraparound(False) 
+cpdef sort(double[:] arr):
+    cdef size_t size = arr.shape[0]
+    cdef long i, j
+    cdef double[:] new_arr = arr.copy()
+    for i in range(1, size):
+        if new_arr[i] < new_arr[i-1]:
+            new_arr[i], new_arr[i-1] = new_arr[i-1], new_arr[i]
+            for j in range(i-1, 0, -1):
+                if new_arr[j] < new_arr[j-1]:
+                    new_arr[j], new_arr[j-1] = new_arr[j-1], new_arr[j]
+                else:
+                    break
+    return np.asarray(new_arr)
 
 
 @boundscheck(False)
@@ -231,4 +288,16 @@ cpdef insert_scalar(double[:] values, long index, double value):
         i += 1
     return np.asarray(new_values)
 
+
+@boundscheck(False)
+@wraparound(False) 
+cpdef delete(double[:] values, long index):
+    cdef size_t size = values.shape[0]
+    cdef double[:] new_values = np.zeros(size - 1, dtype=np.double)
+    cdef size_t i, j = 0
+    for i in range(size):
+        if i != index:
+            new_values[j] = values[i]
+            j += 1
+    return np.asarray(new_values)
 
