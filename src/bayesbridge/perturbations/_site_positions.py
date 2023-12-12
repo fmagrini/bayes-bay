@@ -5,7 +5,7 @@ import random
 import math
 import numpy as np
 
-from .._state import State
+from .._state import State, DataNoise
 from ..parameters._parameters import Parameter
 from ._base_perturbation import Perturbation
 from .._utils_1d import interpolate_linear_1d
@@ -51,10 +51,13 @@ class Voronoi1DPerturbation(Perturbation):
         new_sites = new_sites[isort]
         new_values = dict()
         for name, values in model.param_values.items():
-            new_values[name] = values[isort]
-        new_model = State(
-            nsites, new_sites, new_values, model.hyper_param_values.copy()
-        )
+            if isinstance(values, np.ndarray):
+                new_values[name] = values[isort]
+            elif isinstance(values, DataNoise):
+                new_values[name] = values.copy()
+            else:
+                new_values[name] = values
+        new_model = State(nsites, new_sites, new_values)
         # calculate proposal ratio
         proposal_ratio = self._proposal_ratio(old_site, new_site)
         return new_model, proposal_ratio

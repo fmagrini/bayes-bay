@@ -2,7 +2,7 @@ from numbers import Number
 from typing import Tuple
 import random
 
-from .._state import State
+from .._state import State, DataNoise
 from ._base_perturbation import Perturbation
 
 
@@ -33,8 +33,10 @@ class NoisePerturbation(Perturbation):
         vmin = getattr(self, f"_{to_be_perturbed}_min")
         vmax = getattr(self, f"_{to_be_perturbed}_max")
         std = getattr(self, f"_{to_be_perturbed}_perturb_std")
-        hyper_param_key = (self.target_name, f"noise_{to_be_perturbed}")
-        old_value = model.get_param_values(hyper_param_key)
+        old_noise = model.get_param_values(self.target_name)
+        old_value_std = getattr(old_noise, "std")
+        old_value_corr = getattr(old_noise, "correlation")
+        old_value = old_value_std if to_be_perturbed == "std" else old_value_corr
         while True:
             random_deviate = random.normalvariate(0, std)
             new_value = old_value + random_deviate
@@ -42,7 +44,10 @@ class NoisePerturbation(Perturbation):
                 continue
             break
         new_model = model.clone()
-        new_model.set_param_values(hyper_param_key, new_value)
+        new_value_std = new_value if to_be_perturbed == "std" else old_value_std
+        new_value_corr = old_value_corr if to_be_perturbed == "std" else new_value
+        new_noise = DataNoise(std=new_value_std, correlation=new_value_corr)
+        new_model.set_param_values(self.target_name, new_noise)
         return new_model, 0
 
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:

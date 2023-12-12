@@ -7,7 +7,7 @@ from bisect import bisect_left
 import numpy as np
 
 from ._base_perturbation import Perturbation
-from .._state import State
+from .._state import State, DataNoise
 from ..exceptions._exceptions import DimensionalityException
 from ..parameters._parameters import SQRT_TWO_PI, Parameter
 from .._utils_1d import delete, insert_scalar, nearest_index
@@ -43,9 +43,10 @@ class BirthPerturbation1D(Perturbation):
         new_values = dict()
         for name, value in unsorted_values.items():
             new_values[name] = insert_scalar(getattr(model, name), idx_insert, value)
-        new_model = State(
-            n_cells + 1, new_sites, new_values, model.hyper_param_values.copy()
-        )
+        for name, value in model.items():
+            if name not in new_values and isinstance(value, DataNoise):
+                new_values[name] = value.copy()
+        new_model = State(n_cells + 1, new_sites, new_values)
         # calculate proposal ratio
         proposal_ratio = self.proposal_ratio()
         return new_model, proposal_ratio
@@ -146,9 +147,10 @@ class DeathPerturbation1D(Perturbation):
         # remove parameter values for the removed site
         new_values = self.remove_cell_values(isite, model)
         # structure new sites and values into new model
-        new_model = State(
-            n_cells - 1, self._new_sites, new_values, model.hyper_param_values.copy()
-        )
+        for name, value in model.items():
+            if name not in new_values and isinstance(value, DataNoise):
+                new_values[name] = value.copy()
+        new_model = State(n_cells - 1, self._new_sites, new_values)
         self._new_model = new_model
         # calculate proposal ratio
         proposal_ratio = self.proposal_ratio()

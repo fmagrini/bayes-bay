@@ -6,7 +6,7 @@ import numpy as np
 
 from ._utils_1d import inverse_covariance
 from .perturbations._data_noise import NoisePerturbation
-from ._state import State
+from ._state import State, DataNoise
 
 
 class Target:
@@ -98,20 +98,19 @@ class Target:
         return self.perturbation_function is not None
 
     def initialize(self, model: State):
-        """initializes the noise hyper parameters
+        """initializes the data noise parameters
 
         Parameters
         ----------
         model : State
-            the current model where initialized hyper parameters are to be updated to
+            the current model where initialized DataNoise parameter is to be updated to
         """
         noise_std = random.uniform(self.std_min, self.std_max)
-        model.set_param_values((self.name, "noise_std"), noise_std)
-        if self.noise_is_correlated:
-            noise_correlation = random.uniform(
-                self.correlation_min, self.correlation_max
-            )
-            model.set_param_values((self.name, "noise_correlation"), noise_correlation)
+        # model.set_param_values((self.name, "noise_std"), noise_std)
+        noise_corr = random.uniform(self.correlation_min, self.correlation_max) \
+            if self.noise_is_correlated else None
+        model.set_param_values(self.name, DataNoise(std=noise_std, correlation=noise_corr))
+
 
     def inverse_covariance_times_vector(
         self, model: State, vector: np.ndarray
@@ -137,8 +136,9 @@ class Target:
             else:
                 return self.covariance_mat_inv @ vector
         else:
-            std = model.get_param_values((self.name, "noise_std"))
-            correlation = model.get_param_values((self.name, "noise_correlation"))
+            noise = model.get_param_values(self.name)
+            std = noise.std
+            correlation = noise.correlation
             if correlation is None:
                 return 1 / std**2 * vector
             else:
@@ -159,8 +159,9 @@ class Target:
         float
             the log determinant value
         """
-        std = model.get_param_values((self.name, "noise_std"))
-        r = model.get_param_values((self.name, "noise_correlation"))
+        noise = model.get_param_values(self.name)
+        std = noise.std
+        r = noise.correlation
         if r is None:
             r = 0
         n = self.dobs.size
