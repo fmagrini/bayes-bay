@@ -35,9 +35,6 @@ class BirthPerturbation1D(Perturbation):
         while True:
             new_site = random.uniform(lb, ub)
             self._new_site = new_site
-            # abort if it's too close to existing positions
-            if np.any(np.abs(new_site - old_sites) < 1e-2):
-                continue
             break
         # intialize parameter values
         unsorted_values = self.initialize_newborn_cell(new_site, old_sites, model)
