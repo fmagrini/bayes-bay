@@ -7,7 +7,7 @@ Created on Wed Dec 21 15:56:00 2022
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable, Union, Tuple
+from typing import Any, Callable, Tuple, Union
 from numbers import Number
 import random
 from functools import partial
@@ -220,8 +220,8 @@ class Parameter(ABC):
 
 
 class UniformParameter(Parameter):
-    """Class for defining an unknown parameter that follows the uniform distribution
-    as prior
+    """Class for defining a free parameter acccording to a uniform probability
+    distribution
 
     Parameters
     ----------
@@ -234,11 +234,11 @@ class UniformParameter(Parameter):
         the upper bound for this parameter. This can either be a scalar or an array
         if the hyper parameters vary with positions
     perturb_std : Union[Number, np.ndarray]
-        perturbation standard deviation for this parameter. This can either be a
-        scalar or an array if the hyper parameters vary with positions
+        standard deviation of the Gaussians used to randomly perturb the parameter. 
+        This can either be a scalar or an array if the hyper parameters vary with positions
     position : np.ndarray, optional
-        positions corresponding to position-dependent hyper parameters (``vmin``,
-        ``vmax``, ``perturb_std``), by default None
+        positions in the discretization domain corresponding to position-dependent 
+        hyper parameters (``vmin``, ``vmax``, ``perturb_std``), by default None
     """
 
     def __init__(
@@ -289,15 +289,16 @@ class UniformParameter(Parameter):
 
     def get_delta(self, position):
         """get the difference between ``vmax`` and ``vmin`` at the given position
+        in the discretization domain
 
         Parameters
         ----------
-        position : Number
-            the position at which the uniform distribution range will be returned
+        position: Union[Number, np.ndarray]
+            the position(s) at which the uniform distribution range will be returned
 
         Returns
         -------
-        float
+        Union[Number, np.ndarray]
             the different between ``vmax`` and ``vmin`` at the given position
         """
         return self._get_pos_dependent_hyper_param(self._delta, position)
@@ -305,12 +306,13 @@ class UniformParameter(Parameter):
     def get_vmin_vmax(
         self, position: Union[Number, np.ndarray]
     ) -> Tuple[Number, Number]:
-        """get the lower and upper bounds at the given position(s)
+        """get the lower and upper bounds at the given position(s) in the discretization 
+        domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray]
-            the position(s) as which the uniform distribution bounds will be returned
+            the position(s) at which the uniform distribution bounds will be returned
 
         Returns
         -------
@@ -326,18 +328,65 @@ class UniformParameter(Parameter):
         return vmin, vmax
 
     def get_perturb_std(self, position):
+        """get the standard deviation(s) of the Gaussian(s) used to perturb
+        the parameter at the given position(s) in the discretization domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            position(s) at which the standard deviation(s) of the Gaussian(s)
+            used to perturb the parameter will be returned
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            standard deviation at the given position(s)
+        """
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
 
     def initialize(
-        self, positions: Union[np.ndarray, Number]
+        self, position: Union[np.ndarray, Number]
     ) -> Union[np.ndarray, Number]:
-        vmin, vmax = self.get_vmin_vmax(positions)
-        if isinstance(positions, Number):
+        """initialize the parameter at the specified position(s) in the discretization 
+        domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) at which the parameter is initialized
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            random number(s) chosen uniformly in the range associated with the
+            given position(s)
+        """
+        vmin, vmax = self.get_vmin_vmax(position)
+        if isinstance(position, Number):
             return random.uniform(vmin, vmax)
         else:
-            return np.random.uniform(vmin, vmax, positions.size)
+            return np.random.uniform(vmin, vmax, position.size)
 
     def perturb_value(self, position, value):
+        r"""randomly perturb a given value at the specified position in the 
+        discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            the ``position`` at which the ``value`` is perturbed
+            
+        value: Number
+            original parameter ``value``
+        
+        Returns
+        -------
+        Number
+            perturbed ``value``, generated through a random deviate from a 
+            normal distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu`
+            denotes the original value and :math:`sigma` the standard deviation
+            of the Gaussian at the specified position (:attr:`UniformParameter.perturb_std`)
+        """
         # randomly perturb the value until within range
         std = self.get_perturb_std(position)
         vmin, vmax = self.get_vmin_vmax(position)
@@ -348,6 +397,22 @@ class UniformParameter(Parameter):
                 return new_value
 
     def log_prior(self, position, value):
+        """log prior probability of occurrence of a value falling at the given
+        position in the discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            position in the discretized domain
+            
+        value: Number
+        
+        Returns
+        -------
+        Number
+            log prior probability. If `value` is outside the allowed range at
+            the given position, ``-inf`` is returned
+        """
         vmin, vmax = self.get_vmin_vmax(position)
         if vmin <= value <= vmax:
             return -math.log(vmax - vmin)
@@ -355,23 +420,105 @@ class UniformParameter(Parameter):
             return -math.inf
 
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+        r"""log prior probability ratio associated with the perturbation of a
+        uniform parameter
+        
+        Parameters
+        ----------
+        old_value, new_value, position : Any
+            
+        Returns
+        -------
+        Number
+            zero
+            
+        .. note::
+            Since at a given position the prior probability is constant,
+            the prior probability of occurrence of the perturbed parameter is always 
+            equal to the prior of the original parameter. This makes the probability 
+            ratio :math:`\frac{p \left( {\bf m'} \right)}{p \left( {\bf m} \right)}`
+            constant and equal to one
+        """
         return 0
 
     def log_prior_ratio_perturbation_voronoi_site(
         self, old_position, new_position, value
     ):
+        """log prior probability ratio associated with the perturbation of a
+        Voronoi site
+        
+        Parameters
+        ----------
+        old_position, new_position : Number
+            Original and perturbed Voronoi site position
+        
+        value : Any
+        
+        Returns
+        -------
+        Number
+        """
         old_delta = self.get_delta(old_position)
         new_delta = self.get_delta(new_position)
         return math.log(old_delta / new_delta)
 
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
+        """log prior probability ratio associated with the birth of a new
+        uniformly distributed parameter
+        
+        Parameters
+        ----------
+        new_position : Number
+            Position in the discretized domain associated with the new parameter
+        
+        new_value : Any
+        
+        Returns
+        -------
+        Number
+        """
         return -math.log(self.get_delta(new_position))
 
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
+        """log prior probability ratio associated with the death of a uniformly 
+        distributed parameter
+        
+        Parameters
+        ----------
+        removed_position : Number
+            Position in the discretized domain associated with the removed parameter
+        
+        removed_value : Any
+        
+        Returns
+        -------
+        Number
+        """
         return math.log(self.get_delta(removed_position))
 
 
 class GaussianParameter(Parameter):
+    """Class for defining a free parameter acccording to a normal probability
+    distribution
+
+    Parameters
+    ----------
+    name : str
+        name of the current parameter, for display and storing purposes
+    mean : Union[Number, np.ndarray]
+        mean of the Gaussian. This can either be a scalar or an array
+        if the hyper parameters vary with positions
+    std : Union[Number, np.ndarray]
+        standard deviation of the Gaussian. This can either be a scalar or an array
+        if the hyper parameters vary with positions
+    perturb_std : Union[Number, np.ndarray]
+        standard deviation of the Gaussians used to randomly perturb the parameter. 
+        This can either be a scalar or an array if the hyper parameters vary with positions
+    position : np.ndarray, optional
+        positions in the discretization domain corresponding to position-dependent 
+        hyper parameters (``vmin``, ``vmax``, ``perturb_std``), by default None
+    """
+
     def __init__(self, name, mean, std, perturb_std, position=None):
         super().__init__(
             name=name,
@@ -411,31 +558,134 @@ class GaussianParameter(Parameter):
         self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
 
     def get_mean(self, position):
+        """get the prior mean of the Gaussian at the given position in the 
+        discretization domain
+
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            position(s) in the discretization domain at which the uniform 
+            distribution range will be returned
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            mean at the given position(s)
+        """
         return self._get_pos_dependent_hyper_param(self._mean, position)
 
     def get_std(self, position):
+        """get the prior standard deviation of the Gaussian at the given position
+
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) in the discretization domain at which the uniform 
+            distribution range will be returned
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            standard deviation at the given position(s)
+        """
         return self._get_pos_dependent_hyper_param(self._std, position)
 
     def get_perturb_std(self, position):
+        """get the standard deviation(s) of the Gaussian(s) used to perturb
+        the parameter at the given position(s) in the discretization domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) at which the standard deviation(s) of the Gaussian(s)
+            used to perturb the parameter will be returned
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            standard deviation at the given position(s)
+        """
         return self._get_pos_dependent_hyper_param(self._perturb_std, position)
 
-    def initialize(self, positions):
-        mean = self.get_mean(positions)
-        std = self.get_std(positions)
-        values = np.random.normal(mean, std, positions.size)
+    def initialize(self, position):
+        r"""initialize the parameter at the specified position(s) in the 
+        discretization domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) at which the parameter is initialized
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            random number(s) chosen according to the normal distribution defined
+            by :attr:`mean` and :attr:`std` at the given position(s)
+        """
+        mean = self.get_mean(position)
+        std = self.get_std(position)
+        values = np.random.normal(mean, std, position.size)
         return values
 
     def perturb_value(self, position, value):
+        r"""randomly perturb a given value at the specified position in the 
+        discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            the ``position`` at which the ``value`` is perturbed
+            
+        value: Number
+            original parameter ``value``
+        
+        Returns
+        -------
+        Number
+            perturbed ``value``, generated through a random deviate from a 
+            normal distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu`
+            denotes the original value and :math:`sigma` the standard deviation
+            of the Gaussian at the specified position (:attr:`GaussianParameter.perturb_std`)
+        """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
 
     def log_prior(self, position, value):
+        """log prior probability of occurrence of a value at the given position 
+        in the discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            Position in the discretization domain, determining the mean and
+            standard deviation of the (prior) normal distribution
+            
+        value: Number
+        
+        Returns
+        -------
+        Number
+        """
         mean = self.get_mean(position)
         var = self.get_std(position) ** 2
         return -0.5 * ((value - mean) ** 2 / var + math.log(2 * math.pi * var))
 
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+        r"""log prior probability ratio associated with the perturbation of a
+        Gaussian parameter at the given position in the discretization domain
+        
+        Parameters
+        ----------
+        old_value, new_value : Number
+            Original and perturbed parameter values
+            
+        position : Number
+            
+        Returns
+        -------
+        Number
+        """
         mean = self.get_mean(position)
         std = self.get_std(position)
         return (old_value - mean) ** 2 - (new_value - mean) ** 2 / (2 * std**2)
@@ -443,6 +693,22 @@ class GaussianParameter(Parameter):
     def log_prior_ratio_perturbation_voronoi_site(
         self, old_position, new_position, value
     ):
+        """log prior probability ratio associated with the perturbation of a
+        Voronoi site
+        
+        Parameters
+        ----------
+        old_position, new_position : Number
+            Original and perturbed Voronoi site position in the discretization
+            domain
+        
+        value : Number
+            Parameter value
+        
+        Returns
+        -------
+        Number
+        """
         old_mean = self.get_mean(old_position)
         new_mean = self.get_mean(new_position)
         old_std = self.get_std(old_position)
@@ -453,17 +719,58 @@ class GaussianParameter(Parameter):
         )
 
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
+        """log prior probability ratio associated with the birth of a new
+        normally distributed parameter
+        
+        Parameters
+        ----------
+        new_position : Number
+            Position in the discretized domain associated with the new parameter
+        
+        new_value : Number
+            proposed numerical value for the newly born parameter
+        
+        Returns
+        -------
+        Number
+        """
         mean = self.get_mean(new_position)
         std = self.get_std(new_position)
         return -math.log(std * SQRT_TWO_PI) - (new_value - mean) ** 2 / (2 * std)
 
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
+        """log prior probability ratio associated with the death of a normally 
+        distributed parameter
+        
+        Parameters
+        ----------
+        removed_position : Number
+            position in the discretized domain associated with the removed parameter
+        
+        removed_value : Number
+            numerical value associated with the removed parameter
+        
+        Returns
+        -------
+        Number
+        """
         mean = self.get_mean(removed_position)
         std = self.get_std(removed_position)
         return math.log(std * SQRT_TWO_PI) + (removed_value - mean) ** 2 / (2 * std)
 
 
 class ParameterFromPrior(Parameter):
+    """Class enabling the definition of an arbitrary prior for a free parameter
+
+    Parameters
+    ----------
+    name : str
+        name of the current parameter, for display and storing purposes
+    log_prior : Callable[[Number, Number], Number]
+    initialize : Callable[[np.ndarray], np.ndarray]
+    perturb_value : Callable[[Number, Number], Number]
+    """
+
     def __init__(
         self,
         name: str,
@@ -483,15 +790,74 @@ class ParameterFromPrior(Parameter):
         self._perturb_value = perturb_value
 
     def initialize(self, positions: np.ndarray) -> np.ndarray:
+        r"""initialize the parameter at the specified position(s) in the 
+        discretization domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) at which the parameter is initialized
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            random number(s) chosen according to the prior probability distribution
+        """
         return self._initialize(positions)
 
     def perturb_value(self, position, value):
+        r"""randomly perturb a given value at the specified position in the 
+        discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            the ``position`` at which the ``value`` is perturbed
+            
+        value: Number
+            original parameter ``value``
+        
+        Returns
+        -------
+        Number
+            perturbed ``value``, generated through the user-defined callable 
+            ``perturb_value``
+        """
         return self._perturb_value(position, value)
 
     def log_prior(self, position, value):
+        """log prior probability of occurrence of a value at the given position 
+        in the discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            Position in the discretization domain, determining the mean and
+            standard deviation of the (prior) normal distribution
+            
+        value: Number
+        
+        Returns
+        -------
+        Number
+        """
         return self._log_prior(position, value)
 
     def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
+        r"""log prior probability ratio associated with the perturbation of the 
+        parameter at the given position in the discretization domain
+        
+        Parameters
+        ----------
+        old_value, new_value : Number
+            Original and perturbed parameter values
+            
+        position : Number
+            
+        Returns
+        -------
+        Number
+        """
         new_log_prior = self._log_prior(position, new_value)
         old_log_prior = self._log_prior(position, old_value)
         return new_log_prior - old_log_prior
@@ -499,12 +865,57 @@ class ParameterFromPrior(Parameter):
     def log_prior_ratio_perturbation_voronoi_site(
         self, old_position, new_position, value
     ):
+        """log prior probability ratio associated with the perturbation of a
+        Voronoi site
+        
+        Parameters
+        ----------
+        old_position, new_position : Number
+            Original and perturbed Voronoi site position in the discretization
+            domain
+        
+        value : Number
+            Parameter value
+        
+        Returns
+        -------
+        Number
+        """
         new_log_prior = self._log_prior(new_position, value)
         old_log_prior = self._log_prior(old_position, value)
         return new_log_prior - old_log_prior
 
     def log_prior_ratio_perturbation_birth(self, new_position, new_value):
+        """log prior probability ratio associated with the birth of a new
+        normally distributed parameter
+        
+        Parameters
+        ----------
+        new_position : Number
+            Position in the discretized domain associated with the new parameter
+        
+        new_value : Number
+            proposed numerical value for the newly born parameter
+        
+        Returns
+        -------
+        Number
+        """
         return self._log_prior(new_position, new_value)
 
     def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
+        """log prior probability ratio associated with the death of a parameter
+        
+        Parameters
+        ----------
+        removed_position : Number
+            position in the discretized domain associated with the removed parameter
+        
+        removed_value : Number
+            numerical value associated with the removed parameter
+        
+        Returns
+        -------
+        Number
+        """
         return -self._log_prior(removed_position, removed_value)
