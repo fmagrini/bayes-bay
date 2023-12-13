@@ -20,16 +20,16 @@ class BirthPerturbation1D(Perturbation):
     new-born cell. The following two classes are subclasses of 
     :class:`BirthPerturbation1D`.
     
-    - Born from neearerst neighbour: :class:`BirthFromNeighbour1D`
+    - Born from nearerst neighbour: :class:`BirthFromNeighbour1D`
     - Born from prior sampling: :class:`BirthFromPrior1D`
     
-    Users can choosebetween ``neighbour`` and ``prior`` in the initialization of 
+    Users can choose between ``neighbour`` and ``prior`` in the initialization of 
     :class:`bayesbridge.Voronoi1D`.
     
     Parameters
     ----------
     parameters : Dict[str, Parameter]
-        list of parameters of the current problem
+        list of parameters of the current inverse problem
     n_voronoi_cells_max : int
         maximum number of dimensions, for bound check purpose
     voronoi_site_bounds : Tuple[int, int]
@@ -48,6 +48,10 @@ class BirthPerturbation1D(Perturbation):
     def perturb(self, model: State) -> Tuple[State, Number]:
         """propose a new model that has a new dimension from the given model and
         calculates its associated proposal ratio
+        
+        Refer to :meth:`BirthFromNeighbour1D.log_proposal_ratio` and
+        :meth:`BirthFromPrior1D.log_proposal_ratio` for details on how the log proposal
+        ratios are calculated in different cases of this perturbation type.
 
         Parameters
         ----------
@@ -125,9 +129,21 @@ class BirthPerturbation1D(Perturbation):
         
         The concrete implementations of this abstract method are:
         
-        - Birth from nearrest neighbour:
+        - Birth from nearest neighbour:
           :meth:`BirthFromNeighbour1D.log_proposal_ratio`
         - Birth from prior sampling: :meth:`BirthFromPrior1D.log_proposal_ratio`
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
+        """log prior ratio for the current perturbation
+
+        The concrete implementations of this abstract method are:
+        
+        - Birth from nearest neighbour:
+          :meth:`BirthFromNeighbour1D.log_prior_ratio`
+        - Birth from prior sampling: :meth:`BirthFromPrior1D.log_prior_ratio`
         """
         raise NotImplementedError
 
@@ -202,8 +218,6 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
         float
             the log proposal ratio
         """
-        # The calculation omits the \frac{N-k}{k+1} part in the formula,
-        # as this will be cancelled out with the prior ratio of the voronoi position part
         ratio = 0
         for param_name, param in self.parameters.items():
             theta = param.get_perturb_std(self._new_site)
@@ -223,6 +237,8 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
             \\frac{p(\\textbf{m}')}{p(\\textbf{m})} = 
             \\frac{k+1}{N-k}\\prod_{i=1}^{M}p(\\textbf{v}_{{new}_i})
 
+        where :math:`M` is the number of unknown parameters.
+
         In the actual implementation, the :math:`\\frac{k+1}{N-k}` part is cancelled 
         out by the proposal ratio in this perturbation type (refer to
         :meth:`BirthFromNeighbour1D.log_proposal_ratio`), therefore we only calculate
@@ -240,9 +256,6 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
         Number
             the log prior ratio for the current perturbation
         """
-        # p(k) ratio is always 0 so omitted here
-        # p(c|k) ratio = \frac{k+1}{N-k} cancels out with proposal ratio so omitted here
-        # calculate only p(v|c) below
         prior_value_ratio = 0
         for param_name, param in self.parameters.items():
             new_value = new_model.get_param_values(param_name)
@@ -320,9 +333,11 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
         
             \\frac{p(\\textbf{m}')}{p(\\textbf{m})} = 
             \\frac{k+1}{N-k}\\prod_{i=1}^{M}p(\\textbf{v}_{{new}_i})
+            
+        where :math:`M` is the number of unknown parameters.
 
-        In the actual implementation, the :math:`\\frac{k+1}{N-k}` part is cancelled 
-        out by the proposal ratio in this perturbation type (refer to
+        In the actual implementation, the whole formula is cancelled out by the 
+        proposal ratio in this perturbation type (refer to
         :meth:`BirthFromNeighbour1D.log_proposal_ratio`), therefore we return 0 
         directly in this method.
 
@@ -342,6 +357,24 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
 
 
 class DeathPerturbation1D(Perturbation):
+    """Perturbation by removing an existing dimension in 1D Voronoi space
+    
+    There are two different ways to interpret such removals, based on how new cells
+    are born. The following two classes are subclasses of :class:`DeathPerturbation1D`.
+    
+    - Death corresponding to birth from nearest neighbour: :class:`DeathFromNeighbour1D`
+    - Death corresponding to birth from prior sampling: :class:`DeathFromPrior1D`
+    
+    Users can choose between ``neighbour`` and ``prior`` in the initialization of
+    :class:`bayesbridge.Voronoi1D`.
+    
+    Parameters
+    ----------
+    parameters : Dict[str, Parameter]
+        list of parameters of the current inverse problem
+    n_voronoi_cells_min : int
+        minimum number of dimensions, for bound check purpose
+    """
     def __init__(
         self,
         parameters: Dict[str, Parameter],
@@ -351,6 +384,29 @@ class DeathPerturbation1D(Perturbation):
         self.n_voronoi_cells_min = n_voronoi_cells_min
 
     def perturb(self, model: State) -> Tuple[State, Number]:
+        """propose a new model that has an existing dimension removed from the given
+        model and calculates its associated proposal ratio
+        
+        Refer to :meth:`DeathFromNeighbour1D.log_proposal_ratio` and
+        :meth:`DeathFromPrior1D.log_proposal_ratio` for details on how the log proposal
+        ratios are calculated in different cases of this perturbation type.
+
+        Parameters
+        ----------
+        model : State
+            the given current model
+
+        Returns
+        -------
+        Tuple[State, Number]
+            proposed new model and the proposal ratio for this perturbation
+
+        Raises
+        ------
+        DimensionalityException
+            when the current model has already reached the minimum number of Voronoi
+            cells
+        """
         # prepare for death perturbations
         n_cells = model.n_voronoi_cells
         if n_cells == self.n_voronoi_cells_min:
@@ -359,7 +415,7 @@ class DeathPerturbation1D(Perturbation):
         isite = random.randint(0, n_cells - 1)
         self._new_sites = delete(model.voronoi_sites, isite)
         # remove parameter values for the removed site
-        new_values = self.remove_cell_values(isite, model)
+        new_values = self._remove_cell_values(isite, model)
         # structure new sites and values into new model
         for name, value in model.items():
             if name not in new_values and isinstance(value, DataNoise):
@@ -370,7 +426,7 @@ class DeathPerturbation1D(Perturbation):
         log_proposal_ratio = self.log_proposal_ratio()
         return new_model, log_proposal_ratio
 
-    def remove_cell_values(self, isite: Number, model: State) -> Dict[str, np.ndarray]:
+    def _remove_cell_values(self, isite: Number, model: State) -> Dict[str, np.ndarray]:
         self._old_model = model
         self._i_removed = isite
         self._removed_site = model.voronoi_sites[isite]
@@ -382,27 +438,70 @@ class DeathPerturbation1D(Perturbation):
             new_values[param_name] = delete(old_values, isite)
         return new_values
 
-    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
-        # p(k) ratio is always 0 so omitted here
-        # p(c|k) ratio = \frac{k}{N-k+1} cancels out with proposal ratio so omitted here
-        # calculate only p(v|c) below
-        prior_value_ratio = 0
-        for param_name, param in self.parameters.items():
-            removed_value = old_model.get_param_values(param_name)[self._i_removed]
-            prior_value_ratio += param.log_prior_ratio_perturbation_death(
-                self._removed_site, removed_value
-            )
-        return prior_value_ratio
-
     @abstractmethod
     def log_proposal_ratio(self):
+        """log proposal ratio for the latest perturbation
+        
+        The concrete implementations of this abstract method are:
+        
+        - Death corresponding to birth from nearerst neighbour: 
+          :meth:`DeathFromNeighbour1D.log_proposal_ratio`
+        - Death corresponding to birth from prior sampling:
+          :meth:`DeathFromPrior1D.log_proposal_ratio`
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
+        """log prior ratio for the latest perturbation
+        
+        The concrete implementations of this abstract method are:
+        
+        - Death corresponding to birth from nearerst neighbour: 
+          :meth:`DeathFromNeighbour1D.log_prior_ratio`
+        - Death corresponding to birth from prior sampling:
+          :meth:`DeathFromPrior1D.log_prior_ratio`
+        """
         raise NotImplementedError
 
 
 class DeathFromNeighbour1D(DeathPerturbation1D):
-    def log_proposal_ratio(self):
-        # The calculation omits the \frac{N-k+1}{k} part in the formula,
-        # as this will be cancelled out with the prior ratio of the voronoi position part
+    def log_proposal_ratio(self) -> float:
+        """log proposal ratio for the current perturbation
+        
+        .. math::
+        
+            \\frac{q(\\textbf{m}|\\textbf{m}')}{q(\\textbf{m}|\\textbf{m}')} =
+            \\frac{k}{N-k+1} 
+            \\prod_{i=1}^{M}
+            \\frac{1}{\\theta_i'^2\\sqrt{2\\pi}} 
+            \\exp\\Large\\lbrace-\\frac{(v_{{removed}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace
+        
+        Derived from the following equations:
+        
+        .. math::
+        
+            \\begin{align*}
+            q(\\textbf{c}|\\textbf{m}') &= \\frac{1}{N-(k-1)} \\\\
+            q(\\textbf{v}|\\textbf{m}') &= \\prod_{i=1}^{M}\\theta_i^2\\sqrt{2\\pi}
+                \\exp\\Large\\lbrace\\frac{(v_{{removed}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace\\\\
+            q(\\textbf{c}'|\\textbf{m}) &= \\frac{1}{k} \\\\
+            q(\\textbf{v}'|\\textbf{m}) &= 1
+            \\end{align*}
+        
+        where :math:`M` is the number of unknown parameters.
+        
+        In the actual implementation, the :math:`\\frac{k}{N-k+1}` part is cancelled out
+        by the prior ratio in this perturbation type (refer to 
+        :meth:`DeathFromNeighbour1D.log_prior_ratio`), therefore we only calculate
+        :math:`\\prod_{i=1}^{M}\\frac{1}{\\theta_i'^2\\sqrt{2\\pi}}\\exp\\Large\\lbrace-\\frac{(v_{{removed}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace` 
+        in this method.
+
+        Returns
+        -------
+        float
+            the log proposal ratio
+        """
         ratio = 0
         i_nearest = nearest_index(
             xp=self._removed_site, x=self._new_sites, xlen=self._new_sites.size
@@ -416,14 +515,105 @@ class DeathFromNeighbour1D(DeathPerturbation1D):
                 + (removed_value - nearest_value) ** 2 / 2 * theta**2
             )
         return ratio
+    
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
+        """log prior ratio given two models
+
+        .. math::
+        
+            \\frac{p(\\textbf{m}')}{p(\\textbf{m})} = 
+            \\frac{N-k+1}{k}\\prod_{i=1}^M\\frac{1}{p(\\textbf{v}_{{removed}_i)}}
+
+        In the actual implementation, the :math:`\\frac{N-k+1}{k}` part is cancelled
+        out by the proposal ratio in this perturbation type (refer to
+        :meth:`DeathFromNeighbour1D.log_proposal_ratio`), therefore we only calculate
+        :math:`\\prod_{i=1}^M\\frac{1}{p(\\textbf{v}_{{removed}_i)}}` in this method.
+
+        Parameters
+        ----------
+        old_model : State
+            the old model to perturb from
+        new_model : State
+            the new model to perturb into
+
+        Returns
+        -------
+        Number
+            the log prior for the current perturbation
+        """
+        prior_value_ratio = 0
+        for param_name, param in self.parameters.items():
+            removed_value = old_model.get_param_values(param_name)[self._i_removed]
+            prior_value_ratio += param.log_prior_ratio_perturbation_death(
+                self._removed_site, removed_value
+            )
+        return prior_value_ratio
 
 
 class DeathFromPrior1D(DeathPerturbation1D):
-    def log_proposal_ratio(self):
-        # The calculation omits the \frac{N-k+1}{k} part in the formula,
-        # as this will be cancelled out with the prior ratio of the voronoi position part
+    def log_proposal_ratio(self) -> float:
+        """log proposal ratio for the current perturbation
+        
+        .. math::
+        
+            \\frac{q(\\textbf{m}|\\textbf{m}')}{q(\\textbf{m}|\\textbf{m}')} =
+            \\frac{k}{N-k+1} 
+            \\prod_{i=1}^{M}
+            \\frac{1}{\\theta_i'^2\\sqrt{2\\pi}} 
+            \\exp\\Large\\lbrace-\\frac{(v_{{removed}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace
+        
+        Derived from the following equations:
+        
+        .. math::
+        
+            \\begin{align*}
+            q(\\textbf{c}|\\textbf{m}') &= \\frac{1}{N-(k-1)} \\\\
+            q(\\textbf{v}|\\textbf{m}') &= \\prod_{i=1}^{M}\\theta_i^2\\sqrt{2\\pi}
+                \\exp\\Large\\lbrace\\frac{(v_{{removed}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace\\\\
+            q(\\textbf{c}'|\\textbf{m}) &= \\frac{1}{k} \\\\
+            q(\\textbf{v}'|\\textbf{m}) &= 1
+            \\end{align*}
+        
+        where :math:`M` is the number of unknown parameters.
+        
+        In the actual implementation, since this formula gets cancelled out by the 
+        prior ratio in this perturbation type (refer to 
+        :meth:`DeathFromPrior1D.log_prior_ratio`), we return 0 directly.
+
+        Returns
+        -------
+        float
+            the log proposal ratio
+        """
         ratio = 0
         for param_name, param in self.parameters.items():
             removed_val = self._removed_values[param_name]
             ratio -= param.log_prior(self._removed_site, removed_val)
         return ratio
+
+    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
+        """log prior ratio given two models
+
+        .. math::
+        
+            \\frac{p(\\textbf{m}')}{p(\\textbf{m})} = 
+            \\frac{N-k+1}{k}\\prod_{i=1}^M\\frac{1}{p(\\textbf{v}_{{removed}_i)}}
+
+        In the actual implementation, the whole formula is cancelled out by the 
+        proposal ratio in this perturbation type (refer to
+        :meth:`DeathFromNeighbour1D.log_proposal_ratio`), therefore we return 0 
+        directly in this method.
+
+        Parameters
+        ----------
+        old_model : State
+            the old model to perturb from
+        new_model : State
+            the new model to perturb into
+
+        Returns
+        -------
+        Number
+            the log prior for the current perturbation
+        """
+        return 0

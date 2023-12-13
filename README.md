@@ -1,4 +1,4 @@
-# Bayes Bridge
+# BayesBridge
 
 Trans-dimensional McMC sampling implemented in Python and Cython.
 

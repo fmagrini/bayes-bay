@@ -8,7 +8,7 @@ import bayesbridge as bb
 
 
 # -- Project information -----------------------------------------------------
-project = "Bayes Bridge"
+project = "BayesBridge"
 copyright = f"{datetime.date.today().year}, InLab, BayesBridge development team"
 version = "dev" if "dev" in bb.__version__ else f"v{bb.__version__}"
 
