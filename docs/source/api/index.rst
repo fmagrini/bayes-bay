@@ -62,7 +62,7 @@ Parameters
         bayesbridge.parameters.Parameter
         bayesbridge.parameters.UniformParameter
         bayesbridge.parameters.GaussianParameter
-        bayesbridge.parameters.ParameterFromPrior
+        bayesbridge.parameters.CustomParameter
 
 
 Perturbations

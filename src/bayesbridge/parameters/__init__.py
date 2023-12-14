@@ -2,7 +2,7 @@ from ._parameters import (
     Parameter,
     UniformParameter,
     GaussianParameter,
-    ParameterFromPrior,
+    CustomParameter,
 )
 
 
@@ -10,6 +10,5 @@ __all__ = [
     "Parameter",
     "UniformParameter",
     "GaussianParameter",
-    "ParameterFromPrior",
-    "ParameterFromPrior",
+    "CustomParameter",
 ]
