@@ -47,11 +47,12 @@ class LogLikelihood:
         """
         return self._log_prior_ratio_funcs
 
-    def log_likelihood_ratio(self, old_model, new_model):
-        old_misfit, old_log_det = self._get_misfit_and_det(old_model)
-        new_misfit, new_log_det = self._get_misfit_and_det(new_model)
+    def log_likelihood_ratio(self, old_state, new_state):
+        old_misfit, old_log_det = self._get_misfit_and_det(old_state)
+        new_misfit, new_log_det = self._get_misfit_and_det(new_state)
         log_like_ratio = (old_log_det - new_log_det) + (old_misfit - new_misfit) / 2
-        return log_like_ratio
+        temperature = getattr(new_state, "temperature")
+        return log_like_ratio / temperature
 
     def __call__(self, old_misfit, temperature) -> Any:
         return self.log_likelihood_ratio(old_misfit, temperature)
@@ -64,16 +65,16 @@ class LogLikelihood:
                 self._perturbation_funcs.append(target.perturbation_function)
                 self._log_prior_ratio_funcs.append(target.log_prior_ratio_function)
 
-    def _get_misfit_and_det(self, model: State) -> Tuple[Number, Number]:
+    def _get_misfit_and_det(self, state: State) -> Tuple[Number, Number]:
         misfit = 0
         log_det = 0
         for target, fwd_func in zip(self.targets, self.fwd_functions):
             try:
-                dpred = fwd_func(model)
+                dpred = fwd_func(state)
             except Exception as e:
                 raise ForwardException(e)
             residual = dpred - target.dobs
-            misfit += residual @ target.inverse_covariance_times_vector(model, residual)
+            misfit += residual @ target.inverse_covariance_times_vector(state, residual)
             if target.is_hierarchical:
-                log_det += target.log_determinant_covariance(model)
+                log_det += target.log_determinant_covariance(state)
         return misfit, log_det
