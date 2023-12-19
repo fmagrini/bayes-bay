@@ -4,7 +4,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ._dimensionality import Dimensionality
+from .parameterization import ParameterSpace
 from ..parameters import Parameter
 from .._state import State
 from ..perturbations._birth_death import (
@@ -18,8 +18,39 @@ from ..perturbations._site_positions import Voronoi1DPerturbation
 from .._utils_1d import interpolate_result, compute_voronoi1d_cell_extents
 
 
-class Voronoi1D(Dimensionality):
-    """One dimensional Voronoi nuclei parameterization
+class Discretization(Parameter, ParameterSpace):
+    
+    def __init__(
+        self,
+        name: str,
+        spatial_dimensions: Number,
+        vmin: Union[Number, np.ndarray],
+        vmax: Union[Number, np.ndarray],
+        perturb_std: Union[Number, np.ndarray],
+        position: np.ndarray = None,
+        n_dimensions: int = None, 
+        n_dimensions_min: int = 1, 
+        n_dimensions_max: int = 10, 
+        n_dimensions_init_range: Number = 0.3
+        ):
+        Parameter.__init__(
+            self, 
+            name=name,
+            vmin=vmin,
+            vmax=vmax,
+            perturb_std=perturb_std,
+        )
+        ParameterSpace.__init__(
+            self, 
+            n_dimensions=n_dimensions,
+            n_dimensions_min=n_dimensions_min,
+            n_dimensions_max=n_dimensions_max,
+            n_dimensions_init_range=n_dimensions_init_range
+            )
+
+
+class _Voronoi(Discretization):
+    """Utility class for Voronoi discretization
 
     Parameters
     ----------
@@ -60,17 +91,20 @@ class Voronoi1D(Dimensionality):
 
     def __init__(
         self,
-        n_voronoi_cells: Number = None,
-        n_voronoi_cells_min: Number = None,
-        n_voronoi_cells_max: Number = None,
-        voronoi_cells_init_range: Number = 0.2,
-        voronoi_sites: Union[np.ndarray, None] = None, 
-        voronoi_site_bounds: Tuple[Number, Number] = (1, 15),
-        voronoi_site_perturb_std: Union[Number, np.ndarray] = 3,
-        position: np.ndarray = None,
-        free_params: List[Parameter] = None,
+        name: str,
+        vmin: Union[Number, np.ndarray],
+        vmax: Union[Number, np.ndarray],
+        perturb_std: Union[Number, np.ndarray],
+        n_dimensions: int = None, 
+        n_dimensions_min: int = 1, 
+        n_dimensions_max: int = 10, 
+        n_dimensions_init_range: Number = 0.3, 
+        parameters: List[Parameter] = None, 
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
     ):
+        Discretization.__init__
+        
+        
         self.n_voronoi_cells = n_voronoi_cells if voronoi_sites is None else len(voronoi_sites)
         self.voronoi_sites = voronoi_sites
         self.voronoi_site_bounds = voronoi_site_bounds

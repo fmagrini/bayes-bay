@@ -10,47 +10,42 @@ from ._base_perturbation import Perturbation
 from .._state import State, DataNoise
 from ..exceptions._exceptions import DimensionalityException
 from ..parameters._parameters import SQRT_TWO_PI, Parameter
+from ..parameter_space import ParameterSpace
 from .._utils_1d import delete, insert_scalar, nearest_index
 
 
 class BirthPerturbation(Perturbation):
     """Perturbation by creating a new dimension
     
-    If discretization is a part of a state, there are two different ways to initialize the parameter values for the 
-    new-born cell. The following two classes are subclasses of 
-    :class:`BirthPerturbation1D`.
+    If discretization is a part of a state, there are two different ways to initialize 
+    the parameter values for the new-born cell. The following two classes are subclasses of 
+    :class:`BirthPerturbation`.
     
-    - Born from nearerst neighbour: :class:`BirthFromNeighbour1D`
-    - Born from prior sampling: :class:`BirthFromPrior1D`
+    - Born from nearerst neighbour: :class:`BirthFromNeighbour`
+    - Born from prior sampling: :class:`BirthFromPrior`
     
     Users can choose between ``neighbour`` and ``prior`` in the initialization of 
-    :class:`bayesbridge.Voronoi1D`.
+    :class:`bayesbridge.Voronoi`.
     
     Parameters
     ----------
-    parameters : Dict[str, Parameter]
-        list of parameters of the current inverse problem
-    n_dimensions_max : int
-        maximum number of dimensions, for bound check purpose
-    voronoi_site_bounds : Tuple[int, int]
-        minimum and maximum bounds for Voronoi site positions
+    parameter_space : ParameterSpace
+        Instance of :class:`bayesbridge.parameterization.ParameterSpace`
     """
     def __init__(
         self,
-        parameters: Dict[str, Parameter],
-        n_dimensions_max: int,
-        discretization_bounds: Tuple[int, int] = None,
+        parameter_space: ParameterSpace,
     ):
-        self.parameters = parameters
-        self.n_dimensions_max = n_dimensions_max
-        self.discretization_bounds = discretization_bounds
+        self.parameter_space = parameter_space
+        # self.n_dimensions_max = n_dimensions_max
+        # self.discretization_bounds = discretization_bounds
 
     def perturb(self, model: State) -> Tuple[State, Number]:
         """propose a new model that has a new dimension from the given model and
         calculates its associated proposal ratio
         
-        Refer to :meth:`BirthFromNeighbour1D.log_proposal_ratio` and
-        :meth:`BirthFromPrior1D.log_proposal_ratio` for details on how the log proposal
+        Refer to :meth:`BirthFromNeighbour.log_proposal_ratio` and
+        :meth:`BirthFromPrior.log_proposal_ratio` for details on how the log proposal
         ratios are calculated in different cases of this perturbation type.
 
         Parameters
@@ -104,8 +99,8 @@ class BirthPerturbation(Perturbation):
         The concrete implementations of this abstract method are:
         
         - Birth from nearest neighbour: 
-          :meth:`BirthFromNeighbour1D.initialize_newborn_cell`
-        - Birth from prior sampling: :meth:`BirthFromPrior1D.initialize_newborn_cell`
+          :meth:`BirthFromNeighbour.initialize_newborn_cell`
+        - Birth from prior sampling: :meth:`BirthFromPrior.initialize_newborn_cell`
 
         Parameters
         ----------
@@ -130,8 +125,8 @@ class BirthPerturbation(Perturbation):
         The concrete implementations of this abstract method are:
         
         - Birth from nearest neighbour:
-          :meth:`BirthFromNeighbour1D.log_proposal_ratio`
-        - Birth from prior sampling: :meth:`BirthFromPrior1D.log_proposal_ratio`
+          :meth:`BirthFromNeighbour.log_proposal_ratio`
+        - Birth from prior sampling: :meth:`BirthFromPrior.log_proposal_ratio`
         """
         raise NotImplementedError
     
@@ -142,13 +137,13 @@ class BirthPerturbation(Perturbation):
         The concrete implementations of this abstract method are:
         
         - Birth from nearest neighbour:
-          :meth:`BirthFromNeighbour1D.log_prior_ratio`
-        - Birth from prior sampling: :meth:`BirthFromPrior1D.log_prior_ratio`
+          :meth:`BirthFromNeighbour.log_prior_ratio`
+        - Birth from prior sampling: :meth:`BirthFromPrior.log_prior_ratio`
         """
         raise NotImplementedError
 
 
-class BirthFromNeighbour1D(BirthPerturbation1D):
+class BirthFromNeighbour(BirthPerturbation):
     def initialize_newborn_cell(
         self, new_site: Number, old_sites: np.ndarray, model: State
     ) -> Dict[str, float]:
@@ -209,7 +204,7 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
         
         In the actual implementation, the :math:`\\frac{N-k}{k+1}` part is cancelled out
         by the prior ratio in this perturbation type (refer to 
-        :meth:`BirthFromNeighbour1D.log_prior_ratio`), therefore we only calculate
+        :meth:`BirthFromNeighbour.log_prior_ratio`), therefore we only calculate
         :math:`\\theta_i'^2\\sqrt{2\\pi}\\exp\\Large\\lbrace\\frac{(v_{{new}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace` 
         in this method.
 
@@ -227,7 +222,8 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
                 math.log(theta**2 * SQRT_TWO_PI)
                 + (new_value - old_value) ** 2 / 2 * theta**2
             )
-        return ratio
+        # return ratio
+        raise NotImplementedError
     
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         """log prior ratio given two models
@@ -241,7 +237,7 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
 
         In the actual implementation, the :math:`\\frac{k+1}{N-k}` part is cancelled 
         out by the proposal ratio in this perturbation type (refer to
-        :meth:`BirthFromNeighbour1D.log_proposal_ratio`), therefore we only calculate
+        :meth:`BirthFromNeighbour.log_proposal_ratio`), therefore we only calculate
         :math:`\\prod_{i=1}^{M}p(\\textbf{v}_{{new}_i})` in this method.
 
         Parameters
@@ -262,10 +258,11 @@ class BirthFromNeighbour1D(BirthPerturbation1D):
             prior_value_ratio += param.log_prior_ratio_perturbation_birth(
                 self._new_site, new_value
             )
-        return prior_value_ratio
+        # return prior_value_ratio
+        raise NotImplementedError
 
 
-class BirthFromPrior1D(BirthFromNeighbour1D):
+class BirthFromPrior(BirthFromNeighbour):
     def initialize_newborn_cell(
         self, new_site: Number, old_sites: List[Number], model: State
     ) -> Dict[str, float]:
@@ -317,14 +314,15 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
         
         In the actual implementation, since this formula gets cancelled out by the 
         prior ratio in this perturbation type (refer to 
-        :meth:`BirthFromPrior1D.log_prior_ratio`), we return 0 directly.
+        :meth:`BirthFromPrior.log_prior_ratio`), we return 0 directly.
 
         Returns
         -------
         float
             the log proposal ratio
         """
-        return 0
+        # return 0
+        raise NotImplementedError
 
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         """log prior ratio given two models
@@ -338,7 +336,7 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
 
         In the actual implementation, the whole formula is cancelled out by the 
         proposal ratio in this perturbation type (refer to
-        :meth:`BirthFromNeighbour1D.log_proposal_ratio`), therefore we return 0 
+        :meth:`BirthFromNeighbour.log_proposal_ratio`), therefore we return 0 
         directly in this method.
 
         Parameters
@@ -353,20 +351,21 @@ class BirthFromPrior1D(BirthFromNeighbour1D):
         Number
             the log prior ratio for the current perturbation
         """
-        return 0
+        # return 0
+        raise NotImplementedError
 
 
-class DeathPerturbation1D(Perturbation):
-    """Perturbation by removing an existing dimension in 1D Voronoi space
+class DeathPerturbation(Perturbation):
+    """Perturbation by removing an existing dimension in the Voronoi space
     
     There are two different ways to interpret such removals, based on how new cells
-    are born. The following two classes are subclasses of :class:`DeathPerturbation1D`.
+    are born. The following two classes are subclasses of :class:`DeathPerturbation`.
     
-    - Death corresponding to birth from nearest neighbour: :class:`DeathFromNeighbour1D`
-    - Death corresponding to birth from prior sampling: :class:`DeathFromPrior1D`
+    - Death corresponding to birth from nearest neighbour: :class:`DeathFromNeighbour`
+    - Death corresponding to birth from prior sampling: :class:`DeathFromPrior`
     
     Users can choose between ``neighbour`` and ``prior`` in the initialization of
-    :class:`bayesbridge.Voronoi1D`.
+    :class:`bayesbridge.Voronoi`.
     
     Parameters
     ----------
@@ -387,8 +386,8 @@ class DeathPerturbation1D(Perturbation):
         """propose a new model that has an existing dimension removed from the given
         model and calculates its associated proposal ratio
         
-        Refer to :meth:`DeathFromNeighbour1D.log_proposal_ratio` and
-        :meth:`DeathFromPrior1D.log_proposal_ratio` for details on how the log proposal
+        Refer to :meth:`DeathFromNeighbour.log_proposal_ratio` and
+        :meth:`DeathFromPrior.log_proposal_ratio` for details on how the log proposal
         ratios are calculated in different cases of this perturbation type.
 
         Parameters
@@ -445,9 +444,9 @@ class DeathPerturbation1D(Perturbation):
         The concrete implementations of this abstract method are:
         
         - Death corresponding to birth from nearerst neighbour: 
-          :meth:`DeathFromNeighbour1D.log_proposal_ratio`
+          :meth:`DeathFromNeighbour.log_proposal_ratio`
         - Death corresponding to birth from prior sampling:
-          :meth:`DeathFromPrior1D.log_proposal_ratio`
+          :meth:`DeathFromPrior.log_proposal_ratio`
         """
         raise NotImplementedError
     
@@ -458,14 +457,14 @@ class DeathPerturbation1D(Perturbation):
         The concrete implementations of this abstract method are:
         
         - Death corresponding to birth from nearerst neighbour: 
-          :meth:`DeathFromNeighbour1D.log_prior_ratio`
+          :meth:`DeathFromNeighbour.log_prior_ratio`
         - Death corresponding to birth from prior sampling:
-          :meth:`DeathFromPrior1D.log_prior_ratio`
+          :meth:`DeathFromPrior.log_prior_ratio`
         """
         raise NotImplementedError
 
 
-class DeathFromNeighbour1D(DeathPerturbation1D):
+class DeathFromNeighbour(DeathPerturbation):
     def log_proposal_ratio(self) -> float:
         """log proposal ratio for the current perturbation
         
@@ -493,7 +492,7 @@ class DeathFromNeighbour1D(DeathPerturbation1D):
         
         In the actual implementation, the :math:`\\frac{k}{N-k+1}` part is cancelled out
         by the prior ratio in this perturbation type (refer to 
-        :meth:`DeathFromNeighbour1D.log_prior_ratio`), therefore we only calculate
+        :meth:`DeathFromNeighbour.log_prior_ratio`), therefore we only calculate
         :math:`\\prod_{i=1}^{M}\\frac{1}{\\theta_i'^2\\sqrt{2\\pi}}\\exp\\Large\\lbrace-\\frac{(v_{{removed}_i}-v_{{nearest}_i})^2}{2\\theta_i'^2}\\Large\\rbrace` 
         in this method.
 
@@ -514,7 +513,8 @@ class DeathFromNeighbour1D(DeathPerturbation1D):
                 math.log(theta**2 * SQRT_TWO_PI)
                 + (removed_value - nearest_value) ** 2 / 2 * theta**2
             )
-        return ratio
+        # return ratio
+        raise NotImplementedError
     
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         """log prior ratio given two models
@@ -526,7 +526,7 @@ class DeathFromNeighbour1D(DeathPerturbation1D):
 
         In the actual implementation, the :math:`\\frac{N-k+1}{k}` part is cancelled
         out by the proposal ratio in this perturbation type (refer to
-        :meth:`DeathFromNeighbour1D.log_proposal_ratio`), therefore we only calculate
+        :meth:`DeathFromNeighbour.log_proposal_ratio`), therefore we only calculate
         :math:`\\prod_{i=1}^M\\frac{1}{p(\\textbf{v}_{{removed}_i)}}` in this method.
 
         Parameters
@@ -547,10 +547,11 @@ class DeathFromNeighbour1D(DeathPerturbation1D):
             prior_value_ratio += param.log_prior_ratio_perturbation_death(
                 self._removed_site, removed_value
             )
-        return prior_value_ratio
+        # return prior_value_ratio
+        raise NotImplementedError
 
 
-class DeathFromPrior1D(DeathPerturbation1D):
+class DeathFromPrior(DeathPerturbation):
     def log_proposal_ratio(self) -> float:
         """log proposal ratio for the current perturbation
         
@@ -578,7 +579,7 @@ class DeathFromPrior1D(DeathPerturbation1D):
         
         In the actual implementation, since this formula gets cancelled out by the 
         prior ratio in this perturbation type (refer to 
-        :meth:`DeathFromPrior1D.log_prior_ratio`), we return 0 directly.
+        :meth:`DeathFromPrior.log_prior_ratio`), we return 0 directly.
 
         Returns
         -------
@@ -589,7 +590,8 @@ class DeathFromPrior1D(DeathPerturbation1D):
         for param_name, param in self.parameters.items():
             removed_val = self._removed_values[param_name]
             ratio -= param.log_prior(self._removed_site, removed_val)
-        return ratio
+        # return ratio
+        raise NotImplementedError
 
     def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
         """log prior ratio given two models
@@ -601,7 +603,7 @@ class DeathFromPrior1D(DeathPerturbation1D):
 
         In the actual implementation, the whole formula is cancelled out by the 
         proposal ratio in this perturbation type (refer to
-        :meth:`DeathFromNeighbour1D.log_proposal_ratio`), therefore we return 0 
+        :meth:`DeathFromNeighbour.log_proposal_ratio`), therefore we return 0 
         directly in this method.
 
         Parameters
@@ -616,4 +618,5 @@ class DeathFromPrior1D(DeathPerturbation1D):
         Number
             the log prior for the current perturbation
         """
-        return 0
+        # return 0
+        raise NotImplementedError

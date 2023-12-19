@@ -7,17 +7,18 @@ from ..parameters import Parameter
 from ..perturbations import ParamPerturbation, BirthFromPrior1D, DeathFromPrior1D
 
 
-class Dimensionality:
-    """Dimensionality class that can be configured by users to generate perturbation
-    functions for easier inference setup"""
+class ParameterSpace:
+    """Utility class to parameterize the Bayesian inference problem"""
     def __init__(
         self, 
+        name: str,
         n_dimensions: int = None, 
         n_dimensions_min: int = 1, 
         n_dimensions_max: int = 10, 
         n_dimensions_init_range: Number = 0.3, 
         parameters: List[Parameter] = None, 
     ):
+        self.name = name
         self._trans_d = n_dimensions is None
         self._n_dimensions = n_dimensions
         self._n_dimensions_min = n_dimensions_min
