@@ -12,19 +12,42 @@ class DataNoise(_DataNoise):
 
 
 @dataclass
+class ParameterSpaceState:
+    n_dimensions: int
+    param_values: Dict[str, np.ndarray] = field(default_factory=dict)
+    
+    def __post_init__(self):
+        if not isinstance(self.n_dimensions, int):
+            raise TypeError("n_dimensions should be an int")
+        if not isinstance(self.param_values, dict):
+            raise TypeError("param_values should be a dict")
+        for name, values in self.param_values.items():
+            if len(values) != self.n_dimensions:
+                raise ValueError(
+                    f"parameter {name} should have the same length as `n_dimensions` "
+                    f"({self.n_dimensions}) but have {len(values)} instead"
+                )
+            setattr(self, name, values)
+    
+    def copy(self) -> "ParameterSpaceState":
+        new_param_values = dict()
+        for name, param_vals in self.param_values.items():
+            new_param_values[name] = param_vals.copy()
+        return ParameterSpaceState(self.n_dimensions, new_param_values)
+
+
+@dataclass
 class State:
     """Data structure that stores a model state, including all the necessary
     information to perform the forward operation
 
     Parameters
     ----------
-    n_voronoi_cells : int
-        number of Voronoi cells
-    voronoi_sites : np.ndarray
-        array containing the Voronoi site positions
-    param_values : Dict[str, Union[np.ndarray, DataNoise]]
+    param_values : Dict[str, Union[ParameterSpaceState, DataNoise]]
         dictionary containing parameter values, e.g. 
-        ``{"vs": np.ndarray([4,5]), "rayleigh": DataNoise(std=0.1, correlation=0.01)}``
+        ``{"ps": ParameterSpaceState(3, {"c": np.array([1,2,3]), "vs": 
+        np.array([4,5,6])}), "rayleigh": DataNoise(std=0.01, 
+        correlation=None)}``
     cache : Dict[str, Any], optional
         cache for storing intermediate results
     extra_storage: Dict[str, Any], optional
@@ -34,31 +57,17 @@ class State:
     Raises
     ------
     TypeError
-        when ``n_voronoi_cells`` is not an int
-    TypeError
-        when ``voronoi_sites`` is not a numpy ndarray
-    TypeError
         when ``param_values`` is not a dict
-    AssertionError
-        when the length of ``voronoi_sites`` isn't aligned with ``n_voronoi_cells``
     """
 
-    n_voronoi_cells: int
-    voronoi_sites: np.ndarray
-    param_values: Dict[str, Union[np.ndarray, DataNoise]] = field(default_factory=dict)
+    param_values: Dict[str, Union[ParameterSpaceState, DataNoise]] = \
+        field(default_factory=dict)
     cache: Dict[str, Any] = field(default_factory=dict)
     extra_storage: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if not isinstance(self.n_voronoi_cells, int):
-            raise TypeError("n_voronoi_cells should be an int")
-        if not isinstance(self.voronoi_sites, np.ndarray):
-            raise TypeError("voronoi_sites should be a numpy ndarray")
         if not isinstance(self.param_values, dict):
             raise TypeError("param_values should be a dict")
-        assert (
-            len(self.voronoi_sites) == self.n_voronoi_cells
-        ), "lengths of voronoi_sites should be the same as n_voronoi_cells"
         for name, values in self.param_values.items():
             self.set_param_values(name, values)
 
@@ -71,22 +80,21 @@ class State:
         ----------
         param_name : str
             the parameter name (i.e. the key in the ``param_values``)
-        values : Union[np.ndarray, DataNoise]
+        values : Union[ParameterSpaceState, DataNoise]
             the value(s) to be set for the given ``param_name``
         """
-        if param_name in ["n_voronoi_cells", "voronoi_sites"]:
-            raise AttributeError(
-                f"'{param_name}' attribute already exists on the State object."
-            )
         if isinstance(param_name, str):
-            if not isinstance(values, (np.ndarray, DataNoise)):
-                raise TypeError("parameter values should either be a numpy ndarray or a `DataNoise` instance")
+            if not isinstance(values, (ParameterSpaceState, DataNoise)):
+                raise TypeError(
+                    "parameter values should either be a ParameterSpaceState or a "
+                    "`DataNoise` instance"
+                )
             self.param_values[param_name] = values
             setattr(self, param_name, values)
         else:
             raise ValueError("`param_name` should be a string")
 
-    def get_param_values(self, param_name: str) -> Union[np.ndarray, DataNoise]:
+    def get_param_values(self, param_name: str) -> Union[ParameterSpaceState, DataNoise]:
         """Get the value(s) of a parameter
 
         Parameters
@@ -96,7 +104,7 @@ class State:
 
         Returns
         -------
-        Union[np.ndarray, DataNoise]
+        Union[ParameterSpaceState, DataNoise]
             the value(s) of the given ``param_name``
         """
         if isinstance(param_name, str):
@@ -173,12 +181,10 @@ class State:
         """
         return self._vars().items()
 
-    def clone(self) -> "State":
+    def copy(self) -> "State":
         """Creates a clone of the current State itself, in which the following will be
         (deep-)copied over:
 
-        - :attr:`n_voronoi_cells`
-        - :attr:`voronoi_sites`
         - :attr:`param_values`
 
         And the following won't be copied at all:
@@ -191,13 +197,7 @@ class State:
         State
             the clone of self
         """
-        _n_voronoi_cells = self.n_voronoi_cells
-        _voronoi_sites = self.voronoi_sites.copy()
         _param_values = dict()
         for k, v in self.param_values.items():
             _param_values[k] = v.copy()
-        return State(
-            n_voronoi_cells=_n_voronoi_cells,
-            voronoi_sites=_voronoi_sites,
-            param_values=_param_values,
-        )
+        return State(param_values=_param_values)
