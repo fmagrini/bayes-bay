@@ -195,8 +195,7 @@ class BaseMarkovChain:
             except (ForwardException, UserFunctionError) as e:
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
-            tempered_loglike_ratio = log_likelihood_ratio / self.temperature
-            log_posterior_ratio = log_prior_ratio + tempered_loglike_ratio
+            log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
 
             # decide whether to accept
             log_probability_ratio = log_proposal_ratio + log_posterior_ratio
