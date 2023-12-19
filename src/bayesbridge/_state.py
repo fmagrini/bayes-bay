@@ -158,11 +158,7 @@ class State:
         all_vars = {
             k: v
             for k, v in vars(self).items()
-            if not (k == "noise_std" and v is None)
-            and not (k == "noise_correlation" and v is None)
-            and k != "param_values"
-            and k != "cache"
-            and k != "extra_storage"
+            if k not in ["param_values", "cache", "extra_storage"]
         }
         all_vars.update(self.extra_storage)
         return all_vars
