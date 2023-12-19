@@ -276,7 +276,7 @@ class MarkovChain(BaseMarkovChain):
     id : Union[int, str]
         an integer or a string representing the ID of the current chain. For display
         purposes only
-    parameterization : bayesbridge.Parameterization
+    parameterization : bayesbridge.parameterization.Parameterization
         pre-configured parameterization. This includes information about the dimension,
         parameterization bounds and properties of unknown parameterizations
     targets : List[bayesbridge.Target]

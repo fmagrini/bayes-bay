@@ -1,80 +1,24 @@
-from abc import ABC, abstractmethod
 from typing import Tuple, Union, List, Dict, Callable
 from numbers import Number
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .parameters import Parameter
-from ._state import State
-from .perturbations._birth_death import (
+from ._dimensionality import Dimensionality
+from ..parameters import Parameter
+from .._state import State
+from ..perturbations._birth_death import (
     BirthFromNeighbour1D,
     BirthFromPrior1D,
     DeathFromNeighbour1D,
     DeathFromPrior1D,
 )
-from .perturbations._param_values import ParamPerturbation
-from .perturbations._site_positions import Voronoi1DPerturbation
-from ._utils_1d import interpolate_result, compute_voronoi1d_cell_extents
+from ..perturbations._param_values import ParamPerturbation
+from ..perturbations._site_positions import Voronoi1DPerturbation
+from .._utils_1d import interpolate_result, compute_voronoi1d_cell_extents
 
 
-class Parameterization(ABC):
-    """Parameterization class that can be configured by users to generate perturbation
-    functions for easier inference setup
-    """
-
-    @property
-    @abstractmethod
-    def trans_d(self) -> bool:
-        """indicates whether the current configuration allows changes in the
-        discretization itself
-        """
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def fixed_discretization(self) -> bool:
-        """indicates whether the current configuration allows changes in the
-        discretization"""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def parameters(self) -> Dict[str, Parameter]:
-        """all the unknown parameters under this parameterization setting"""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
-        """a list of perturbation functions allowed in the current parameterization
-        configurations, each of which takes in a model :class:`State` and returns a new
-        model and a log proposal ratio value
-        """
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
-        """a list of log prior ratio functions corresponding to each of the
-        :meth:`perturbation_functions`
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def initialize(self) -> State:
-        """initializes the parameterization (if it's trans dimensional) and the
-        parameter values
-
-        Returns
-        -------
-        State
-            an initial model state
-        """
-        raise NotImplementedError
-
-
-class Voronoi1D(Parameterization):
+class Voronoi1D(Dimensionality):
     """One dimensional Voronoi nuclei parameterization
 
     Parameters
@@ -117,14 +61,14 @@ class Voronoi1D(Parameterization):
     def __init__(
         self,
         n_voronoi_cells: Number = None,
+        n_voronoi_cells_min: Number = None,
+        n_voronoi_cells_max: Number = None,
+        voronoi_cells_init_range: Number = 0.2,
         voronoi_sites: Union[np.ndarray, None] = None, 
         voronoi_site_bounds: Tuple[Number, Number] = (1, 15),
         voronoi_site_perturb_std: Union[Number, np.ndarray] = 3,
         position: np.ndarray = None,
         free_params: List[Parameter] = None,
-        n_voronoi_cells_min: Number = None,
-        n_voronoi_cells_max: Number = None,
-        voronoi_cells_init_range: Number = 0.2,
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
     ):
         self.n_voronoi_cells = n_voronoi_cells if voronoi_sites is None else len(voronoi_sites)

@@ -13,10 +13,10 @@ from ..parameters._parameters import SQRT_TWO_PI, Parameter
 from .._utils_1d import delete, insert_scalar, nearest_index
 
 
-class BirthPerturbation1D(Perturbation):
-    """Perturbation by creating a new dimension in 1D Voronoi space
+class BirthPerturbation(Perturbation):
+    """Perturbation by creating a new dimension
     
-    There are two different ways to initialize the parameter values for the 
+    If discretization is a part of a state, there are two different ways to initialize the parameter values for the 
     new-born cell. The following two classes are subclasses of 
     :class:`BirthPerturbation1D`.
     
@@ -30,7 +30,7 @@ class BirthPerturbation1D(Perturbation):
     ----------
     parameters : Dict[str, Parameter]
         list of parameters of the current inverse problem
-    n_voronoi_cells_max : int
+    n_dimensions_max : int
         maximum number of dimensions, for bound check purpose
     voronoi_site_bounds : Tuple[int, int]
         minimum and maximum bounds for Voronoi site positions
@@ -38,12 +38,12 @@ class BirthPerturbation1D(Perturbation):
     def __init__(
         self,
         parameters: Dict[str, Parameter],
-        n_voronoi_cells_max: int,
-        voronoi_site_bounds: Tuple[int, int],
+        n_dimensions_max: int,
+        discretization_bounds: Tuple[int, int] = None,
     ):
         self.parameters = parameters
-        self.n_voronoi_cells_max = n_voronoi_cells_max
-        self.voronoi_site_bounds = voronoi_site_bounds
+        self.n_dimensions_max = n_dimensions_max
+        self.discretization_bounds = discretization_bounds
 
     def perturb(self, model: State) -> Tuple[State, Number]:
         """propose a new model that has a new dimension from the given model and
@@ -71,7 +71,7 @@ class BirthPerturbation1D(Perturbation):
         """
         # prepare for birth perturbations
         n_cells = model.n_voronoi_cells
-        if n_cells == self.n_voronoi_cells_max:
+        if n_cells == self.n_dimensions_max:
             raise DimensionalityException("Birth")
         old_sites = model.voronoi_sites
         # randomly choose a new Voronoi site position
@@ -372,16 +372,16 @@ class DeathPerturbation1D(Perturbation):
     ----------
     parameters : Dict[str, Parameter]
         list of parameters of the current inverse problem
-    n_voronoi_cells_min : int
+    n_dimensions_min : int
         minimum number of dimensions, for bound check purpose
     """
     def __init__(
         self,
         parameters: Dict[str, Parameter],
-        n_voronoi_cells_min: int,
+        n_dimensions_min: int,
     ):
         self.parameters = parameters
-        self.n_voronoi_cells_min = n_voronoi_cells_min
+        self.n_dimensions_min = n_dimensions_min
 
     def perturb(self, model: State) -> Tuple[State, Number]:
         """propose a new model that has an existing dimension removed from the given
@@ -409,7 +409,7 @@ class DeathPerturbation1D(Perturbation):
         """
         # prepare for death perturbations
         n_cells = model.n_voronoi_cells
-        if n_cells == self.n_voronoi_cells_min:
+        if n_cells == self.n_dimensions_min:
             raise DimensionalityException("Death")
         # randomly choose an existing Voronoi site to kill
         isite = random.randint(0, n_cells - 1)

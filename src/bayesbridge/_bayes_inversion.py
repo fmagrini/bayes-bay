@@ -6,7 +6,7 @@ import numpy as np
 
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler, Sampler
-from ._parameterizations import Parameterization
+from .parametarization import Parameterization
 from ._target import Target
 from ._state import State
 from .exceptions import UserFunctionError
@@ -204,7 +204,7 @@ class BayesianInversion(BaseBayesianInversion):
 
     Parameters
     ----------
-    parameterization : bayesbridge.Parameterization
+    parameterization : bayesbridge.parameterization.Parameterization
         pre-configured parameterization. This includes information about the dimension,
         parameterization bounds and properties of unknown parameterizations
     targets : List[bayesbridge.Target]
