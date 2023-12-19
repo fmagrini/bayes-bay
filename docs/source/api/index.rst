@@ -46,8 +46,9 @@ Parameterizations
         :toctree: generated/
         :nosignatures:
 
-        bayesbridge.Parameterization
-        bayesbridge.Voronoi1D
+        bayesbridge.parameterization.Parameterization
+        bayesbridge.parameterization.Dimensionality
+        bayesbridge.parameterization.Voronoi1D
 
 
 Parameters
