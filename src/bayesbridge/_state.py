@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from collections import namedtuple
 from typing import Dict, Any, Union
+from numbers import Number
 import numpy as np
 
 
@@ -48,6 +49,8 @@ class State:
         ``{"ps": ParameterSpaceState(3, {"c": np.array([1,2,3]), "vs": 
         np.array([4,5,6])}), "rayleigh": DataNoise(std=0.01, 
         correlation=None)}``
+    temperature : float
+        the temperature of the Markov chain associated with this state
     cache : Dict[str, Any], optional
         cache for storing intermediate results
     extra_storage: Dict[str, Any], optional
@@ -62,10 +65,13 @@ class State:
 
     param_values: Dict[str, Union[ParameterSpaceState, DataNoise]] = \
         field(default_factory=dict)
+    temperature: float = 1
     cache: Dict[str, Any] = field(default_factory=dict)
     extra_storage: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        if not isinstance(self.temperature, Number):
+            raise TypeError("temperature should be a number")
         if not isinstance(self.param_values, dict):
             raise TypeError("param_values should be a dict")
         for name, values in self.param_values.items():
@@ -182,6 +188,7 @@ class State:
         (deep-)copied over:
 
         - :attr:`param_values`
+        - :attr:`temperature`
 
         And the following won't be copied at all:
 
@@ -196,4 +203,4 @@ class State:
         _param_values = dict()
         for k, v in self.param_values.items():
             _param_values[k] = v.copy()
-        return State(param_values=_param_values)
+        return State(param_values=_param_values, temperature=self.temperature)
