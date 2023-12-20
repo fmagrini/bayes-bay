@@ -23,7 +23,8 @@ from .._utils_1d import (
     interpolate_result, 
     compute_voronoi1d_cell_extents, 
     insert_scalar,
-    nearest_index
+    nearest_index,
+    delete
 )
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
@@ -363,7 +364,7 @@ class Voronoi1D(Voronoi):
         old_sites: np.ndarray, 
         param_space_state: ParameterSpaceState
         ) -> Dict[str, float]:
-        """iinitialize the newborn parameter values by perturbing the nearest 
+        """initialize the newborn parameter values by perturbing the nearest 
         Voronoi cell
     
         Parameters
@@ -388,24 +389,36 @@ class Voronoi1D(Voronoi):
             new_born_values[param_name] = new_value
         return new_born_values, isite
     
-    def probability_ratio_birth(
-            self, old_isite, old_ps_state, new_isite, new_ps_state
+    def _log_probability_ratio_birth(
+            self, 
+            old_isite: Number, 
+            old_ps_state: ParameterSpaceState, 
+            new_isite: Number, 
+            new_ps_state: ParameterSpaceState
             ):
         if self.birth_from == 'prior':
-            return self._probability_ratio_birth_from_prior(
+            return self._log_probability_ratio_birth_from_prior(
                     old_isite, old_ps_state, new_isite, new_ps_state
                     )
-        return self._probability_ratio_birth_from_neighbour(
+        return self._log_probability_ratio_birth_from_neighbour(
                 old_isite, old_ps_state, new_isite, new_ps_state
                 )
     
-    def _probability_ratio_birth_from_prior(
-            self, old_isite, old_ps_state, new_isite, new_ps_state
+    def _log_probability_ratio_birth_from_prior(
+            self, 
+            old_isite: Number, 
+            old_ps_state: ParameterSpaceState, 
+            new_isite: Number, 
+            new_ps_state: ParameterSpaceState
             ):
         return 0
     
-    def _probability_ratio_birth_from_neighbour(
-            self, old_isite, old_ps_state, new_isite, new_ps_state
+    def _log_probability_ratio_birth_from_neighbour(
+            self, 
+            old_isite: Number, 
+            old_ps_state: ParameterSpaceState, 
+            new_isite: Number, 
+            new_ps_state: ParameterSpaceState
             ):
         new_site = getattr(new_ps_state, self.name)[new_isite]
         log_prior_ratio = 0
@@ -422,18 +435,16 @@ class Voronoi1D(Voronoi):
             )
         return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1          
     
-    def birth(self, old_ps_state):
-        # prepare for birth perturbations
+    def birth(self, old_ps_state: ParameterSpaceState):
+        # prepare for birth perturbation
         n_cells = getattr(old_ps_state, "n_dimensions")
         if n_cells == self.n_dimensions_max:
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
         lb, ub = self.vmin, self.vmax
-        while True:
-            new_site = random.uniform(lb, ub)
-            break
+        new_site = random.uniform(lb, ub)
         old_sites = getattr(old_ps_state, self.name)
-        unsorted_values, old_isite = self._initialize_params(
+        unsorted_values, i_nearest = self._initialize_params(
             new_site, old_sites, old_ps_state
             )
         new_values = dict()
@@ -441,17 +452,34 @@ class Voronoi1D(Voronoi):
         new_sites = insert_scalar(old_sites, idx_insert, new_site)
         new_values[self.name] = new_sites
         for name, value in unsorted_values.items():
-            new_values[name] = insert_scalar(
-                getattr(old_ps_state, name), idx_insert, value
-                )
+            old_values = getattr(old_ps_state, name)
+            new_values[name] = insert_scalar(old_values, idx_insert, value)
         new_ps_state = ParameterSpaceState(self.n_dimensions + 1, new_values)
-        return new_ps_state, self.probability_ratio_birth(
-            old_isite, old_ps_state, idx_insert, new_ps_state
+        return new_ps_state, self._log_probability_ratio_birth(
+            i_nearest, old_ps_state, idx_insert, new_ps_state
+            )       
+
+    def death(self, old_ps_state: ParameterSpaceState):
+        # prepare for death perturbation
+        n_cells = getattr(old_ps_state, "n_dimensions")
+        if n_cells == self.n_dimensions_min:
+            raise DimensionalityException("Death")
+        # randomly choose an existing Voronoi site to kill
+        iremove = random.randint(0, n_cells - 1)
+        # remove parameter values for the removed site
+        new_values = dict()
+        for name, value in old_ps_state.param_values.items():
+            old_values = getattr(old_ps_state, name)
+            new_values[name] = delete(old_values, iremove)
+        new_ps_state = ParameterSpaceState(self.n_dimensions - 1, new_values) 
+        new_sites = getattr(new_ps_state, self.name)
+        old_sites = getattr(old_ps_state, self.name)
+        i_nearest = nearest_index(
+            xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
+        )
+        return new_ps_state, -self._log_probability_ratio_birth(
+            i_nearest, new_ps_state, iremove, old_ps_state
             )
-    
-    @abstractmethod
-    def death(self):
-        raise NotImplementedError
     
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):
