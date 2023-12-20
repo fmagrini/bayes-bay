@@ -437,7 +437,7 @@ class Voronoi1D(Voronoi):
     
     def birth(self, old_ps_state: ParameterSpaceState):
         # prepare for birth perturbation
-        n_cells = getattr(old_ps_state, "n_dimensions")
+        n_cells = old_ps_state.n_dimensions
         if n_cells == self.n_dimensions_max:
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
@@ -461,7 +461,7 @@ class Voronoi1D(Voronoi):
 
     def death(self, old_ps_state: ParameterSpaceState):
         # prepare for death perturbation
-        n_cells = getattr(old_ps_state, "n_dimensions")
+        n_cells = old_ps_state.n_dimensions
         if n_cells == self.n_dimensions_min:
             raise DimensionalityException("Death")
         # randomly choose an existing Voronoi site to kill
