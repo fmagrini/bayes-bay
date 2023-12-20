@@ -25,7 +25,7 @@ class NoisePerturbation(Perturbation):
         self._correlation_max = correlation_max
         self._correlation_perturb_std = correlation_perturb_std
 
-    def perturb(self, model: State) -> Tuple[State, Number]:
+    def perturb(self, state: State) -> Tuple[State, Number]:
         if self._correlation_min is not None:
             to_be_perturbed = random.choice(["std", "correlation"])
         else:
@@ -33,7 +33,7 @@ class NoisePerturbation(Perturbation):
         vmin = getattr(self, f"_{to_be_perturbed}_min")
         vmax = getattr(self, f"_{to_be_perturbed}_max")
         std = getattr(self, f"_{to_be_perturbed}_perturb_std")
-        old_noise = model.get_param_values(self.target_name)
+        old_noise = state.get_param_values(self.target_name)
         old_value_std = getattr(old_noise, "std")
         old_value_corr = getattr(old_noise, "correlation")
         old_value = old_value_std if to_be_perturbed == "std" else old_value_corr
@@ -43,12 +43,12 @@ class NoisePerturbation(Perturbation):
             if new_value < vmin or new_value > vmax:
                 continue
             break
-        new_model = model.clone()
+        new_state = state.copy()
         new_value_std = new_value if to_be_perturbed == "std" else old_value_std
         new_value_corr = old_value_corr if to_be_perturbed == "std" else new_value
         new_noise = DataNoise(std=new_value_std, correlation=new_value_corr)
-        new_model.set_param_values(self.target_name, new_noise)
-        return new_model, 0
+        new_state.set_param_values(self.target_name, new_noise)
+        return new_state, 0
 
-    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
+    def log_prior_ratio(self, old_state: State, new_state: State) -> Number:
         return 0

@@ -4,11 +4,7 @@ from ._param_values import ParamPerturbation
 from ._site_positions import Voronoi1DPerturbation
 from ._birth_death import (
     BirthPerturbation,
-    BirthFromPrior1D,
-    BirthFromNeighbour1D,
-    DeathPerturbation1D,
-    DeathFromPrior1D,
-    DeathFromNeighbour1D,
+    DeathPerturbation,
 )
 
 
@@ -16,11 +12,6 @@ __all__ = [
     "Perturbation",
     "NoisePerturbation",
     "ParamPerturbation",
-    "Voronoi1DPerturbation",
     "BirthPerturbation",
-    "BirthFromPrior1D",
-    "BirthFromNeighbour1D",
-    "DeathPerturbation1D",
-    "DeathFromPrior1D",
-    "DeathFromNeighbour1D",
+    "DeathPerturbation",
 ]
