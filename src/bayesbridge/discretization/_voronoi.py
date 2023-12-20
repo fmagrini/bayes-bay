@@ -1,4 +1,6 @@
 from abc import abstractmethod
+from bisect import bisect_left
+import math
 from typing import Tuple, Union, List, Dict, Callable
 from numbers import Number
 import random
@@ -8,7 +10,7 @@ import matplotlib.pyplot as plt
 from ..exceptions import DimensionalityException
 from .parameterization import ParameterSpace
 from ..parameters import Parameter
-from .._state import State
+from .._state import State, ParameterSpaceState
 from ..perturbations._birth_death import (
     BirthFromNeighbour1D,
     BirthFromPrior1D,
@@ -17,8 +19,14 @@ from ..perturbations._birth_death import (
 )
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._site_positions import Voronoi1DPerturbation
-from .._utils_1d import interpolate_result, compute_voronoi1d_cell_extents
+from .._utils_1d import (
+    interpolate_result, 
+    compute_voronoi1d_cell_extents, 
+    insert_scalar,
+    nearest_index
+)
 
+SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
 class Discretization(Parameter, ParameterSpace):
     
@@ -308,51 +316,139 @@ class Voronoi1D(Voronoi):
             birth_from=birth_from
             )
         
-    def birth(self, param_space_state):
-        # prepare for birth perturbations
-        n_cells = getattr(param_space_state, "n_dimensions")
-        if n_cells == self.n_dimensions_max:
-            raise DimensionalityException("Birth")
-        old_sites = getattr(param_space_state, "voronoi_sites") #TODO
-        # randomly choose a new Voronoi site position
-        lb, ub = self.vmin, self.vmax
-        while True:
-            new_site = random.uniform(lb, ub)
-            self._new_site = new_site
-            break
-        
+    def _initialize_params(self, 
+                           new_site: Number, 
+                           old_sites: np.ndarray, 
+                           param_space_state: ParameterSpaceState):
         if self.birth_from == 'prior':
-            return self._birth_from_prior(param_space_state)
-        return self._birth_from_neighbour(param_space_state)
-    
-    def _birth_from_prior(self, param_space_state, old_sites, new_site):
-        # intialize parameter values
-        unsorted_values = self._initialize_params_from_prior(
+            return self._initialize_params_from_prior(
+                new_site, old_sites, param_space_state
+                )
+        return self.initialize_params_from_neighbour(
             new_site, old_sites, param_space_state
             )
-        idx_insert = bisect_left(old_sites, new_site)
-        new_sites = insert_scalar(old_sites, idx_insert, new_site)
-        new_values = dict()
-        for name, value in unsorted_values.items():
-            new_values[name] = insert_scalar(getattr(model, name), idx_insert, value)
-        for name, value in model.items():
-            if name not in new_values and isinstance(value, DataNoise):
-                new_values[name] = value.copy()
-        new_model = State(n_cells + 1, new_sites, new_values)
-        # calculate proposal ratio
-        log_proposal_ratio = self.log_proposal_ratio()
-
-    def _initialize_params_from_prior(self, new_site, old_sites, param_space_state):
-        self._all_new_values = dict()
+    
+    def _initialize_params_from_prior(
+            self, 
+            new_site: Number, 
+            old_sites: np.ndarray, 
+            param_space_state: ParameterSpaceState
+            ):
+        """initialize the newborn parameter values by randomly drawing from the 
+        prior
+    
+        Parameters
+        ----------
+        new_site : Number
+            position of the newborn Voronoi cell
+        old_sites : np.ndarray
+            all positions of the current Voronoi cells
+        param_space_state : State
+            current parameter space state
+    
+        Returns
+        -------
+        Dict[str, float]
+            key value pairs that map parameter names to values of the ``new_site``
+        """
         new_born_values = dict()
         for param_name, param in self.parameters.items():
             new_value = param.initialize(new_site)
             new_born_values[param_name] = new_value
-            self._all_new_values[param_name] = new_value
-        return new_born_values
-
+        return new_born_values, None
     
-
+    def initialize_params_from_neighbour(
+        self, 
+        new_site: Number, 
+        old_sites: np.ndarray, 
+        param_space_state: ParameterSpaceState
+        ) -> Dict[str, float]:
+        """iinitialize the newborn parameter values by perturbing the nearest 
+        Voronoi cell
+    
+        Parameters
+        ----------
+        new_site : Number
+            position of the newborn Voronoi cell
+        old_sites : np.ndarray
+            all positions of the current Voronoi cells
+        param_space_state : State
+            current parameter space state
+    
+        Returns
+        -------
+        Dict[str, float]
+            key value pairs that map parameter names to values of the ``new_site``
+        """
+        isite = nearest_index(xp=new_site, x=old_sites, xlen=old_sites.size)
+        new_born_values = dict()
+        for param_name, param in self.parameters.items():
+            old_values = getattr(param_space_state, param_name)
+            new_value = param.perturb_value(new_site, old_values[isite])
+            new_born_values[param_name] = new_value
+        return new_born_values, isite
+    
+    def probability_ratio_birth(
+            self, old_isite, old_ps_state, new_isite, new_ps_state
+            ):
+        if self.birth_from == 'prior':
+            return self._probability_ratio_birth_from_prior(
+                    old_isite, old_ps_state, new_isite, new_ps_state
+                    )
+        return self._probability_ratio_birth_from_neighbour(
+                old_isite, old_ps_state, new_isite, new_ps_state
+                )
+    
+    def _probability_ratio_birth_from_prior(
+            self, old_isite, old_ps_state, new_isite, new_ps_state
+            ):
+        return 0
+    
+    def _probability_ratio_birth_from_neighbour(
+            self, old_isite, old_ps_state, new_isite, new_ps_state
+            ):
+        new_site = getattr(new_ps_state, self.name)[new_isite]
+        log_prior_ratio = 0
+        log_proposal_ratio = 0
+        for param_name, param in self.parameters.items():
+            new_value = getattr(new_ps_state, param_name)[new_isite]
+            log_prior_ratio += param.log_prior(new_site, new_value)
+            
+            old_value = getattr(old_ps_state, param_name)[old_isite]
+            theta = param.get_perturb_std(new_site)
+            log_proposal_ratio += (
+                math.log(theta * SQRT_TWO_PI)
+                + (new_value - old_value) ** 2 / (2 * theta**2)
+            )
+        return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1          
+    
+    def birth(self, old_ps_state):
+        # prepare for birth perturbations
+        n_cells = getattr(old_ps_state, "n_dimensions")
+        if n_cells == self.n_dimensions_max:
+            raise DimensionalityException("Birth")
+        # randomly choose a new Voronoi site position
+        lb, ub = self.vmin, self.vmax
+        while True:
+            new_site = random.uniform(lb, ub)
+            break
+        old_sites = getattr(old_ps_state, self.name)
+        unsorted_values, old_isite = self._initialize_params(
+            new_site, old_sites, old_ps_state
+            )
+        new_values = dict()
+        idx_insert = bisect_left(old_sites, new_site)
+        new_sites = insert_scalar(old_sites, idx_insert, new_site)
+        new_values[self.name] = new_sites
+        for name, value in unsorted_values.items():
+            new_values[name] = insert_scalar(
+                getattr(old_ps_state, name), idx_insert, value
+                )
+        new_ps_state = ParameterSpaceState(self.n_dimensions + 1, new_values)
+        return new_ps_state, self.probability_ratio_birth(
+            old_isite, old_ps_state, idx_insert, new_ps_state
+            )
+    
     @abstractmethod
     def death(self):
         raise NotImplementedError
