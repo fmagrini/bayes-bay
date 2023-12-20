@@ -169,40 +169,9 @@ class Voronoi(Discretization):
         return State(n_voronoi_cells, voronoi_sites, param_vals)
 
     def _init_perturbation_funcs(self):
-        self._perturbation_funcs = [
-            VoronoiPerturbation(
-                parameters=self.parameters,
-                voronoi_site_bounds=self.voronoi_site_bounds,
-                voronoi_site_perturb_std=self.voronoi_site_perturb_std,
-                position=self.position,
+        self._perturbation_funcs.append(
+            ParamPerturbation(self.name, [self])
             )
-        ] if not self.fixed_discretization else []
-        for name, param in self.parameters.items():
-            self._perturbation_funcs.append(ParamPerturbation(name, param))
-        if self.trans_d:
-            birth_perturb_params = {
-                "parameters": self.parameters,
-                "n_voronoi_cells_max": self.n_voronoi_cells_max,
-                "voronoi_site_bounds": self.voronoi_site_bounds,
-            }
-            death_perturb_params = {
-                "parameters": self.parameters,
-                "n_voronoi_cells_min": self.n_voronoi_cells_min,
-            }
-            if self._birth_from == "neighbour":
-                self._perturbation_funcs.append(
-                    BirthFromNeighbour1D(**birth_perturb_params)
-                )
-                self._perturbation_funcs.append(
-                    DeathFromNeighbour1D(**death_perturb_params)
-                )
-            else:
-                self._perturbation_funcs.append(
-                    BirthFromPrior1D(**birth_perturb_params)
-                )
-                self._perturbation_funcs.append(
-                    DeathFromPrior1D(**death_perturb_params)
-                )
 
     def _init_log_prior_ratio_funcs(self):
         self._log_prior_ratio_funcs = [
@@ -275,10 +244,6 @@ class Voronoi(Discretization):
         ax.grid(True, axis="y")
 
         return ax
-
-
-
-
 
 
 class Voronoi1D(Voronoi):
@@ -391,21 +356,10 @@ class Voronoi1D(Voronoi):
             new_ps_state: ParameterSpaceState
             ):
         if self.birth_from == 'prior':
-            return self._log_probability_ratio_birth_from_prior(
-                    old_isite, old_ps_state, new_isite, new_ps_state
-                    )
+            return new_ps_state, 0
         return self._log_probability_ratio_birth_from_neighbour(
                 old_isite, old_ps_state, new_isite, new_ps_state
                 )
-    
-    def _log_probability_ratio_birth_from_prior(
-            self, 
-            old_isite: Number, 
-            old_ps_state: ParameterSpaceState, 
-            new_isite: Number, 
-            new_ps_state: ParameterSpaceState
-            ):
-        return 0
     
     def _log_probability_ratio_birth_from_neighbour(
             self, 
@@ -452,6 +406,33 @@ class Voronoi1D(Voronoi):
         return new_ps_state, self._log_probability_ratio_birth(
             i_nearest, old_ps_state, idx_insert, new_ps_state
             )       
+    
+    def _log_probability_ratio_death(
+            self, 
+            iremove: Number, 
+            old_ps_state: ParameterSpaceState, 
+            new_ps_state: ParameterSpaceState
+            ):
+        if self.birth_from == 'prior':
+            return new_ps_state, 0
+        return self._log_probability_ratio_death_from_neighbour(
+                iremove, old_ps_state, new_ps_state
+                )
+    
+    def _log_probability_ratio_death_from_neighbour(
+            self, 
+            iremove: Number, 
+            old_ps_state: ParameterSpaceState, 
+            new_ps_state: ParameterSpaceState
+            ):
+        new_sites = getattr(new_ps_state, self.name)
+        old_sites = getattr(old_ps_state, self.name)
+        i_nearest = nearest_index(
+            xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
+        )
+        return new_ps_state, -self._log_probability_ratio_birth(
+            i_nearest, new_ps_state, iremove, old_ps_state
+            )
 
     def death(self, old_ps_state: ParameterSpaceState):
         # prepare for death perturbation
@@ -466,13 +447,8 @@ class Voronoi1D(Voronoi):
             old_values = getattr(old_ps_state, name)
             new_values[name] = delete(old_values, iremove)
         new_ps_state = ParameterSpaceState(self.n_dimensions - 1, new_values) 
-        new_sites = getattr(new_ps_state, self.name)
-        old_sites = getattr(old_ps_state, self.name)
-        i_nearest = nearest_index(
-            xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
-        )
-        return new_ps_state, -self._log_probability_ratio_birth(
-            i_nearest, new_ps_state, iremove, old_ps_state
+        return self._log_probability_ratio_death(
+            iremove, old_ps_state, new_ps_state
             )
     
     @staticmethod
