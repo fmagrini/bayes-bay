@@ -8,17 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ..exceptions import DimensionalityException
-from .parameterization import ParameterSpace
+from ..parameterization import ParameterSpace
 from ..parameters import Parameter
 from .._state import State, ParameterSpaceState
-from ..perturbations._birth_death import (
-    BirthFromNeighbour1D,
-    BirthFromPrior1D,
-    DeathFromNeighbour1D,
-    DeathFromPrior1D,
-)
-from ..perturbations._param_values import ParamPerturbation
-from ..perturbations._site_positions import Voronoi1DPerturbation
+from ..perturbations import ParamPerturbation
 from .._utils_1d import (
     interpolate_result, 
     compute_voronoi1d_cell_extents, 
@@ -26,6 +19,7 @@ from .._utils_1d import (
     nearest_index,
     delete
 )
+
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
@@ -44,7 +38,7 @@ class Discretization(Parameter, ParameterSpace):
         n_dimensions_init_range: Number = 0.3,
         parameters: List[Parameter] = None, 
         birth_from: str = "prior",
-        ):
+    ):
         Parameter.__init__(
             self, 
             name=name,
@@ -66,11 +60,11 @@ class Discretization(Parameter, ParameterSpace):
         self.vmax = vmax
         self.perturb_std = perturb_std
         self.birth_from = birth_from        
-        
+    
     @abstractmethod
     def birth(self, param_space_state):
         raise NotImplementedError
-        
+    
     @abstractmethod
     def death(self, param_space_state):
         raise NotImplementedError

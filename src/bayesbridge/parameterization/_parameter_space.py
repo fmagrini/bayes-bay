@@ -101,9 +101,9 @@ class ParameterSpace:
         return new_state, prob_ratio
     
     def _init_perturbation_funcs(self):
-        self._perturbation_funcs = []
-        for name, param in self.parameters.items():
-            self._perturbation_funcs.append(ParamPerturbation(name, param))
+        self._perturbation_funcs = [
+            ParamPerturbation(self.name, self.parameters)
+        ]
         if self.trans_d:
             self._perturbation_funcs.append(
                 BirthPerturbation(

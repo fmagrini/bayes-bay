@@ -52,7 +52,7 @@ class Target:
         correlation_max: Number = 1,
         correlation_perturb_std: Number = 0.1,
     ):
-        self.name = name
+        self._name = name
         self.dobs = np.array(dobs)
         self.noise_is_correlated = noise_is_correlated
         self.std_min = std_min
@@ -77,6 +77,10 @@ class Target:
                 self.covariance_mat_inv = covariance_mat_inv
             else:
                 self.covariance_mat_inv = np.array(covariance_mat_inv)
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def perturbation_function(self) -> Callable[[State], Tuple[State, Number]]:

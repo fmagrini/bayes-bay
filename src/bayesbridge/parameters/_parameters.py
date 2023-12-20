@@ -24,11 +24,16 @@ class Parameter(ABC):
     """Base class for an unknown parameter"""
 
     def __init__(self, **kwargs):
+        self._name = kwargs["name"]
         self.init_params = kwargs
+        
+    @property
+    def name(self) -> str:
+        return self._name
 
     @abstractmethod
     def initialize(
-        self, positions: Union[np.ndarray, Number]
+        self, positions: Union[np.ndarray, Number] = None
     ) -> Union[np.ndarray, Number]:
         """initializes the values of this parameter given one or more positions
 
@@ -36,7 +41,7 @@ class Parameter(ABC):
         ----------
         positions : Union[np.ndarray, Number]
             an array of positions or one position
-
+        
         Returns
         -------
         Union[np.ndarray, Number]
@@ -78,95 +83,95 @@ class Parameter(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def log_prior_ratio_perturbation_free_param(
-        self,
-        old_value: Number,
-        new_value: Number,
-        position: Number,
-    ) -> Number:
-        """calculates the log prior ratio when the free parameter is perturbed
+    # @abstractmethod
+    # def log_prior_ratio_perturbation_free_param(
+    #     self,
+    #     old_value: Number,
+    #     new_value: Number,
+    #     position: Number,
+    # ) -> Number:
+    #     """calculates the log prior ratio when the free parameter is perturbed
 
-        Parameters
-        ----------
-        old_value : Number
-            the value for this parameter before perturbation
-        new_value : Number
-            the value for this parameter after perturbation
-        position : Number
-            the position of the value perturbed
+    #     Parameters
+    #     ----------
+    #     old_value : Number
+    #         the value for this parameter before perturbation
+    #     new_value : Number
+    #         the value for this parameter after perturbation
+    #     position : Number
+    #         the position of the value perturbed
 
-        Returns
-        -------
-        Number
-            the log prior ratio in the free parameter perturbration case
-        """
-        raise NotImplementedError
+    #     Returns
+    #     -------
+    #     Number
+    #         the log prior ratio in the free parameter perturbration case
+    #     """
+    #     raise NotImplementedError
 
-    @abstractmethod
-    def log_prior_ratio_perturbation_voronoi_site(
-        self,
-        old_position: Number,
-        new_position: Number,
-        value: Number,
-    ) -> Number:
-        """calculates the log prior ratio when the Voronoi site position is perturbed
+    # @abstractmethod
+    # def log_prior_ratio_perturbation_voronoi_site(
+    #     self,
+    #     old_position: Number,
+    #     new_position: Number,
+    #     value: Number,
+    # ) -> Number:
+    #     """calculates the log prior ratio when the Voronoi site position is perturbed
 
-        Parameters
-        ----------
-        old_position : Number
-            the position before perturbation
-        new_position : Number
-            the position after perturbation
-        position : Number
-            the position of the value perturbed
+    #     Parameters
+    #     ----------
+    #     old_position : Number
+    #         the position before perturbation
+    #     new_position : Number
+    #         the position after perturbation
+    #     position : Number
+    #         the position of the value perturbed
 
-        Returns
-        -------
-        Number
-            the log prior ratio in the Voronoi site perturbation case
-        """
-        raise NotImplementedError
+    #     Returns
+    #     -------
+    #     Number
+    #         the log prior ratio in the Voronoi site perturbation case
+    #     """
+    #     raise NotImplementedError
 
-    @abstractmethod
-    def log_prior_ratio_perturbation_birth(
-        self, new_position: Number, new_value: Number
-    ) -> Number:
-        """calculates the log prior ratio when a new cell is born
+    # @abstractmethod
+    # def log_prior_ratio_perturbation_birth(
+    #     self, new_position: Number, new_value: Number
+    # ) -> Number:
+    #     """calculates the log prior ratio when a new cell is born
 
-        Parameters
-        ----------
-        new_position : Number
-            the position of the new-born cell
-        new_value : Number
-            the value of the new-born cell
+    #     Parameters
+    #     ----------
+    #     new_position : Number
+    #         the position of the new-born cell
+    #     new_value : Number
+    #         the value of the new-born cell
 
-        Returns
-        -------
-        Number
-            the log prior ratio in the birth perturbation case
-        """
-        raise NotImplementedError
+    #     Returns
+    #     -------
+    #     Number
+    #         the log prior ratio in the birth perturbation case
+    #     """
+    #     raise NotImplementedError
 
-    @abstractmethod
-    def log_prior_ratio_perturbation_death(
-        self, removed_position: Number, removed_value: Number
-    ) -> Number:
-        """calculates the log prior ratio when a cell is removed
+    # @abstractmethod
+    # def log_prior_ratio_perturbation_death(
+    #     self, removed_position: Number, removed_value: Number
+    # ) -> Number:
+    #     """calculates the log prior ratio when a cell is removed
 
-        Parameters
-        ----------
-        removed_position : Number
-            the position of the cell removed
-        removed_value : Number
-            the value of the cell removed
+    #     Parameters
+    #     ----------
+    #     removed_position : Number
+    #         the position of the cell removed
+    #     removed_value : Number
+    #         the value of the cell removed
 
-        Returns
-        -------
-        Number
-            the log prior ratio in the death perturbation case
-        """
-        raise NotImplementedError
+    #     Returns
+    #     -------
+    #     Number
+    #         the log prior ratio in the death perturbation case
+    #     """
+    #     raise NotImplementedError
 
     def set_custom_initialize(
         self,
@@ -191,7 +196,7 @@ class Parameter(ABC):
             ) -> Union[np.ndarray, Number]:
                 print("This is my custom init!")
 
-            my_object.set_custom_initialize(my_init)
+            my_param.set_custom_initialize(my_init)
         """
         if not callable(initialize_func):
             raise ValueError("initialize_func must be a callable function.")
