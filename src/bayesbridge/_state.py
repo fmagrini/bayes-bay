@@ -46,7 +46,7 @@ class State:
     ----------
     param_values : Dict[str, Union[ParameterSpaceState, DataNoise]]
         dictionary containing parameter values, e.g. 
-        ``{"ps": ParameterSpaceState(3, {"c": np.array([1,2,3]), "vs": 
+        ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs": 
         np.array([4,5,6])}), "rayleigh": DataNoise(std=0.01, 
         correlation=None)}``
     temperature : float
