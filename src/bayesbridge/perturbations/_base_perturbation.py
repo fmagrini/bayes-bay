@@ -29,7 +29,8 @@ class Perturbation(ABC):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the proposal ratio for this perturbation
+            proposed new state and the partial acceptance criteria excluding log 
+            likelihood ratio for this perturbation
         """
         raise NotImplementedError
 
@@ -44,27 +45,10 @@ class Perturbation(ABC):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the proposal ratio for this perturbation
+            proposed new state and the partial acceptance criteria excluding log 
+            likelihood ratio for this perturbation
         """
         return self.perturb(state)
-
-    @abstractmethod
-    def log_prior_ratio(self, old_state: State, new_state: State) -> Number:
-        """log prior ratio given two states
-
-        Parameters
-        ----------
-        old_state : State
-            the old state to perturb from
-        new_state : State
-            the new state to perturb into
-
-        Returns
-        -------
-        Number
-            the log prior ratio for the current perturbation
-        """
-        raise NotImplementedError
 
     @property
     def type(self) -> str:

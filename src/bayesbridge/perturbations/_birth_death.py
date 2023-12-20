@@ -25,7 +25,7 @@ class BirthPerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """propose a new state that has a new dimension from the given state and
-        calculates its associated proposal ratio
+        calculates its associated acceptance criteria excluding log likelihood ratio
         
         Parameters
         ----------
@@ -35,7 +35,8 @@ class BirthPerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the log proposal ratio for this perturbation
+            proposed new state and the partial acceptance criteria excluding log 
+            likelihood ratio for this perturbation
 
         Raises
         ------
@@ -44,30 +45,10 @@ class BirthPerturbation(Perturbation):
             cells
         """
         old_ps_state = state.get_param_values(self.param_space_name)
-        new_ps_state, log_proposal_ratio = self.param_space.birth(old_ps_state)
+        new_ps_state, log_prob_ratio = self.param_space.birth(old_ps_state)
         new_state = state.copy()
         new_state.set_param_values(self.param_space_name, new_ps_state)
-        return new_state, log_proposal_ratio
-    
-    def log_prior_ratio(self, old_state: State, new_state: State) -> Number:
-        """log prior ratio for the current perturbation
-
-        Parameters
-        ----------
-        old_state : State
-            the old state to perturb from
-        new_state : State
-            the new state to perturb into
-
-        Returns
-        -------
-        Number
-            the log prior ratio for the current perturbation
-        """
-        return self.param_space.log_prior_ratio_birth(
-            old_state.get_param_values(self.param_space_name), 
-            new_state.get_param_values(self.param_space_name), 
-        )
+        return new_state, log_prob_ratio
 
     @property
     def __name__(self) -> str:
@@ -91,7 +72,8 @@ class DeathPerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """propose a new state that has an existing dimension removed from the given
-        state and calculates its associated proposal ratio
+        state and calculates its associated acceptance criteria excluding log 
+        likelihood ratio
         
         Parameters
         ----------
@@ -101,7 +83,8 @@ class DeathPerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the proposal ratio for this perturbation
+            proposed new state and the partial acceptance criteria excluding log 
+            likelihood ratio for this perturbation
 
         Raises
         ------
@@ -110,8 +93,8 @@ class DeathPerturbation(Perturbation):
             cells
         """
         old_ps_state = state.get_param_values(self.param_space_name)
-        new_ps_state, log_proposal_ratio = self.param_space.death(old_ps_state)
+        new_ps_state, log_prob_ratio = self.param_space.death(old_ps_state)
         new_state = state.copy()
         new_state.set_param_values(self.param_space_name, new_ps_state)
-        return new_state, log_proposal_ratio
+        return new_state, log_prob_ratio
  

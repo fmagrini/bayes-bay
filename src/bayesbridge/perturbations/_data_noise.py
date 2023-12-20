@@ -7,6 +7,26 @@ from ._base_perturbation import Perturbation
 
 
 class NoisePerturbation(Perturbation):
+    """Perturbation by changing the noise level estimation
+
+    Parameters
+    ----------
+    target_name : str
+        name of the data target associated with this noise perturbation
+    std_min : Number
+        minimum bound of the standard deviation for data noise
+    std_max : Number
+        maximum bound of the standard deviation for data noise
+    std_perturb_std : Number
+        perturbation standard deviation of the standard deviation for data noise
+    correlation_min : Number, optional
+        minimum bound of the correlation for data noise, by default None
+    correlation_max : Number, optional
+        maximum bound of the correlation for data noise, by default None
+    correlation_perturb_std : Number, optional
+        perturbation standard deviation of the correlation for data noise, by 
+        default None
+    """
     def __init__(
         self,
         target_name: str,
@@ -26,6 +46,21 @@ class NoisePerturbation(Perturbation):
         self._correlation_perturb_std = correlation_perturb_std
 
     def perturb(self, state: State) -> Tuple[State, Number]:
+        """propose a new state that changes the data noise estimation from the given
+        state and calcualtes its associated acceptance criteria excluding log 
+        likelihood ratio
+
+        Parameters
+        ----------
+        state : State
+            the given current state
+
+        Returns
+        -------
+        Tuple[State, Number]
+            proposed new state and the partial acceptance criteria excluding log
+            likelihood ratio for this perturbation
+        """
         if self._correlation_min is not None:
             to_be_perturbed = random.choice(["std", "correlation"])
         else:
@@ -49,6 +84,3 @@ class NoisePerturbation(Perturbation):
         new_noise = DataNoise(std=new_value_std, correlation=new_value_corr)
         new_state.set_param_values(self.target_name, new_noise)
         return new_state, 0
-
-    def log_prior_ratio(self, old_state: State, new_state: State) -> Number:
-        return 0

@@ -18,7 +18,7 @@ class BaseBayesianInversion:
     (McMC) methods.
 
     This class provides the basic structure for setting up and running MCMC sampling,
-    given user-provided definition of prior and likelihood functions and the
+    given user-provided definition of perturbations, likelihood functions and the
     initialization of walkers.
 
     Parameters
@@ -32,24 +32,12 @@ class BaseBayesianInversion:
         a list of perturbation functions. Each of which takes in a model (whichever the
         allowed type is, as long as it's consistent with ``walkers_starting_models``
         and other probability functions), produces a new model and log of the
-        corresponding proposal probability ratio.
-    log_prior_func: Callable[[Any], Number], optional
-        the log prior function :math:`log p(m)`. It takes in a model (the type of which
-        is consistent with other arguments of this class) and returns the log of the
-        prior density function. This will be used and cannot be None when
-        ``log_prior_ratio_funcs`` is None. Default to None
+        corresponding acceptance criteria excluding the log likelihood ratio
     log_likelihood_func: Callable[[Any], Number], optional
         the log likelihood function :math:`\log p(d|m)`. It takes in a model (the type
         of which is consistent with other arguments of this class) and returns the log
         of the likelihood function. This will be used and cannot be None when
         ``log_like_ratio_func`` is None. Default to None
-    log_prior_ratio_funcs: List[Callable[[Any, Any], Number]], optional
-        a list of log prior ratio functions :math:`\log (\frac{p(m_2)}{p(m_1)})`. Each
-        element of this list corresponds to each of the ``perturbation_funcs``. Each
-        function takes in two models (of consistent type as other arguments of this
-        class) and returns the log prior ratio as a number. This is utilised in the
-        inversion by default, and ``log_prior_func`` gets used instead only when this
-        argument is None. Default to None
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         the log likelihood ratio function :math:`\log (\frac{p(d|m_2)}{p(d|m_1)})`.
         It takes in two models (of consistent type as other arguments of this class)
@@ -67,9 +55,7 @@ class BaseBayesianInversion:
         self,
         walkers_starting_models: List[Any],
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
-        log_prior_func: Callable[[Any], Number] = None,
         log_likelihood_func: Callable[[Any], Number] = None,
-        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None,
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         n_chains: int = 10,
         n_cpus: int = 10,
@@ -78,14 +64,15 @@ class BaseBayesianInversion:
         self.perturbation_funcs = [
             _preprocess_func(func) for func in perturbation_funcs
         ]
-        self.log_prior_func = _preprocess_func(log_prior_func)
-        self.log_likelihood_func = _preprocess_func(log_likelihood_func)
-        self.log_prior_ratio_funcs = (
-            [_preprocess_func(func) for func in log_prior_ratio_funcs]
-            if log_prior_ratio_funcs is not None
-            else None
-        )
-        self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
+        if log_like_ratio_func is None:
+            if log_likelihood_func is None:
+                raise ValueError(
+                    "at least one of `log_like_ratio_func` and `log_likelihood_func` needs"
+                    "to be provided"
+                )
+            log_like_ratio_func = _LogLikeRatioFromFunc(log_likelihood_func)
+        else:
+            log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
@@ -93,10 +80,7 @@ class BaseBayesianInversion:
                 i,
                 walkers_starting_models[i],
                 perturbation_funcs,
-                self.log_prior_func,
-                self.log_likelihood_func,
-                self.log_prior_ratio_funcs,
-                self.log_like_ratio_func,
+                log_like_ratio_func,
             )
             for i in range(n_chains)
         ]
@@ -264,7 +248,7 @@ def _preprocess_func(func):
     return _FunctionWrapper(f, args, kwargs)
 
 
-class _FunctionWrapper(object):
+class _FunctionWrapper:
     """Function wrapper to make it pickleable (credit to emcee)"""
 
     def __init__(self, f, args, kwargs):
@@ -277,3 +261,18 @@ class _FunctionWrapper(object):
             return self.f(*args, *self.args, **self.kwargs)
         except Exception as e:
             raise UserFunctionError(e)
+
+
+class _LogLikeRatioFromFunc:
+    """Log likelihood ratio function from log likelihood function"""
+
+    def __init__(self, log_likelihood_func):
+        self.f = log_likelihood_func
+    
+    def __call__(self, old_state: State, new_state: State):
+        try:
+            old_loglike = self.f(old_state)
+            new_loglike = self.f(new_state)
+        except Exception as e:
+            raise UserFunctionError(e)
+        return new_loglike - old_loglike

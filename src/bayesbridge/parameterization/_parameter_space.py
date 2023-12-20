@@ -4,7 +4,7 @@ import random
 
 from .._state import State
 from ..parameters import Parameter
-from ..perturbations import ParamPerturbation, BirthFromPrior1D, DeathFromPrior1D
+from ..perturbations import ParamPerturbation, BirthPerturbation, DeathPerturbation
 
 
 class ParameterSpace:
@@ -29,7 +29,6 @@ class ParameterSpace:
             for param in parameters:
                 self._parameters[param.name] = param
         self._init_perturbation_funcs()
-        self._init_log_prior_ratio_funcs()
     
     @property
     def trans_d(self) -> bool:
@@ -50,13 +49,6 @@ class ParameterSpace:
         """
         return self._perturbation_funcs
     
-    @property
-    def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
-        """a list of log prior ratio functions corresponding to each of the
-        :meth:`perturbation_functions`
-        """
-        return self._log_prior_ratio_funcs
-    
     def initialize(self, state: State):
         """initializes the parameterization (if it's trans dimensional) and the
         parameter values
@@ -64,7 +56,7 @@ class ParameterSpace:
         Returns
         -------
         State
-            an initial model state
+            an initial state
         """
         # initialize number of dimensions
         if not self.trans_d:
@@ -87,20 +79,14 @@ class ParameterSpace:
             self._perturbation_funcs.append(ParamPerturbation(name, param))
         if self.trans_d:
             self._perturbation_funcs.append(
-                BirthFromPrior1D(
+                BirthPerturbation(
                     parameters=self.parameters, 
                     n_dimensions_max=self._n_dimensions_max, 
                 )
             )
             self._perturbation_funcs.append(
-                DeathFromPrior1D(
+                DeathPerturbation(
                     parameters=self.parameters, 
                     n_dimensions_min=self._n_dimensions_min, 
                 )
             )
-    
-    def _init_log_prior_ratio_funcs(self):
-        self._log_prior_ratio_funcs = [
-            func.log_prior_ratio for func in self.perturbation_functions
-        ]
-    

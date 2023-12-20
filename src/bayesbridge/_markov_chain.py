@@ -26,23 +26,6 @@ class BaseMarkovChain:
         starting model of the current chain
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
-    log_prior_func: Callable[[Any], Number], optional
-        the log prior function :math:`\\log p(m)`. It takes in a model (the type of
-        which is consistent with other arguments of this class) and returns the log of
-        the prior density function. This will be used and cannot be None when
-        ``log_prior_ratio_funcs`` is None. Default to None
-    log_likelihood_func: Callable[[Any], Number], optional
-        the log likelihood function :math:`\\log p(d|m)`. It takes in a model (the type
-        of which is consistent with other arguments of this class) and returns the log
-        of the likelihood function. This will be used and cannot be None when
-        ``log_like_ratio_func`` is None. Default to None
-    log_prior_ratio_funcs: List[Callable[[Any, Any], Number]], optional
-        a list of log prior ratio functions :math:`\\log (\\frac{p(m_2)}{p(m_1)})`.
-        Each element of this list corresponds to each of the ``perturbation_funcs``.
-        Each function takes in two models (of consistent type as other arguments of
-        this class) and returns the log prior ratio as a number. This is utilised in
-        the inversion by default, and ``log_prior_func`` gets used instead only when
-        this argument is None. Default to None
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         the log likelihood ratio function :math:`\\log (\\frac{p(d|m_2)}{p(d|m_1)})`.
         It takes in two models (of consistent type as other arguments of this class)
@@ -58,9 +41,6 @@ class BaseMarkovChain:
         id: Union[int, str],
         starting_model: Any,
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
-        log_prior_func: Callable[[Any], Number] = None,
-        log_likelihood_func: Callable[[Any], Number] = None,
-        log_prior_ratio_funcs: List[Callable[[Any, Any], Number]] = None,
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         temperature: float = 1,
     ):
@@ -69,14 +49,6 @@ class BaseMarkovChain:
         self.perturbation_funcs = perturbation_funcs
         self.perturbation_types = [func.__name__ for func in perturbation_funcs]
         self._temperature = temperature
-        assert not (log_prior_func is None and log_prior_ratio_funcs is None)
-        assert not (log_likelihood_func is None and log_like_ratio_func is None)
-        assert log_prior_ratio_funcs is None or len(log_prior_ratio_funcs) == len(
-            perturbation_funcs
-        )
-        self.log_prior_func = log_prior_func
-        self.log_likelihood_func = log_likelihood_func
-        self.log_prior_ratio_funcs = log_prior_ratio_funcs
         self.log_like_ratio_func = log_like_ratio_func
         self._init_statistics()
         self._init_saved_models()
@@ -159,48 +131,34 @@ class BaseMarkovChain:
             )
         # print("NUMBER OF FWD FAILURES: %d" % self.statistics["n_fwd_failures_total"])
 
-    def _log_prior_ratio(self, new_model, i_perturb):
-        if self.log_prior_ratio_funcs is not None:
-            return self.log_prior_ratio_funcs[i_perturb](self.current_model, new_model)
-        else:
-            log_prior_old = self.log_prior_func(self.current_model)
-            log_prior_new = self.log_prior_func(new_model)
-            return log_prior_new - log_prior_old
-
     def _log_likelihood_ratio(self, new_model):
-        if self.log_like_ratio_func is not None:
-            return self.log_like_ratio_func(self.current_model, new_model)
-        else:
-            log_likelihood_old = self.log_likelihood_func(self.current_model)
-            log_likelihood_new = self.log_likelihood_func(new_model)
-            return log_likelihood_new - log_likelihood_old
-
+        return self.log_like_ratio_func(self.current_model, new_model)
+    
     def _next_iteration(self, save_model):
         for i in range(500):
             # choose one perturbation function and type
             i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
             perturb_func = self.perturbation_funcs[i_perturb]
 
-            # perturb and calculate the log proposal ratio
+            # perturb and get the partial acceptance criteria excluding log likelihood 
+            # ratio
             try:
-                new_model, log_proposal_ratio = perturb_func(self.current_model)
+                new_model, log_prob_ratio = perturb_func(self.current_model)
             except (DimensionalityException, UserFunctionError) as e:
                 i -= 1  # this doesn't have to go into failure counter
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
 
-            # calculate the log posterior ratio
-            log_prior_ratio = self._log_prior_ratio(new_model, i_perturb)
+            # calculate the log likelihood ratio
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model)
             except (ForwardException, UserFunctionError) as e:
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
-            log_posterior_ratio = log_prior_ratio + log_likelihood_ratio
 
             # decide whether to accept
-            log_probability_ratio = log_proposal_ratio + log_posterior_ratio
-            accepted = log_probability_ratio > math.log(random.random())
+            acceptance_criteria = log_prob_ratio + log_likelihood_ratio
+            accepted = acceptance_criteria > math.log(random.random())
             if accepted:
                 self.current_model = new_model
 
@@ -318,17 +276,8 @@ class MarkovChain(BaseMarkovChain):
 
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
-        log_priors_from_parameterization = (
-            self.parameterization.log_prior_ratio_functions
-        )
         funcs_from_log_likelihood = self.log_like_ratio_func.perturbation_functions
-        log_priors_from_log_likelihood = (
-            self.log_like_ratio_func.log_prior_ratio_functions
-        )
         self.perturbation_funcs = (
             funcs_from_parameterization + funcs_from_log_likelihood
         )
         self.perturbation_types = [f.type for f in self.perturbation_funcs]
-        self.log_prior_ratio_funcs = (
-            log_priors_from_parameterization + log_priors_from_log_likelihood
-        )

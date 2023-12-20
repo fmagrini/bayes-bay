@@ -39,14 +39,7 @@ class LogLikelihood:
         the target(s) is explicitly set to be unknown(s).
         """
         return self._perturbation_funcs
-
-    @property
-    def log_prior_ratio_functions(self) -> List[Callable[[State], Number]]:
-        """A list of log prior ratio functions corresponding to the perturbations in
-        :meth:`perturbation_functions`
-        """
-        return self._log_prior_ratio_funcs
-
+    
     def log_likelihood_ratio(self, old_state, new_state):
         old_misfit, old_log_det = self._get_misfit_and_det(old_state)
         new_misfit, new_log_det = self._get_misfit_and_det(new_state)
@@ -59,11 +52,9 @@ class LogLikelihood:
 
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []
-        self._log_prior_ratio_funcs = []
         for target in self.targets:
             if target.is_hierarchical:
                 self._perturbation_funcs.append(target.perturbation_function)
-                self._log_prior_ratio_funcs.append(target.log_prior_ratio_function)
 
     def _get_misfit_and_det(self, state: State) -> Tuple[Number, Number]:
         misfit = 0

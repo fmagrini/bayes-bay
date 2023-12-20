@@ -28,13 +28,18 @@ class ParameterSpaceState:
                     f"parameter {name} should have the same length as `n_dimensions` "
                     f"({self.n_dimensions}) but have {len(values)} instead"
                 )
-            setattr(self, name, values)
     
     def copy(self) -> "ParameterSpaceState":
         new_param_values = dict()
         for name, param_vals in self.param_values.items():
             new_param_values[name] = param_vals.copy()
         return ParameterSpaceState(self.n_dimensions, new_param_values)
+
+    def __getattr__(self, item):
+        if item in self.param_values:
+            return self.param_values[item]
+        else:
+            return super().__getattribute__(item)
 
 
 @dataclass
