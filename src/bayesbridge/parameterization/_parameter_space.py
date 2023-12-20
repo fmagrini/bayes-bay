@@ -1,8 +1,10 @@
 from typing import List, Callable, Tuple, Dict
 from numbers import Number
 import random
+import math
+import numpy as np
 
-from .._state import State
+from .._state import State, ParameterSpaceState
 from ..parameters import Parameter
 from ..perturbations import ParamPerturbation, BirthPerturbation, DeathPerturbation
 
@@ -18,7 +20,7 @@ class ParameterSpace:
         n_dimensions_init_range: Number = 0.3, 
         parameters: List[Parameter] = None, 
     ):
-        self.name = name
+        self._name = name
         self._trans_d = n_dimensions is None
         self._n_dimensions = n_dimensions
         self._n_dimensions_min = n_dimensions_min
@@ -29,6 +31,11 @@ class ParameterSpace:
             for param in parameters:
                 self._parameters[param.name] = param
         self._init_perturbation_funcs()
+    
+    @property
+    def name(self) -> str:
+        """name of the current parameter space"""
+        return self._name
     
     @property
     def trans_d(self) -> bool:
@@ -49,14 +56,13 @@ class ParameterSpace:
         """
         return self._perturbation_funcs
     
-    def initialize(self, state: State):
-        """initializes the parameterization (if it's trans dimensional) and the
-        parameter values
+    def initialize(self) -> ParameterSpaceState:
+        """initializes the parameter space including its parameter values
 
         Returns
         -------
-        State
-            an initial state
+        ParameterSpaceState
+            an initial parameter space state
         """
         # initialize number of dimensions
         if not self.trans_d:
@@ -71,7 +77,27 @@ class ParameterSpace:
         parameter_vals = dict()
         for name, param in self.parameters.items():
             parameter_vals[name] = param.initialize()
-        raise NotImplementedError("Need to decide what State looks like")
+        return ParameterSpaceState(n_dimensions, parameter_vals)
+    
+    def birth(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        n_dims = ps_state.n_dimensions
+        new_param_values = dict()
+        for param_name, param_vals in ps_state.param_values.items():
+            new_param_values[param_name] = param_vals.copy()
+            new_param_values[param_name].append(self.parameters[param_name].initialize(None))
+        new_state = ParameterSpaceState(n_dims+1, new_param_values)
+        prob_ratio = math.log(n_dims + 1)
+        return new_state, prob_ratio
+    
+    def death(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        n_dims = ps_state.n_dimensions
+        i_to_remove = random.randint(0, -1)
+        new_param_values = dict()
+        for param_name, param_vals in ps_state.param_values.items():
+            new_param_values[param_name] = delete(param_vals, i_to_remove)
+        new_state = ParameterSpaceState(n_dims-1, new_param_values)
+        prob_ratio = - math.log(n_dims)
+        return new_state, prob_ratio
     
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []

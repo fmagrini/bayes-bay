@@ -84,3 +84,7 @@ class NoisePerturbation(Perturbation):
         new_noise = DataNoise(std=new_value_std, correlation=new_value_corr)
         new_state.set_param_values(self.target_name, new_noise)
         return new_state, 0
+
+    @property
+    def __name__(self) -> str:
+        return f"{self.type}({self.target_name})"

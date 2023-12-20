@@ -47,9 +47,7 @@ Parameterizations
         :nosignatures:
 
         bayesbridge.parameterization.Parameterization
-        bayesbridge.parameterization.Dimensionality
-        bayesbridge.parameterization.Voronoi1D
-
+        bayesbridge.parameterization.ParameterSpace
 
 Parameters
 ^^^^^^^^^^
@@ -65,6 +63,17 @@ Parameters
         bayesbridge.parameters.GaussianParameter
         bayesbridge.parameters.CustomParameter
 
+Discretizations
+^^^^^^^^^^^^^^^
+
+.. toggle::
+
+    .. autosummary::
+        :toctree: generated/
+        :nosignatures:
+
+        bayesbridge.discretization.Discretization
+        bayesbridge.discretization.Voronoi1D
 
 Perturbations
 ^^^^^^^^^^^^^

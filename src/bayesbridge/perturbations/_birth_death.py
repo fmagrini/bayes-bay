@@ -98,3 +98,6 @@ class DeathPerturbation(Perturbation):
         new_state.set_param_values(self.param_space_name, new_ps_state)
         return new_state, log_prob_ratio
  
+    @property
+    def __name__(self) -> str:
+        return f"{self.type}({self.param_space_name})"
