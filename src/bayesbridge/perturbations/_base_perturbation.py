@@ -17,47 +17,47 @@ class Perturbation(ABC):
     :class:`bayesbridge.LogLikelihood` instead.
     """
     @abstractmethod
-    def perturb(self, model: State) -> Tuple[State, Number]:
-        """propose a new model from the given model and calculates its associated
+    def perturb(self, state: State) -> Tuple[State, Number]:
+        """propose a new state from the given state and calculates its associated
         proposal ratio
 
         Parameters
         ----------
-        model : State
-            the given current model
+        state : State
+            the given current state
 
         Returns
         -------
         Tuple[State, Number]
-            proposed new model and the proposal ratio for this perturbation
+            proposed new state and the proposal ratio for this perturbation
         """
         raise NotImplementedError
 
-    def __call__(self, model: State) -> Tuple[State, Number]:
+    def __call__(self, state: State) -> Tuple[State, Number]:
         """same as :meth:`perturb`
 
         Parameters
         ----------
-        model : State
-            the given current model
+        state : State
+            the given current state
 
         Returns
         -------
         Tuple[State, Number]
-            proposed new model and the proposal ratio for this perturbation
+            proposed new state and the proposal ratio for this perturbation
         """
-        return self.perturb(model)
+        return self.perturb(state)
 
     @abstractmethod
-    def log_prior_ratio(self, old_model: State, new_model: State) -> Number:
-        """log prior ratio given two models
+    def log_prior_ratio(self, old_state: State, new_state: State) -> Number:
+        """log prior ratio given two states
 
         Parameters
         ----------
-        old_model : State
-            the old model to perturb from
-        new_model : State
-            the new model to perturb into
+        old_state : State
+            the old state to perturb from
+        new_state : State
+            the new state to perturb into
 
         Returns
         -------

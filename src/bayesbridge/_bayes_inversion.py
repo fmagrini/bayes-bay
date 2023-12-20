@@ -6,7 +6,7 @@ import numpy as np
 
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler, Sampler
-from .parametarization import Parameterization
+from .parameterization import Parameterization
 from ._target import Target
 from ._state import State
 from .exceptions import UserFunctionError

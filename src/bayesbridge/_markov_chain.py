@@ -6,7 +6,7 @@ import math
 import numpy
 from ._log_likelihood import LogLikelihood
 from ._target import Target
-from ._parameterizations import Parameterization
+from .parameterization import Parameterization
 from ._state import State
 from .exceptions import DimensionalityException, ForwardException, UserFunctionError
 
@@ -89,6 +89,7 @@ class BaseMarkovChain:
     @temperature.setter
     def temperature(self, value):
         self._temperature = value
+        self.current_model.temperature = value
 
     @property
     def saved_models(self) -> Union[Dict[str, list], list]:
