@@ -460,7 +460,7 @@ class Voronoi1D(Voronoi):
         """
         # prepare for birth perturbation
         n_cells = old_ps_state.n_dimensions
-        if n_cells == self.n_dimensions_max:
+        if n_cells == self._n_dimensions_max:
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
         lb, ub = self.vmin, self.vmax
@@ -476,7 +476,7 @@ class Voronoi1D(Voronoi):
         for name, value in unsorted_values.items():
             old_values = getattr(old_ps_state, name)
             new_values[name] = insert_scalar(old_values, idx_insert, value)
-        new_ps_state = ParameterSpaceState(self.n_dimensions + 1, new_values)
+        new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, self._log_probability_ratio_birth(
             i_nearest, old_ps_state, idx_insert, new_ps_state
             )       
@@ -511,7 +511,7 @@ class Voronoi1D(Voronoi):
     def death(self, old_ps_state: ParameterSpaceState):
         # prepare for death perturbation
         n_cells = old_ps_state.n_dimensions
-        if n_cells == self.n_dimensions_min:
+        if n_cells == self._n_dimensions_min:
             raise DimensionalityException("Death")
         # randomly choose an existing Voronoi site to kill
         iremove = random.randint(0, n_cells - 1)
@@ -520,7 +520,7 @@ class Voronoi1D(Voronoi):
         for name, value in old_ps_state.param_values.items():
             old_values = getattr(old_ps_state, name)
             new_values[name] = delete(old_values, iremove)
-        new_ps_state = ParameterSpaceState(self.n_dimensions - 1, new_values) 
+        new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
         return self._log_probability_ratio_death(
             iremove, old_ps_state, new_ps_state
             )
