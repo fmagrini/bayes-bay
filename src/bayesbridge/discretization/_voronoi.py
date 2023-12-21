@@ -253,7 +253,7 @@ class Voronoi1D(Voronoi):
         
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
         """perturb the value of a given Voronoi site from the given current value, and
-        calculates the associated acceptance criteria excluding log likelihood ratio
+        calculates the associated acceptance probability excluding log likelihood ratio
 
         Parameters
         ----------

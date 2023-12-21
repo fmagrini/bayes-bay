@@ -45,7 +45,7 @@ class Parameter(ABC):
         Parameters
         ----------
         position : Union[np.ndarray, Number]
-            an array of positions or one position
+            an array of positions or one position, default to None
         
         Returns
         -------
@@ -57,7 +57,7 @@ class Parameter(ABC):
     @abstractmethod
     def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
         """perturb the value of a given position from the given current value, and
-        calculates the associated acceptance criteria excluding log likelihood ratio
+        calculates the associated acceptance probability excluding log likelihood ratio
 
         Parameters
         ----------
@@ -70,7 +70,7 @@ class Parameter(ABC):
         -------
         Tuple[Number, Number]
             the new value of this parameter at the given position, and its associated
-            partial acceptance criteria excluding log likelihood ratio
+            partial acceptance probability excluding log likelihood ratio
         """
         raise NotImplementedError
 
@@ -85,6 +85,11 @@ class Parameter(ABC):
             the value to calculate the probability density for
         position : Number
             the position of the value
+        
+        Returns
+        -------
+        Number
+            the log prior probability density
         """
         raise NotImplementedError
 
@@ -162,8 +167,15 @@ class Parameter(ABC):
         return hasattr(self, hyper_param)
 
     def get_hyper_param(self, hyper_param: str, position: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
-        hyper_param = getattr(self, hyper_param)
-        return hyper_param if np.isscalar(hyper_param) else hyper_param(position)
+        _hyper_param = getattr(self, hyper_param)
+        if np.isscalar(_hyper_param):
+            return _hyper_param
+        elif position is not None:
+            return _hyper_param(position)
+        else:
+            raise ValueError(
+                f"`{hyper_param}` is dependent on position but got None for it"
+            )
 
     def _init_hyper_param(self, hyper_param: Union[Number, np.ndarray]):
         # to be called after self.position is assigned
@@ -266,7 +278,7 @@ class UniformParameter(Parameter):
         return vmin, vmax
 
     def initialize(
-        self, position: Union[np.ndarray, Number]
+        self, position: Union[np.ndarray, Number] = None
     ) -> Union[np.ndarray, Number]:
         """initialize the parameter at the specified position(s) in the discretization 
         domain
@@ -288,25 +300,25 @@ class UniformParameter(Parameter):
         else:
             return np.random.uniform(vmin, vmax, position.size)
 
-    def perturb_value(self, position, value):
-        r"""randomly perturb a given value at the specified position in the 
-        discretization domain
+    def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
+        """perturb the value of a given position from the given current value, and
+        calculates the associated acceptance probability excluding log likelihood ratio
         
+        The value is perturbed using a Gaussian deviate based on the 
+        :attr:`perturb_std` at the given position
+
         Parameters
         ----------
-        position: Number
-            the ``position`` at which the ``value`` is perturbed
-            
-        value: Number
-            original parameter ``value``
-        
+        value : Number
+            the current value to be perturbed from
+        position : Number
+            the position of the value to be perturbed
+
         Returns
         -------
-        Number
-            perturbed ``value``, generated through a random deviate from a 
-            normal distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu`
-            denotes the original value and :math:`sigma` the standard deviation
-            of the Gaussian at the specified position (:attr:`UniformParameter.perturb_std`)
+        Tuple[Number, Number]
+            the new value of this parameter at the given position, and its associated
+            partial acceptance probability excluding log likelihood ratio
         """
         # randomly perturb the value until within range
         std = self.get_perturb_std(position)
@@ -317,17 +329,17 @@ class UniformParameter(Parameter):
             if new_value >= vmin and new_value <= vmax:
                 return new_value
 
-    def log_prior(self, position, value):
-        """log prior probability of occurrence of a value falling at the given
-        position in the discretization domain
-        
+    def log_prior(self, value: Number, position: Number) -> Number:
+        """calculates the log of the prior probability density for the given position
+        and value
+
         Parameters
         ----------
-        position: Number
-            position in the discretized domain
-            
-        value: Number
-        
+        value : Number
+            the value to calculate the probability density for
+        position : Number
+            the position of the value
+
         Returns
         -------
         Number
@@ -415,19 +427,22 @@ class GaussianParameter(Parameter):
         """
         return self.get_hyper_param("std", position)
 
-    def initialize(self, position):
+    def initialize(
+        self, position: Union[np.ndarray, Number] = None
+    ) -> Union[np.ndarray, Number]:
         r"""initialize the parameter at the specified position(s) in the 
         discretization domain
         
         Parameters
         ----------
-        position: Union[Number, np.ndarray]
-            the position(s) at which the parameter is initialized
+        position : Union[np.ndarray, Number]
+            an array of positions or one position, default to None
 
         Returns
         -------
-        Union[Number, np.ndarray]
-            random number(s) chosen according to the normal distribution defined
+        Union[np.ndarray, Number]
+            an array of values or one value corresponding to the given position(s),
+            chosen according to the normal distribution defined
             by :attr:`mean` and :attr:`std` at the given position(s)
         """
         mean = self.get_mean(position)
@@ -435,45 +450,42 @@ class GaussianParameter(Parameter):
         values = np.random.normal(mean, std, position.size)
         return values
 
-    def perturb_value(self, position, value):
-        r"""randomly perturb a given value at the specified position in the 
-        discretization domain
+    def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
+        """perturb the value of a given position from the given current value, and
+        calculates the associated acceptance probability excluding log likelihood ratio
         
         Parameters
         ----------
-        position: Number
-            the ``position`` at which the ``value`` is perturbed
-            
-        value: Number
-            original parameter ``value``
+        value : Number
+            the current value to be perturbed from
+        position : Number
+            the position of the value to be perturbed
         
         Returns
         -------
-        Number
-            perturbed ``value``, generated through a random deviate from a 
-            normal distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu`
-            denotes the original value and :math:`sigma` the standard deviation
-            of the Gaussian at the specified position (:attr:`GaussianParameter.perturb_std`)
+        Tuple[Number, Number]
+            the new value of this parameter at the given position, and its associated
+            partial acceptance probability excluding log likelihood ratio
         """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
     
-    def log_prior(self, position, value):
-        """log prior probability of occurrence of a value falling at the given
-        position in the discretization domain
-        
+    def log_prior(self, value: Number, position: Number) -> Number:
+        """calculates the log of the prior probability density for the given position
+        and value
+
         Parameters
         ----------
-        position: Number
-            position in the discretized domain
-            
-        value: Number
+        value : Number
+            the value to calculate the probability density for
+        position : Number
+            the position of the value
         
         Returns
         -------
         Number
-            log prior probability for the Gaussian parameter
+            the log prior probability density for the Gaussian parameter
         """
         mean = self.get_mean(position)
         std = self.get_std(position)
@@ -518,60 +530,62 @@ class CustomParameter(Parameter):
         self._log_prior = log_prior
         self._initialize = initialize
         
-    def initialize(self, position: np.ndarray) -> np.ndarray:
-        r"""initialize the parameter at the specified position(s) in the 
-        discretization domain
-        
+    def initialize(
+        self, position: Union[np.ndarray, Number] = None
+    ) -> Union[np.ndarray, Number]:
+        """initializes the values of this parameter given one or more positions
+
         Parameters
         ----------
-        position: Union[Number, np.ndarray]
-            the position(s) at which the parameter is initialized
+        position : Union[np.ndarray, Number]
+            an array of positions or one position, default to None
+        
+        Returns
+        -------
+        Union[np.ndarray, Number]
+            an array of values or one value corresponding to the given positions
+        """
+        return self._initialize(position)
+    
+    def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
+        """perturb the value of a given position from the given current value, and
+        calculates the associated acceptance probability excluding log likelihood ratio
+
+        Parameters
+        ----------
+        value : Number
+            the current value to be perturbed from
+        position : Number
+            the position of the value to be perturbed
 
         Returns
         -------
-        Union[Number, np.ndarray]
-            random number(s) chosen according to the prior probability distribution
-        """
-        return self._initialize(positions)
-    
-    def perturb_value(self, position, value):
-        r"""randomly perturb a given value at the specified position in the 
-        discretization domain
-        
-        Parameters
-        ----------
-        position: Number
-            the ``position`` at which the ``value`` is perturbed
-            
-        value: Number
-            original parameter ``value``
-        
-        Returns
-        -------
-        Number
-            perturbed ``value``, generated through a random deviate from a 
-            normal distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu`
-            denotes the original value and :math:`sigma` the standard deviation
-            of the Gaussian at the specified position (:attr:`GaussianParameter.perturb_std`)
+        Tuple[Number, Number]
+            the new value of this parameter at the given position, and its associated
+            partial acceptance probability excluding log likelihood ratio. The 
+            perturbed ``value`` is generated through a random deviate from a normal 
+            distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
+            the original value and :math:`sigma` the standard deviation of the Gaussian 
+            at the specified position (:attr:`CustomParameter.perturb_std`)
         """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
 
-    def log_prior(self, position, value):
-        """log prior probability of occurrence of a value at the given position 
-        in the discretization domain
-        
+    def log_prior(self, value: Number, position: Number) -> Number:
+        """calculates the log of the prior probability density for the given position
+        and value
+
         Parameters
         ----------
-        position: Number
-            Position in the discretization domain, determining the mean and
-            standard deviation of the (prior) normal distribution
-            
-        value: Number
+        value : Number
+            the value to calculate the probability density for
+        position : Number
+            the position of the value
         
         Returns
         -------
         Number
+            the log prior probability density
         """
         return self._log_prior(position, value)

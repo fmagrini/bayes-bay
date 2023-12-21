@@ -47,7 +47,7 @@ class NoisePerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """propose a new state that changes the data noise estimation from the given
-        state and calcualtes its associated acceptance criteria excluding log 
+        state and calcualtes its associated acceptance probability excluding log 
         likelihood ratio
 
         Parameters
@@ -58,7 +58,7 @@ class NoisePerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance criteria excluding log
+            proposed new state and the partial acceptance probability excluding log
             likelihood ratio for this perturbation
         """
         if self._correlation_min is not None:

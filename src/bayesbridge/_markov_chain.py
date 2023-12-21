@@ -140,8 +140,8 @@ class BaseMarkovChain:
             i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
             perturb_func = self.perturbation_funcs[i_perturb]
 
-            # perturb and get the partial acceptance criteria excluding log likelihood 
-            # ratio
+            # perturb and get the partial acceptance probability excluding log 
+            # likelihood ratio
             try:
                 new_model, log_prob_ratio = perturb_func(self.current_model)
             except (DimensionalityException, UserFunctionError) as e:
@@ -157,8 +157,8 @@ class BaseMarkovChain:
                 continue
 
             # decide whether to accept
-            acceptance_criteria = log_prob_ratio + log_likelihood_ratio
-            accepted = acceptance_criteria > math.log(random.random())
+            acceptance_probability = log_prob_ratio + log_likelihood_ratio
+            accepted = acceptance_probability > math.log(random.random())
             if accepted:
                 self.current_model = new_model
 

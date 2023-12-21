@@ -90,13 +90,6 @@ class Target:
         return self._perturbation_func
 
     @property
-    def log_prior_ratio_function(self) -> Callable[[State], Number]:
-        """a list of log prior ratio functions corresponding to each of the
-        perturbation functions
-        """
-        return self._perturbation_func.log_prior_ratio
-
-    @property
     def is_hierarchical(self):
         """whether the data noise parameters are unknown (i.e. to be inversed)"""
         return self.perturbation_function is not None

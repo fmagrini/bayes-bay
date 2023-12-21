@@ -78,7 +78,7 @@ class ParameterSpace:
         # initialize parameter values
         parameter_vals = dict()
         for name, param in self.parameters.items():
-            parameter_vals[name] = param.initialize()
+            parameter_vals[name] = param.initialize(None)
         return ParameterSpaceState(n_dimensions, parameter_vals)
     
     def birth(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:

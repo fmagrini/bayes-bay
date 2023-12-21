@@ -29,7 +29,7 @@ class Perturbation(ABC):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance criteria excluding log 
+            proposed new state and the partial acceptance probability excluding log 
             likelihood ratio for this perturbation
         """
         raise NotImplementedError
@@ -45,7 +45,7 @@ class Perturbation(ABC):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance criteria excluding log 
+            proposed new state and the partial acceptance probability excluding log 
             likelihood ratio for this perturbation
         """
         return self.perturb(state)

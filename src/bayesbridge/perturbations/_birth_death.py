@@ -24,7 +24,7 @@ class BirthPerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """propose a new state that has a new dimension from the given state and
-        calculates its associated acceptance criteria excluding log likelihood ratio
+        calculates its associated acceptance probability excluding log likelihood ratio
         
         Parameters
         ----------
@@ -34,7 +34,7 @@ class BirthPerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance criteria excluding log 
+            proposed new state and the partial acceptance probability excluding log 
             likelihood ratio for this perturbation
 
         Raises
@@ -71,7 +71,7 @@ class DeathPerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """propose a new state that has an existing dimension removed from the given
-        state and calculates its associated acceptance criteria excluding log 
+        state and calculates its associated acceptance probability excluding log 
         likelihood ratio
         
         Parameters
@@ -82,7 +82,7 @@ class DeathPerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance criteria excluding log 
+            proposed new state and the partial acceptance probability excluding log 
             likelihood ratio for this perturbation
 
         Raises

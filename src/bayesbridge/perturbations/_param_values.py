@@ -27,7 +27,7 @@ class ParamPerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """perturb one value of the associated parameter, returning a proposed state
-        after this perturbation and its associated acceptance criteria excluding log 
+        after this perturbation and its associated acceptance probability excluding log 
         likelihood ratio
 
         Parameters
@@ -38,7 +38,7 @@ class ParamPerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance criteria excluding log
+            proposed new state and the partial acceptance probability excluding log
             likelihood ratio for this perturbation
         """
         # randomly choose a position to perturb the value(s)

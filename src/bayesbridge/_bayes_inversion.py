@@ -32,7 +32,7 @@ class BaseBayesianInversion:
         a list of perturbation functions. Each of which takes in a model (whichever the
         allowed type is, as long as it's consistent with ``walkers_starting_models``
         and other probability functions), produces a new model and log of the
-        corresponding acceptance criteria excluding the log likelihood ratio
+        corresponding partial acceptance probability excluding the log likelihood ratio
     log_likelihood_func: Callable[[Any], Number], optional
         the log likelihood function :math:`\log p(d|m)`. It takes in a model (the type
         of which is consistent with other arguments of this class) and returns the log
