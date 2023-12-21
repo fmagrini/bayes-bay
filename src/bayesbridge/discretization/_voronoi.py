@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from bisect import bisect_left
 import math
 from typing import Tuple, Union, List, Dict, Callable
@@ -7,8 +6,8 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ._discretization import Discretization
 from ..exceptions import DimensionalityException
-from ..parameterization import ParameterSpace
 from ..parameters import Parameter
 from .._state import State, ParameterSpaceState
 from ..perturbations import ParamPerturbation
@@ -23,51 +22,6 @@ from .._utils_1d import (
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
-class Discretization(Parameter, ParameterSpace):
-    
-    def __init__(
-        self,
-        name: str,
-        spatial_dimensions: Number,
-        vmin: Union[Number, np.ndarray],
-        vmax: Union[Number, np.ndarray],
-        perturb_std: Union[Number, np.ndarray],
-        n_dimensions: int = None, 
-        n_dimensions_min: int = 1, 
-        n_dimensions_max: int = 10, 
-        n_dimensions_init_range: Number = 0.3,
-        parameters: List[Parameter] = None, 
-        birth_from: str = "prior",
-    ):
-        Parameter.__init__(
-            self, 
-            name=name,
-            vmin=vmin,
-            vmax=vmax,
-            perturb_std=perturb_std,
-        )
-        ParameterSpace.__init__(
-            self, 
-            n_dimensions=n_dimensions,
-            n_dimensions_min=n_dimensions_min,
-            n_dimensions_max=n_dimensions_max,
-            n_dimensions_init_range=n_dimensions_init_range,
-            parameters=parameters
-            )
-        self.name = name
-        self.spatial_dimensions = spatial_dimensions
-        self.vmin = vmin
-        self.vmax = vmax
-        self.perturb_std = perturb_std
-        self.birth_from = birth_from        
-    
-    @abstractmethod
-    def birth(self, param_space_state):
-        raise NotImplementedError
-    
-    @abstractmethod
-    def death(self, param_space_state):
-        raise NotImplementedError
 
 
 class Voronoi(Discretization):
@@ -141,43 +95,11 @@ class Voronoi(Discretization):
         self._init_perturbation_funcs()
         self._init_log_prior_ratio_funcs()
 
-    def initialize(self) -> State:
-        """initializes the parameterization (if it's trans dimensional) and the
-        parameter values
-
-        Returns
-        -------
-        State
-            an initial model state
-        """
-        if not self.trans_d:
-            n_voronoi_cells = self._n_dimensions
-        # initialize number of cells
-        else:
-            cells_range = self._n_dimensions_init_range
-            cells_min = self._n_dimensions_min
-            cells_max = self._n_dimensions_max
-            init_max = int((cells_max - cells_min) * cells_range + cells_min)
-            n_voronoi_cells = random.randint(cells_min, init_max)
-        # initialize site positions
-        lb, ub = self.voronoi_site_bounds
-        voronoi_sites = np.squeeze(np.random.uniform(lb, ub, n_voronoi_cells))
-        # initialize parameter values
-        param_vals = dict()
-        for name, param in self.free_params.items():
-            param_vals[name] = param.initialize(voronoi_sites)
-        return State(n_voronoi_cells, voronoi_sites, param_vals)
-
-    def _init_perturbation_funcs(self):
+    def _init_perturbation_funcs(self): #TODO move to discretization
         self._perturbation_funcs.append(
             ParamPerturbation(self.name, [self])
             )
 
-    def _init_log_prior_ratio_funcs(self):
-        self._log_prior_ratio_funcs = [
-            func.log_prior_ratio for func in self._perturbation_funcs
-        ]
-        
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
         """a list of perturbation functions allowed in the current parameterization
@@ -275,16 +197,117 @@ class Voronoi1D(Voronoi):
             parameters=parameters,
             birth_from=birth_from
             )
+    
+    def initialize(self) -> State:
+        """initializes the parameterization (if it's trans dimensional) and the
+        parameter values
+
+        Returns
+        -------
+        State
+            an initial model state
+        """
+        if not self.trans_d:
+            n_voronoi_cells = self._n_dimensions
+        # initialize number of cells
+        else:
+            cells_range = self._n_dimensions_init_range
+            cells_min = self._n_dimensions_min
+            cells_max = self._n_dimensions_max
+            init_max = int((cells_max - cells_min) * cells_range + cells_min)
+            n_voronoi_cells = random.randint(cells_min, init_max)
+        # initialize site positions
+        lb, ub = self.vmin, self.vmax
+        voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
+        # initialize parameter values
+        param_vals = dict()
+        for name, param in self.free_params.items():
+            param_vals[name] = param.initialize(voronoi_sites)
+        return State(n_voronoi_cells, voronoi_sites, param_vals)
+    
+    def log_prior(self, value, *args):
+        """calculates the log of the prior probability density for the given position
+        and value
+
+        Parameters
+        ----------
+        value : Number
+            the position of the value
+        """
+        return (self.vmax - self.vmin)**self.n_dimensions
+    
+    def _perturb_site(self, site):
+        while True:
+            random_deviate = random.normalvariate(0, self.perturb_std)
+            new_site = site + random_deviate
+            if new_site >= self.vmin and new_site <= self.vmax:
+                return new_site   
         
-    def _initialize_params(self, 
-                           new_site: Number, 
-                           old_sites: np.ndarray, 
-                           param_space_state: ParameterSpaceState):
+    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
+        """perturb the value of a given Voronoi site from the given current value, and
+        calculates the associated acceptance criteria excluding log likelihood ratio
+
+        Parameters
+        ----------
+        old_ps_state : ParameterSpaceState
+            the position of the value to be perturbed
+        isite : Number
+            the current value to be perturbed from
+
+        Returns
+        -------
+        Tuple[Number, Number]
+            the new value of this parameter at the given position, and its associated
+            partial acceptance criteria excluding log likelihood ratio
+        """
+
+        old_sites = getattr(old_ps_state, self)
+        old_site = old_sites[isite]
+        new_site = self._perturb_site(old_sites[isite])
+        new_sites = old_sites.copy()
+        new_sites[isite] = new_site
+        isort = np.argsort(new_sites)
+        new_sites = new_sites[isort]
+        new_values = {self.name: new_sites}
+        log_prior_ratio = 0
+        for name, values in old_ps_state.param_values.items():
+            parameter = self.parameters[name]
+            if parameter.position is not None:
+                log_prior_old = parameter.log_prior(values[isite], old_site)
+                log_prior_new = parameter.log_prior(values[isite], new_site)
+                log_prior_ratio += log_prior_new - log_prior_old
+            new_values[name] = values[isort]
+            
+        new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
+        return new_ps_state, log_prior_ratio # log_proposal_ratio=0 and log_det_jacobian=0
+        
+    def _initialize_newborn_params(
+            self, 
+            new_site: Number, 
+            old_sites: np.ndarray, 
+            param_space_state: ParameterSpaceState
+            ):
+        """initialize the parameter values in the newborn dimension
+    
+        Parameters
+        ----------
+        new_site : Number
+            position of the newborn Voronoi site
+        old_sites : np.ndarray
+            all positions of the current Voronoi sites
+        param_space_state : State
+            current parameter space state
+    
+        Returns
+        -------
+        Dict[str, float]
+            key value pairs that map parameter names to values of the ``new_site``
+        """
         if self.birth_from == 'prior':
             return self._initialize_params_from_prior(
                 new_site, old_sites, param_space_state
                 )
-        return self.initialize_params_from_neighbour(
+        return self._initialize_params_from_neighbour(
             new_site, old_sites, param_space_state
             )
     
@@ -300,9 +323,9 @@ class Voronoi1D(Voronoi):
         Parameters
         ----------
         new_site : Number
-            position of the newborn Voronoi cell
+            position of the newborn Voronoi site
         old_sites : np.ndarray
-            all positions of the current Voronoi cells
+            all positions of the current Voronoi sites
         param_space_state : State
             current parameter space state
     
@@ -317,7 +340,7 @@ class Voronoi1D(Voronoi):
             new_born_values[param_name] = new_value
         return new_born_values, None
     
-    def initialize_params_from_neighbour(
+    def _initialize_params_from_neighbour(
         self, 
         new_site: Number, 
         old_sites: np.ndarray, 
@@ -392,7 +415,7 @@ class Voronoi1D(Voronoi):
         lb, ub = self.vmin, self.vmax
         new_site = random.uniform(lb, ub)
         old_sites = getattr(old_ps_state, self.name)
-        unsorted_values, i_nearest = self._initialize_params(
+        unsorted_values, i_nearest = self._initialize_newborn_params(
             new_site, old_sites, old_ps_state
             )
         new_values = dict()
