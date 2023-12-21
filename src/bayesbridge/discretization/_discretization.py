@@ -1,10 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec 21 09:41:26 2023
+from abc import abstractmethod
+from typing import Union, List, Tuple
+from numbers import Number
+import numpy as np
 
-@author: fabrizio
-"""
+from ..parameters._parameters import Parameter
+from ..parameterization._parameter_space import ParameterSpace
+from .._state import ParameterSpaceState
+
 
 class Discretization(Parameter, ParameterSpace):
     
@@ -37,7 +39,6 @@ class Discretization(Parameter, ParameterSpace):
             n_dimensions_init_range=n_dimensions_init_range,
             parameters=parameters
             )
-        self.name = name
         self.spatial_dimensions = spatial_dimensions
         self.vmin = vmin
         self.vmax = vmax
@@ -45,11 +46,37 @@ class Discretization(Parameter, ParameterSpace):
         self.birth_from = birth_from        
     
     @abstractmethod
-    def birth(self, param_space_state):
+    def initialize(self) -> ParameterSpaceState:
+        """initializes the values of this discretization including its paramter values
+
+        Returns
+        -------
+        ParameterSpaceState
+            an initial parameter space state
+        """
         raise NotImplementedError
     
     @abstractmethod
-    def death(self, param_space_state):
+    def birth(
+        self, param_space_state: ParameterSpaceState
+    ) -> Tuple[ParameterSpaceState, Number]:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def death(
+        self, param_space_state: ParameterSpaceState
+    ) -> Tuple[ParameterSpaceState, Number]:
         raise NotImplementedError
 
+    @abstractmethod
+    def perturb_value(
+        self, param_space_state: ParameterSpaceState
+    ) -> Tuple[ParameterSpaceState, Number]:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def log_prior(self, value: Number, *args) -> Number:
+        raise NotImplementedError
 
+    def get_perturb_std(self, *args) -> Number:
+        return self.perturb_std

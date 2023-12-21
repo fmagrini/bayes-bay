@@ -6,7 +6,8 @@ import numpy as np
 
 from .._state import State, ParameterSpaceState
 from ..parameters import Parameter
-from ..perturbations import ParamPerturbation, BirthPerturbation, DeathPerturbation
+from ..perturbations._param_values import ParamPerturbation
+from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
 from .._utils_1d import delete
 
 

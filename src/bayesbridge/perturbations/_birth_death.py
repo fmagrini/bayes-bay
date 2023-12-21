@@ -5,7 +5,6 @@ from bayesbridge._state import State
 
 from ._base_perturbation import Perturbation
 from .._state import State
-from ..parameterization import ParameterSpace
 
 
 class BirthPerturbation(Perturbation):
@@ -18,7 +17,7 @@ class BirthPerturbation(Perturbation):
     """
     def __init__(
         self,
-        parameter_space: ParameterSpace,
+        parameter_space: "ParameterSpace",
     ):
         self.param_space = parameter_space
         self.param_space_name = parameter_space.name
@@ -65,7 +64,7 @@ class DeathPerturbation(Perturbation):
     """
     def __init__(
         self,
-        parameter_space: ParameterSpace,
+        parameter_space: "ParameterSpace",
     ):
         self.param_space = parameter_space
         self.param_space_name = parameter_space.name

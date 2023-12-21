@@ -7,7 +7,7 @@ Created on Wed Dec 21 15:56:00 2022
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Tuple, Union
+from typing import Any, Callable, Tuple, Union, Dict
 from numbers import Number
 import random
 from functools import partial
@@ -25,6 +25,11 @@ class Parameter(ABC):
 
     def __init__(self, **kwargs):
         self._name = kwargs["name"]
+        if "position" in kwargs and kwargs["position"] is not None:
+            self.position = np.array(kwargs["position"], dtype=float)
+        else:
+            self.position = None
+        assert "perturb_std" in kwargs
         self.init_params = kwargs
         
     @property
@@ -33,13 +38,13 @@ class Parameter(ABC):
 
     @abstractmethod
     def initialize(
-        self, positions: Union[np.ndarray, Number] = None
+        self, position: Union[np.ndarray, Number] = None
     ) -> Union[np.ndarray, Number]:
         """initializes the values of this parameter given one or more positions
 
         Parameters
         ----------
-        positions : Union[np.ndarray, Number]
+        position : Union[np.ndarray, Number]
             an array of positions or one position
         
         Returns
@@ -50,16 +55,16 @@ class Parameter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def perturb_value(self, position: Number, value: Number) -> Tuple[Number, Number]:
+    def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
         """perturb the value of a given position from the given current value, and
         calculates the associated acceptance criteria excluding log likelihood ratio
 
         Parameters
         ----------
-        position : Number
-            the position of the value to be perturbed
         value : Number
             the current value to be perturbed from
+        position : Number
+            the position of the value to be perturbed
 
         Returns
         -------
@@ -70,108 +75,18 @@ class Parameter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def log_prior(self, position, value):
+    def log_prior(self, value: Number, position: Number) -> Number:
         """calculates the log of the prior probability density for the given position
         and value
 
         Parameters
         ----------
-        position : Number
-            the position of the value
         value : Number
             the value to calculate the probability density for
+        position : Number
+            the position of the value
         """
         raise NotImplementedError
-
-    # @abstractmethod
-    # def log_prior_ratio_perturbation_free_param(
-    #     self,
-    #     old_value: Number,
-    #     new_value: Number,
-    #     position: Number,
-    # ) -> Number:
-    #     """calculates the log prior ratio when the free parameter is perturbed
-
-    #     Parameters
-    #     ----------
-    #     old_value : Number
-    #         the value for this parameter before perturbation
-    #     new_value : Number
-    #         the value for this parameter after perturbation
-    #     position : Number
-    #         the position of the value perturbed
-
-    #     Returns
-    #     -------
-    #     Number
-    #         the log prior ratio in the free parameter perturbration case
-    #     """
-    #     raise NotImplementedError
-
-    # @abstractmethod
-    # def log_prior_ratio_perturbation_voronoi_site(
-    #     self,
-    #     old_position: Number,
-    #     new_position: Number,
-    #     value: Number,
-    # ) -> Number:
-    #     """calculates the log prior ratio when the Voronoi site position is perturbed
-
-    #     Parameters
-    #     ----------
-    #     old_position : Number
-    #         the position before perturbation
-    #     new_position : Number
-    #         the position after perturbation
-    #     position : Number
-    #         the position of the value perturbed
-
-    #     Returns
-    #     -------
-    #     Number
-    #         the log prior ratio in the Voronoi site perturbation case
-    #     """
-    #     raise NotImplementedError
-
-    # @abstractmethod
-    # def log_prior_ratio_perturbation_birth(
-    #     self, new_position: Number, new_value: Number
-    # ) -> Number:
-    #     """calculates the log prior ratio when a new cell is born
-
-    #     Parameters
-    #     ----------
-    #     new_position : Number
-    #         the position of the new-born cell
-    #     new_value : Number
-    #         the value of the new-born cell
-
-    #     Returns
-    #     -------
-    #     Number
-    #         the log prior ratio in the birth perturbation case
-    #     """
-    #     raise NotImplementedError
-
-    # @abstractmethod
-    # def log_prior_ratio_perturbation_death(
-    #     self, removed_position: Number, removed_value: Number
-    # ) -> Number:
-    #     """calculates the log prior ratio when a cell is removed
-
-    #     Parameters
-    #     ----------
-    #     removed_position : Number
-    #         the position of the cell removed
-    #     removed_value : Number
-    #         the value of the cell removed
-
-    #     Returns
-    #     -------
-    #     Number
-    #         the log prior ratio in the death perturbation case
-    #     """
-    #     raise NotImplementedError
 
     def set_custom_initialize(
         self,
@@ -192,7 +107,7 @@ class Parameter(ABC):
 
             def my_init(
                 param: bb.parameters.Parameter,
-                positions: Union[np.ndarray, Number]
+                position: Union[np.ndarray, Number]
             ) -> Union[np.ndarray, Number]:
                 print("This is my custom init!")
 
@@ -205,7 +120,52 @@ class Parameter(ABC):
     def _initializer(self, initialize_func, *args, **kwargs):
         return initialize_func(self, *args, **kwargs)
 
-    def _init_pos_dependent_hyper_param(self, hyper_param):
+    def get_perturb_std(
+        self, position: Union[Number, np.ndarray]
+    ) -> Union[Number, np.ndarray]:
+        """get the standard deviation(s) of the Gaussian(s) used to perturb
+        the parameter at the given position(s) in the discretization domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray]
+            the position(s) at which the standard deviation(s) of the Gaussian(s)
+            used to perturb the parameter will be returned
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            standard deviation at the given position(s)
+        """
+        if self.has_hyper_param("perturb_std"):
+            return self.get_hyper_param("perturb_std", position)
+        else:
+            raise NotImplementedError("`get_perturb_std` needs to be implemented")
+
+    def add_hyper_params(self, hyper_params: Dict[str, Union[Number, np.ndarray]]):
+        msg_scalar_when_pos_none = "should be a scalar when `position` is `None`"
+        msg_scalar_or_same_len = (
+            "should either be a scalar or have the same length as `position`"
+        )
+        for name, param_val in hyper_params.items():
+            if self.position is None:
+                assert np.isscalar(param_val), f"`{name}` {msg_scalar_when_pos_none}"
+            else:
+                assert np.isscalar(param_val) or \
+                    len(param_val) == len(self.position), \
+                        f"`{name}` {msg_scalar_or_same_len}"
+            if not np.isscalar(param_val):
+                param_val = np.array(param_val, dtype=float)
+            setattr(self, name, self._init_hyper_param(param_val))
+    
+    def has_hyper_param(self, hyper_param: str) -> bool:
+        return hasattr(self, hyper_param)
+
+    def get_hyper_param(self, hyper_param: str, position: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
+        hyper_param = getattr(self, hyper_param)
+        return hyper_param if np.isscalar(hyper_param) else hyper_param(position)
+
+    def _init_hyper_param(self, hyper_param: Union[Number, np.ndarray]):
         # to be called after self.position is assigned
         return (
             hyper_param
@@ -213,10 +173,7 @@ class Parameter(ABC):
             else partial(interpolate_linear_1d, x=self.position, y=hyper_param)
         )
 
-    def _get_pos_dependent_hyper_param(self, hyper_param, position):
-        return hyper_param if np.isscalar(hyper_param) else hyper_param(position)
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         string = "%s(" % self.init_params["name"]
         for k, v in self.init_params.items():
             if k == "name":
@@ -263,38 +220,16 @@ class UniformParameter(Parameter):
             vmax=vmax,
             perturb_std=perturb_std,
         )
-        self.name = name
-        # type standardization and validation
-        self.position = (
-            position if position is None else np.array(position, dtype=float)
-        )
-        vmin = vmin if np.isscalar(vmin) else np.array(vmin, dtype=float)
-        vmax = vmax if np.isscalar(vmax) else np.array(vmax, dtype=float)
-        if position is None:
-            message = "should be a scalar when `position` is `None`"
-            assert np.isscalar(vmin), "`vmin` " + message
-            assert np.isscalar(vmax), "`vmax` " + message
-            assert np.isscalar(perturb_std), "`perturb_std` " + message
-        else:
-            message = "should either be a scaler or have the same length as `position`"
-            assert np.isscalar(vmin) or vmin.size == self.position.size, (
-                "`vmin` " + message
-            )
-            assert np.isscalar(vmax) or vmax.size == self.position.size, (
-                "`vmax` " + message
-            )
-            assert np.isscalar(perturb_std) or perturb_std.size == self.position.size, (
-                "`perturb_std` " + message
-            )
-        # variables below: either a scalar or a function
-        self._vmin = self._init_pos_dependent_hyper_param(vmin)
-        self._vmax = self._init_pos_dependent_hyper_param(vmax)
-        self._delta = self._init_pos_dependent_hyper_param(
-            np.array(vmax, dtype=float) - np.array(vmin, dtype=float)
-        )
-        self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
+        self.add_hyper_params({
+            "vmin": vmin, 
+            "vmax": vmax, 
+            "perturb_std": perturb_std, 
+            "delta": np.array(vmax) - np.array(vmin), 
+        })
 
-    def get_delta(self, position):
+    def get_delta(
+        self, position: Union[Number, np.ndarray]
+    ) -> Union[Number, np.ndarray]:
         """get the difference between ``vmax`` and ``vmin`` at the given position
         in the discretization domain
 
@@ -308,11 +243,11 @@ class UniformParameter(Parameter):
         Union[Number, np.ndarray]
             the different between ``vmax`` and ``vmin`` at the given position
         """
-        return self._get_pos_dependent_hyper_param(self._delta, position)
+        return self.get_hyper_param("delta", position)
 
     def get_vmin_vmax(
         self, position: Union[Number, np.ndarray]
-    ) -> Tuple[Number, Number]:
+    ) -> Union[Tuple[Number, Number], Tuple[np.ndarray, np.ndarray]]:
         """get the lower and upper bounds at the given position(s) in the discretization 
         domain
 
@@ -326,30 +261,9 @@ class UniformParameter(Parameter):
         Tuple[float, float]
             the lower (``vmin``) and upper (``vmax``) bounds at the given position(s)
         """
-        # It can return a scalar or an array or both
-        # e.g.
-        # >>> p.get_vmin_vmax(np.array([9.2, 8.7]))
-        # (array([1.91111111, 1.85555556]), 3)
-        vmin = self._get_pos_dependent_hyper_param(self._vmin, position)
-        vmax = self._get_pos_dependent_hyper_param(self._vmax, position)
+        vmin = self.get_hyper_param("vmin", position)
+        vmax = self.get_hyper_param("vmax", position)
         return vmin, vmax
-
-    def get_perturb_std(self, position):
-        """get the standard deviation(s) of the Gaussian(s) used to perturb
-        the parameter at the given position(s) in the discretization domain
-        
-        Parameters
-        ----------
-        position: Union[Number, np.ndarray]
-            position(s) at which the standard deviation(s) of the Gaussian(s)
-            used to perturb the parameter will be returned
-
-        Returns
-        -------
-        Union[Number, np.ndarray]
-            standard deviation at the given position(s)
-        """
-        return self._get_pos_dependent_hyper_param(self._perturb_std, position)
 
     def initialize(
         self, position: Union[np.ndarray, Number]
@@ -458,37 +372,15 @@ class GaussianParameter(Parameter):
             std=std,
             perturb_std=perturb_std,
         )
-        self.name = name
-
-        # type standardization and validation
-        self.position = (
-            position if position is None else np.array(position, dtype=float)
-        )
-        mean = mean if np.isscalar(mean) else np.array(mean, dtype=float)
-        std = std if np.isscalar(std) else np.array(std, dtype=float)
-        if position is None:
-            message = "should be a scalar when `position` is `None`"
-            assert np.isscalar(mean), "`mean` " + message
-            assert np.isscalar(std), "`std` " + message
-            assert np.isscalar(perturb_std), "`perturb_std` " + message
-        else:
-            message = "should either be a scaler or have the same length as `position`"
-            assert np.isscalar(mean) or mean.size == self.position.size, (
-                "`mean` " + message
-            )
-            assert np.isscalar(std) or std.size == self.position.size, (
-                "`std` " + message
-            )
-            assert np.isscalar(perturb_std) or perturb_std.size == self.position.size, (
-                "`perturb_std` " + message
-            )
-
-        # variables below: either a scalar or a function
-        self._mean = self._init_pos_dependent_hyper_param(mean)
-        self._std = self._init_pos_dependent_hyper_param(std)
-        self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
-
-    def get_mean(self, position):
+        self.add_hyper_params({
+            "mean": mean, 
+            "std": std, 
+            "perturb_std": perturb_std, 
+        })
+    
+    def get_mean(
+        self, position: Union[Number, np.ndarray]
+    ) -> Union[Number, np.ndarray]:
         """get the prior mean of the Gaussian at the given position in the 
         discretization domain
 
@@ -503,9 +395,11 @@ class GaussianParameter(Parameter):
         Union[Number, np.ndarray]
             mean at the given position(s)
         """
-        return self._get_pos_dependent_hyper_param(self._mean, position)
+        return self.get_hyper_param("mean", position)
 
-    def get_std(self, position):
+    def get_std(
+        self, position: Union[Number, np.ndarray]
+    ) -> Union[Number, np.ndarray]:
         """get the prior standard deviation of the Gaussian at the given position
 
         Parameters
@@ -519,24 +413,7 @@ class GaussianParameter(Parameter):
         Union[Number, np.ndarray]
             standard deviation at the given position(s)
         """
-        return self._get_pos_dependent_hyper_param(self._std, position)
-
-    def get_perturb_std(self, position):
-        """get the standard deviation(s) of the Gaussian(s) used to perturb
-        the parameter at the given position(s) in the discretization domain
-        
-        Parameters
-        ----------
-        position: Union[Number, np.ndarray]
-            the position(s) at which the standard deviation(s) of the Gaussian(s)
-            used to perturb the parameter will be returned
-
-        Returns
-        -------
-        Union[Number, np.ndarray]
-            standard deviation at the given position(s)
-        """
-        return self._get_pos_dependent_hyper_param(self._perturb_std, position)
+        return self.get_hyper_param("std", position)
 
     def initialize(self, position):
         r"""initialize the parameter at the specified position(s) in the 
@@ -581,6 +458,26 @@ class GaussianParameter(Parameter):
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         return value + random_deviate
+    
+    def log_prior(self, position, value):
+        """log prior probability of occurrence of a value falling at the given
+        position in the discretization domain
+        
+        Parameters
+        ----------
+        position: Number
+            position in the discretized domain
+            
+        value: Number
+        
+        Returns
+        -------
+        Number
+            log prior probability for the Gaussian parameter
+        """
+        mean = self.get_mean(position)
+        std = self.get_std(position)
+        return -0.5 * np.log(2 * np.pi) - np.log(std) - 0.5 * ((value - mean) / std)**2
 
 
 class CustomParameter(Parameter):
@@ -600,14 +497,13 @@ class CustomParameter(Parameter):
         positions in the discretization domain corresponding to position-dependent 
         hyper parameters (``mean``, ``std``, ``perturb_std``), by default None
     """
-
     def __init__(
         self,
         name: str,
         log_prior: Callable[[Number, Number], Number],
         initialize: Callable[[np.ndarray], np.ndarray],
-        perturb_std: Union[Number, np.ndarra], 
-        position: np.ndarray, optional, 
+        perturb_std: Union[Number, np.ndarray], 
+        position: np.ndarray = None, 
     ):
         super().__init__(
             name=name,
@@ -616,23 +512,13 @@ class CustomParameter(Parameter):
             perturb_std=perturb_std, 
             position=position, 
         )
-        self.name = name
+        self.add_hyper_params({
+            "perturb_std": perturb_std
+        })
         self._log_prior = log_prior
         self._initialize = initialize
-        self.position = (
-            position if position is None else np.array(position, dtype=float)
-        )
-        if position is None:
-            message = "should be a scalar when `position` is `None`"
-            assert np.isscalar(perturb_std), "`perturb_std` " + message
-        else:
-            message = "should either be a scaler or have the same length as `position`"
-            assert np.isscalar(perturb_std) or perturb_std.size == self.position.size, (
-                "`perturb_std` " + message
-            )
-        self._perturb_std = self._init_pos_dependent_hyper_param(perturb_std)
-
-    def initialize(self, positions: np.ndarray) -> np.ndarray:
+        
+    def initialize(self, position: np.ndarray) -> np.ndarray:
         r"""initialize the parameter at the specified position(s) in the 
         discretization domain
         
@@ -648,23 +534,6 @@ class CustomParameter(Parameter):
         """
         return self._initialize(positions)
     
-    def get_perturb_std(self, position):
-        """get the standard deviation(s) of the Gaussian(s) used to perturb
-        the parameter at the given position(s) in the discretization domain
-        
-        Parameters
-        ----------
-        position: Union[Number, np.ndarray]
-            the position(s) at which the standard deviation(s) of the Gaussian(s)
-            used to perturb the parameter will be returned
-
-        Returns
-        -------
-        Union[Number, np.ndarray]
-            standard deviation at the given position(s)
-        """
-        return self._get_pos_dependent_hyper_param(self._perturb_std, position)
-
     def perturb_value(self, position, value):
         r"""randomly perturb a given value at the specified position in the 
         discretization domain
@@ -706,80 +575,3 @@ class CustomParameter(Parameter):
         Number
         """
         return self._log_prior(position, value)
-
-    def log_prior_ratio_perturbation_free_param(self, old_value, new_value, position):
-        r"""log prior probability ratio associated with the perturbation of the 
-        parameter at the given position in the discretization domain
-        
-        Parameters
-        ----------
-        old_value, new_value : Number
-            Original and perturbed parameter values
-            
-        position : Number
-            
-        Returns
-        -------
-        Number
-        """
-        new_log_prior = self._log_prior(position, new_value)
-        old_log_prior = self._log_prior(position, old_value)
-        return new_log_prior - old_log_prior
-
-    def log_prior_ratio_perturbation_voronoi_site(
-        self, old_position, new_position, value
-    ):
-        """log prior probability ratio associated with the perturbation of a
-        Voronoi site
-        
-        Parameters
-        ----------
-        old_position, new_position : Number
-            Original and perturbed Voronoi site position in the discretization
-            domain
-        
-        value : Number
-            Parameter value
-        
-        Returns
-        -------
-        Number
-        """
-        new_log_prior = self._log_prior(new_position, value)
-        old_log_prior = self._log_prior(old_position, value)
-        return new_log_prior - old_log_prior
-
-    def log_prior_ratio_perturbation_birth(self, new_position, new_value):
-        """log prior probability ratio associated with the birth of a new
-        normally distributed parameter
-        
-        Parameters
-        ----------
-        new_position : Number
-            Position in the discretized domain associated with the new parameter
-        
-        new_value : Number
-            proposed numerical value for the newly born parameter
-        
-        Returns
-        -------
-        Number
-        """
-        return self._log_prior(new_position, new_value)
-
-    def log_prior_ratio_perturbation_death(self, removed_position, removed_value):
-        """log prior probability ratio associated with the death of a parameter
-        
-        Parameters
-        ----------
-        removed_position : Number
-            position in the discretized domain associated with the removed parameter
-        
-        removed_value : Number
-            numerical value associated with the removed parameter
-        
-        Returns
-        -------
-        Number
-        """
-        return -self._log_prior(removed_position, removed_value)

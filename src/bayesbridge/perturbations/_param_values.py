@@ -4,7 +4,6 @@ import random
 
 from .._state import State
 from ..parameters._parameters import Parameter
-from ..parameterization import ParameterSpace
 from ._base_perturbation import Perturbation
 
 
@@ -52,7 +51,7 @@ class ParamPerturbation(Perturbation):
         for param in self.parameters:
             old_values = old_ps_state.param_values[param.name]
             new_param_values[param.name] = old_values.copy()
-            if isinstance(param, ParameterSpace):    # if it's a discretization
+            if isinstance(param, "ParameterSpace"):    # if it's a discretization
                 new_value, _ratio = param.perturb_value(old_ps_state, isite)
             else:
                 pos = getattr(old_ps_state, self.param_space_name, None)
