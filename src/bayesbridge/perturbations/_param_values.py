@@ -50,7 +50,7 @@ class ParamPerturbation(Perturbation):
         new_param_values = dict()
         log_prob_ratio = 0
         for param in self.parameters:
-            if hasattr(param, "birth"):     # if it's a discretization
+            if hasattr(param, "birth"):  # if it's a discretization
                 new_ps_state, log_prob_ratio = param.perturb_value(old_ps_state, isite)
                 new_state = state.copy()
                 new_state.set_param_values(self.param_space_name, new_ps_state)
@@ -58,8 +58,9 @@ class ParamPerturbation(Perturbation):
             else:
                 old_values = old_ps_state.param_values[param.name]
                 new_param_values[param.name] = old_values.copy()
-                pos = getattr(old_ps_state, self.param_space_name, None)
                 old_value = old_values[isite]
+                old_pos = getattr(old_ps_state, self.param_space_name, None)
+                pos = old_pos[isite] if old_pos is not None else None
                 new_value, _ratio = param.perturb_value(old_value, pos)
                 log_prob_ratio += _ratio
                 new_param_values[param.name][isite] = new_value
@@ -72,4 +73,8 @@ class ParamPerturbation(Perturbation):
 
     @property
     def __name__(self) -> str:
-        return f"{self.type}({self.param_name})"
+        param_names = [p.name for p in self.parameters]
+        param_names_str = (
+            str(param_names) if len(param_names) > 1 else str(param_names[0])
+        )
+        return f"{self.type}({param_names_str})"

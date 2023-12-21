@@ -110,7 +110,7 @@ class ParameterSpace:
     
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = [
-            ParamPerturbation(self.name, self.parameters.values())
+            ParamPerturbation(self.name, list(self.parameters.values()))
         ]
         if self.trans_d:
             self._perturbation_funcs.append(BirthPerturbation(self))

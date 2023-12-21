@@ -28,18 +28,32 @@ class ParameterSpaceState:
                     f"parameter {name} should have the same length as `n_dimensions` "
                     f"({self.n_dimensions}) but have {len(values)} instead"
                 )
+            self.set_param_values(name, values)
+            
+    def set_param_values(
+        self, param_name: str, values: np.ndarray
+    ):
+        if isinstance(param_name, str):
+            if not isinstance(values, np.ndarray):
+                raise TypeError(
+                    "parameter values should be a numpy ndarray instance"
+                )
+            self.param_values[param_name] = values
+            setattr(self, param_name, values)
+        else:
+            raise ValueError("`param_name` should be a string")
+
+    def get_param_values(self, param_name: str) -> np.ndarray:
+        if isinstance(param_name, str):
+            return self.param_values.get(param_name, None)
+        else:
+            raise ValueError("`param_name` should be a string")
     
     def copy(self) -> "ParameterSpaceState":
         new_param_values = dict()
         for name, param_vals in self.param_values.items():
             new_param_values[name] = param_vals.copy()
         return ParameterSpaceState(self.n_dimensions, new_param_values)
-
-    def __getattr__(self, item):
-        if item in self.param_values:
-            return self.param_values[item]
-        else:
-            return super().__getattribute__(item)
 
 
 @dataclass
@@ -83,7 +97,7 @@ class State:
             self.set_param_values(name, values)
 
     def set_param_values(
-        self, param_name: str, values: Union[np.ndarray, DataNoise]
+        self, param_name: str, values: Union[ParameterSpaceState, DataNoise]
     ):
         """Changes the value(s) of a parameter
 

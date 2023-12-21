@@ -219,8 +219,8 @@ class BayesianInversion(BaseBayesianInversion):
         self._chains = [
             MarkovChain(
                 i,
-                deepcopy(self.parameterization),
-                deepcopy(self.targets),
+                self.parameterization,
+                self.targets,
                 self.fwd_functions,
             )
             for i in range(n_chains)

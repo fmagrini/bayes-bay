@@ -280,4 +280,4 @@ class MarkovChain(BaseMarkovChain):
         self.perturbation_funcs = (
             funcs_from_parameterization + funcs_from_log_likelihood
         )
-        self.perturbation_types = [f.type for f in self.perturbation_funcs]
+        self.perturbation_types = [f.__name__ for f in self.perturbation_funcs]
