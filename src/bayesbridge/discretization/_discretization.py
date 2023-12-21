@@ -22,14 +22,18 @@ class Discretization(Parameter, ParameterSpace):
         n_dimensions_init_range: Number = 0.3,
         parameters: List[Parameter] = None, 
         birth_from: str = "prior",
+        **kwargs
     ):
         Parameter.__init__(
             self, 
             name=name,
             perturb_std=perturb_std,
+            spatial_dimensions=spatial_dimensions,
+            **kwargs
         )
         ParameterSpace.__init__(
             self, 
+            name=name,
             n_dimensions=n_dimensions,
             n_dimensions_min=n_dimensions_min,
             n_dimensions_max=n_dimensions_max,
@@ -52,6 +56,7 @@ class Discretization(Parameter, ParameterSpace):
         raise NotImplementedError
 
     def _init_perturbation_funcs(self):
+        ParameterSpace._init_perturbation_funcs(self)
         self._perturbation_funcs.append(ParamPerturbation(self.name, [self]))
         
     @abstractmethod

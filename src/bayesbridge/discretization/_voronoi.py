@@ -79,15 +79,15 @@ class Voronoi(Discretization):
         super().__init__(
             name=name,
             spatial_dimensions=spatial_dimensions,
-            vmin=vmin,
-            vmax=vmax,
             perturb_std=perturb_std,
             n_dimensions=n_dimensions,
             n_dimensions_min=n_dimensions_min,
             n_dimensions_max=n_dimensions_max,
             n_dimensions_init_range=n_dimensions_init_range,
             parameters=parameters,
-            birth_from=birth_from
+            birth_from=birth_from,
+            vmin=vmin,
+            vmax=vmax
             )
         self.vmin = vmin
         self.vmax = vmax

@@ -106,14 +106,8 @@ class ParameterSpace:
         ]
         if self.trans_d:
             self._perturbation_funcs.append(
-                BirthPerturbation(
-                    parameters=self.parameters, 
-                    n_dimensions_max=self._n_dimensions_max, 
-                )
+                BirthPerturbation(self)
             )
             self._perturbation_funcs.append(
-                DeathPerturbation(
-                    parameters=self.parameters, 
-                    n_dimensions_min=self._n_dimensions_min, 
-                )
+                DeathPerturbation(self)
             )
