@@ -297,7 +297,7 @@ class Voronoi1D(Voronoi):
             probability excluding log likelihood ratio
         """
 
-        old_sites = getattr(old_ps_state, self)
+        old_sites = getattr(old_ps_state, self.name)
         old_site = old_sites[isite]
         new_site = self._perturb_site(old_sites[isite])
         new_sites = old_sites.copy()
@@ -306,13 +306,13 @@ class Voronoi1D(Voronoi):
         new_sites = new_sites[isort]
         new_values = {self.name: new_sites}
         log_prior_ratio = 0
-        for name, values in old_ps_state.param_values.items():
-            parameter = self.parameters[name]
-            if parameter.position is not None:
-                log_prior_old = parameter.log_prior(values[isite], old_site)
-                log_prior_new = parameter.log_prior(values[isite], new_site)
+        for param_name, param in self.parameters.items():
+            if param.position is not None:
+                values = getattr(old_ps_state, param_name)
+                log_prior_old = param.log_prior(values[isite], old_site)
+                log_prior_new = param.log_prior(values[isite], new_site)
                 log_prior_ratio += log_prior_new - log_prior_old
-            new_values[name] = values[isort]
+            new_values[param_name] = values[isort]
             
         new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
         return new_ps_state, log_prior_ratio # log_proposal_ratio=0 and log_det_jacobian=0
@@ -404,7 +404,7 @@ class Voronoi1D(Voronoi):
         new_born_values = dict()
         for param_name, param in self.parameters.items():
             old_values = getattr(param_space_state, param_name)
-            new_value = param.perturb_value(old_values[isite], new_site)
+            new_value, _ = param.perturb_value(old_values[isite], new_site)
             new_born_values[param_name] = new_value
         return new_born_values, isite
     
@@ -416,7 +416,7 @@ class Voronoi1D(Voronoi):
             new_ps_state: ParameterSpaceState
             ):
         if self.birth_from == 'prior':
-            return new_ps_state, 0
+            return 0
         return self._log_probability_ratio_birth_from_neighbour(
                 old_isite, old_ps_state, new_isite, new_ps_state
                 )
@@ -428,6 +428,7 @@ class Voronoi1D(Voronoi):
             new_isite: Number, 
             new_ps_state: ParameterSpaceState
             ):
+        old_site = getattr(old_ps_state, self.name)[old_isite]
         new_site = getattr(new_ps_state, self.name)[new_isite]
         log_prior_ratio = 0
         log_proposal_ratio = 0
@@ -436,10 +437,10 @@ class Voronoi1D(Voronoi):
             log_prior_ratio += param.log_prior(new_value, new_site)
             
             old_value = getattr(old_ps_state, param_name)[old_isite]
-            theta = param.get_perturb_std(new_site)
+            perturb_std = param.get_perturb_std(old_site)
             log_proposal_ratio += (
-                math.log(theta * SQRT_TWO_PI)
-                + (new_value - old_value) ** 2 / (2 * theta**2)
+                math.log(perturb_std * SQRT_TWO_PI)
+                + (new_value - old_value) ** 2 / (2 * perturb_std**2)
             )
         return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1          
     
@@ -488,7 +489,7 @@ class Voronoi1D(Voronoi):
             new_ps_state: ParameterSpaceState
             ):
         if self.birth_from == 'prior':
-            return new_ps_state, 0
+            return 0
         return self._log_probability_ratio_death_from_neighbour(
                 iremove, old_ps_state, new_ps_state
                 )
@@ -504,7 +505,7 @@ class Voronoi1D(Voronoi):
         i_nearest = nearest_index(
             xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
         )
-        return new_ps_state, -self._log_probability_ratio_birth(
+        return -self._log_probability_ratio_birth(
             i_nearest, new_ps_state, iremove, old_ps_state
             )
 
@@ -521,7 +522,7 @@ class Voronoi1D(Voronoi):
             old_values = getattr(old_ps_state, name)
             new_values[name] = delete(old_values, iremove)
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
-        return self._log_probability_ratio_death(
+        return new_ps_state, self._log_probability_ratio_death(
             iremove, old_ps_state, new_ps_state
             )
     
