@@ -14,8 +14,6 @@ class Discretization(Parameter, ParameterSpace):
         self,
         name: str,
         spatial_dimensions: Number,
-        vmin: Union[Number, np.ndarray],
-        vmax: Union[Number, np.ndarray],
         perturb_std: Union[Number, np.ndarray],
         n_dimensions: int = None, 
         n_dimensions_min: int = 1, 
@@ -40,8 +38,6 @@ class Discretization(Parameter, ParameterSpace):
             parameters=parameters
             )
         self.spatial_dimensions = spatial_dimensions
-        self.vmin = vmin
-        self.vmax = vmax
         self.perturb_std = perturb_std
         self.birth_from = birth_from        
     
@@ -55,7 +51,12 @@ class Discretization(Parameter, ParameterSpace):
             an initial parameter space state
         """
         raise NotImplementedError
-    
+
+    def _init_perturbation_funcs(self):
+        self._perturbation_funcs.append(
+            ParamPerturbation(self.name, [self])
+            )
+        
     @abstractmethod
     def birth(
         self, param_space_state: ParameterSpaceState

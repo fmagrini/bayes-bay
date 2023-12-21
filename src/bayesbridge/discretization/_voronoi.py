@@ -91,14 +91,34 @@ class Voronoi(Discretization):
             parameters=parameters,
             birth_from=birth_from
             )
-        
+        self.vmin = vmin
+        self.vmax = vmax
         self._init_perturbation_funcs()
         self._init_log_prior_ratio_funcs()
 
-    def _init_perturbation_funcs(self): #TODO move to discretization
-        self._perturbation_funcs.append(
-            ParamPerturbation(self.name, [self])
-            )
+    def log_prior(self, value, *args):
+        r"""calculates the log of the prior probability associated with the
+        discretization
+
+        Parameters
+        ----------
+        value : Number
+            the position of the value
+            
+        Notes
+        -----
+        BayesBridge implements the grid trick, which calculates the prior 
+        probability of a Voronoi discretization through the combinatorial 
+        formula :math:`{\Perm{N}{k}}^{-1}`, with `k` denoting the number of 
+        Voronoi sites and `N` the number of possible positions allowed for the 
+        sites [1]_.
+        
+        References
+        ----------
+        .. [1] Bodin and Sambridge (2009), Seismic tomography with the reversible 
+            jump algorithm
+        """
+        raise NotImplementedError
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
@@ -173,8 +193,8 @@ class Voronoi1D(Voronoi):
     def __init__(        
             self,
             name: str,
-            vmin: Union[Number, np.ndarray],
-            vmax: Union[Number, np.ndarray],
+            vmin: Number,
+            vmax: Number,
             perturb_std: Union[Number, np.ndarray],
             n_dimensions: int = None, 
             n_dimensions_min: int = 1, 
@@ -198,43 +218,31 @@ class Voronoi1D(Voronoi):
             birth_from=birth_from
             )
     
-    def initialize(self) -> State:
-        """initializes the parameterization (if it's trans dimensional) and the
-        parameter values
+    def initialize(self) -> ParameterSpaceState:
+        """initializes the parameter space including its parameter values
 
         Returns
         -------
-        State
-            an initial model state
+        ParameterSpaceState
+            an initial parameter space state
         """
+        # initialize number of dimensions
         if not self.trans_d:
-            n_voronoi_cells = self._n_dimensions
-        # initialize number of cells
+            n_dimensions = self._n_dimensions
         else:
-            cells_range = self._n_dimensions_init_range
-            cells_min = self._n_dimensions_min
-            cells_max = self._n_dimensions_max
-            init_max = int((cells_max - cells_min) * cells_range + cells_min)
-            n_voronoi_cells = random.randint(cells_min, init_max)
-        # initialize site positions
+            init_range = self._n_dimensions_init_range
+            n_dims_min = self._n_dimensions_min
+            n_dims_max = self._n_dimensions_max
+            init_max = int((n_dims_max - n_dims_min) * init_range + n_dims_min)
+            n_voronoi_cells = random.randint(n_dims_min, init_max)
         lb, ub = self.vmin, self.vmax
         voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
-        # initialize parameter values
-        param_vals = dict()
-        for name, param in self.free_params.items():
-            param_vals[name] = param.initialize(voronoi_sites)
-        return State(n_voronoi_cells, voronoi_sites, param_vals)
-    
-    def log_prior(self, value, *args):
-        """calculates the log of the prior probability density for the given position
-        and value
 
-        Parameters
-        ----------
-        value : Number
-            the position of the value
-        """
-        return (self.vmax - self.vmin)**self.n_dimensions
+        # initialize parameter values
+        parameter_vals = {self.name: voronoi_sites}
+        for name, param in self.parameters.items():
+            parameter_vals[name] = param.initialize()
+        return ParameterSpaceState(n_dimensions, parameter_vals)    
     
     def _perturb_site(self, site):
         while True:
@@ -367,7 +375,7 @@ class Voronoi1D(Voronoi):
         new_born_values = dict()
         for param_name, param in self.parameters.items():
             old_values = getattr(param_space_state, param_name)
-            new_value = param.perturb_value(new_site, old_values[isite])
+            new_value = param.perturb_value(old_values[isite], new_site)
             new_born_values[param_name] = new_value
         return new_born_values, isite
     
@@ -396,7 +404,7 @@ class Voronoi1D(Voronoi):
         log_proposal_ratio = 0
         for param_name, param in self.parameters.items():
             new_value = getattr(new_ps_state, param_name)[new_isite]
-            log_prior_ratio += param.log_prior(new_site, new_value)
+            log_prior_ratio += param.log_prior(new_value, new_site)
             
             old_value = getattr(old_ps_state, param_name)[old_isite]
             theta = param.get_perturb_std(new_site)
