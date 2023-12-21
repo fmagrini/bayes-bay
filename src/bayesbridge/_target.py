@@ -94,30 +94,31 @@ class Target:
         """whether the data noise parameters are unknown (i.e. to be inversed)"""
         return self.perturbation_function is not None
 
-    def initialize(self, model: State):
+    def initialize(self, state: State):
         """initializes the data noise parameters
 
         Parameters
         ----------
-        model : State
-            the current model where initialized DataNoise parameter is to be updated to
+        state : State
+            the current state where initialized DataNoise parameter is to be updated to
         """
-        noise_std = random.uniform(self.std_min, self.std_max)
-        # model.set_param_values((self.name, "noise_std"), noise_std)
-        noise_corr = random.uniform(self.correlation_min, self.correlation_max) \
-            if self.noise_is_correlated else None
-        model.set_param_values(self.name, DataNoise(std=noise_std, correlation=noise_corr))
+        if self.is_hierarchical:
+            noise_std = random.uniform(self.std_min, self.std_max)
+            # state.set_param_values((self.name, "noise_std"), noise_std)
+            noise_corr = random.uniform(self.correlation_min, self.correlation_max) \
+                if self.noise_is_correlated else None
+            state.set_param_values(self.name, DataNoise(std=noise_std, correlation=noise_corr))
 
     def inverse_covariance_times_vector(
-        self, model: State, vector: np.ndarray
+        self, state: State, vector: np.ndarray
     ) -> np.ndarray:
         """calculates the dot product of the covariance inverse matrix with a given
         vector
 
         Parameters
         ----------
-        model : State
-            the current model state
+        state : State
+            the current state state
         vector : np.ndarray
             the vector to apply the dot product on
 
@@ -132,7 +133,7 @@ class Target:
             else:
                 return self.covariance_mat_inv @ vector
         else:
-            noise = model.get_param_values(self.name)
+            noise = state.get_param_values(self.name)
             std = noise.std
             correlation = noise.correlation
             if correlation is None:
@@ -142,20 +143,20 @@ class Target:
                 mat = inverse_covariance(std, correlation, n)
                 return mat @ vector
 
-    def log_determinant_covariance(self, model: State) -> float:
+    def log_determinant_covariance(self, state: State) -> float:
         """the log determinant value of the covariance matrix
 
         Parameters
         ----------
-        model : State
-            the current model state
+        state : State
+            the current state state
 
         Returns
         -------
         float
             the log determinant value
         """
-        noise = model.get_param_values(self.name)
+        noise = state.get_param_values(self.name)
         std = noise.std
         r = noise.correlation
         if r is None:

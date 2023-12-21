@@ -10,6 +10,12 @@ _DataNoise = namedtuple("DataNoise", ["std", "correlation"])
 class DataNoise(_DataNoise):
     def copy(self) -> "DataNoise":
         return self._replace()
+    
+    def export_dict(self, name: str) -> dict:
+        return {
+            f"{name}.std": self.std, 
+            f"{name}.correlation": self.correlation, 
+        }
 
 
 @dataclass
@@ -54,6 +60,11 @@ class ParameterSpaceState:
         for name, param_vals in self.param_values.items():
             new_param_values[name] = param_vals.copy()
         return ParameterSpaceState(self.n_dimensions, new_param_values)
+    
+    def export_dict(self, name: str) -> dict:
+        res = {f"{name}.n_dimensions": self.n_dimensions}
+        res.update(self.param_values)
+        return res
 
 
 @dataclass
@@ -180,11 +191,9 @@ class State:
         self.cache[name] = value
 
     def _vars(self):
-        all_vars = {
-            k: v
-            for k, v in vars(self).items()
-            if k not in ["param_values", "cache", "extra_storage"]
-        }
+        all_vars = dict()
+        for k, v in self.param_values.items():
+            all_vars.update(v.export_dict(k))
         all_vars.update(self.extra_storage)
         return all_vars
 

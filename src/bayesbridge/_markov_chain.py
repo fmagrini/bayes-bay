@@ -90,11 +90,8 @@ class BaseMarkovChain:
 
     def _save_model(self):
         if isinstance(self.current_model, (State, dict)):
-            for k in self.current_model:
-                try:
-                    self.saved_models[k].append(getattr(self.current_model, k))
-                except:
-                    self.saved_models[k].append(self.current_model.get_param_values(k))
+            for k, v in self.current_model.items():
+                self.saved_models[k].append(v)
         else:
             self.saved_models.append(self.current_model)
 
