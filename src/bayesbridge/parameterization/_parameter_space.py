@@ -26,8 +26,8 @@ class ParameterSpace:
         self._name = name
         self._trans_d = n_dimensions is None
         self._n_dimensions = n_dimensions
-        self._n_dimensions_min = n_dimensions_min
-        self._n_dimensions_max = n_dimensions_max
+        self._n_dimensions_min = n_dimensions_min if self._trans_d else n_dimensions
+        self._n_dimensions_max = n_dimensions_max if self._trans_d else n_dimensions
         self._n_dimensions_init_range = n_dimensions_init_range
         self._parameters = dict()
         if parameters is not None:
@@ -110,7 +110,7 @@ class ParameterSpace:
     
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = [
-            ParamPerturbation(self.name, self.parameters)
+            ParamPerturbation(self.name, self.parameters.values())
         ]
         if self.trans_d:
             self._perturbation_funcs.append(BirthPerturbation(self))
