@@ -92,7 +92,7 @@ class Voronoi(Discretization):
         msg = "The %s number of Voronoi cells, "
         assert isinstance(vmin, int), msg % "minimum" + "`vmin`, should be an integer"
         assert isinstance(vmax, int), msg % "maximum" + "`vmax`, should be an integer"
-        assert vmin > 0, msg % "minimum" "`vmin`, should be greater than zero"
+        assert vmin > 0, msg % "minimum" + "`vmin`, should be greater than zero"
         self.vmin = vmin
         self.vmax = vmax
 
