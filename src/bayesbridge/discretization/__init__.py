@@ -1,5 +1,5 @@
 from ._discretization import Discretization
-from _voronoi Voronoi, Voronoi1D
+from _voronoi import Voronoi, Voronoi1D
 
 
 __all__ = [
