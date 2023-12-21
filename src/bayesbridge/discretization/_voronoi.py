@@ -89,13 +89,14 @@ class Voronoi(Discretization):
             vmin=vmin,
             vmax=vmax
             )
-        msg = "The %s number of Voronoi cells, "
-        assert isinstance(vmin, int), msg % "minimum" + "`vmin`, should be an integer"
-        assert isinstance(vmax, int), msg % "maximum" + "`vmax`, should be an integer"
-        assert vmin > 0, msg % "minimum" + "`vmin`, should be greater than zero"
         self.vmin = vmin
         self.vmax = vmax
-
+        msg = "The %s number of Voronoi cells, "
+        if n_dimensions is not None:
+            assert n_dimensions > 0, msg % "minimum" + "`n_dimensions`, should be greater than zero"
+            assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
+            assert isinstance(n_dimensions, int), msg % "maximum" + "`n_dimensions`, should be an integer"
+            
     def log_prior(self, *args):
         r"""
         BayesBridge implements the grid trick, which calculates the prior 

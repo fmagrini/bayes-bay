@@ -28,7 +28,7 @@ class Discretization(Parameter, ParameterSpace):
             self, 
             name=name,
             perturb_std=perturb_std,
-            spatial_dimensions=spatial_dimensions,
+            spatial_dimensions=spatial_dimensions,        
             **kwargs
         )
         ParameterSpace.__init__(
