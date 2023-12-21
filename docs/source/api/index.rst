@@ -22,7 +22,6 @@ Low level inversion API
     bayesbridge.BaseBayesianInversion
     bayesbridge.BaseMarkovChain
 
-
 High level inversion API
 ------------------------
 
@@ -32,10 +31,19 @@ High level inversion API
 
     bayesbridge.BayesianInversion
     bayesbridge.MarkovChain
-    bayesbridge.State
     bayesbridge.Target
     bayesbridge.LogLikelihood
 
+Data structure for states
+-------------------------
+
+.. autosummary::
+    :toctree: generated/
+    :nosignatures:
+
+    bayesbridge.State
+    bayesbridge.ParameterSpaceState
+    bayesbridge.DataNoise
 
 Parameterizations
 ^^^^^^^^^^^^^^^^^
@@ -73,6 +81,7 @@ Discretizations
         :nosignatures:
 
         bayesbridge.discretization.Discretization
+        bayesbridge.discretization.Voronoi
         bayesbridge.discretization.Voronoi1D
 
 Perturbations
@@ -86,14 +95,9 @@ Perturbations
 
         bayesbridge.perturbations.Perturbation
         bayesbridge.perturbations.ParamPerturbation
-        bayesbridge.perturbations.Voronoi1DPerturbation
-        bayesbridge.perturbations.BirthPerturbation1D
-        bayesbridge.perturbations.BirthFromPrior1D
-        bayesbridge.perturbations.BirthFromNeighbour1D
-        bayesbridge.perturbations.DeathPerturbation1D
-        bayesbridge.perturbations.DeathFromPrior1D
-        bayesbridge.perturbations.DeathFromNeighbour1D
-
+        bayesbridge.perturbations.BirthPerturbation
+        bayesbridge.perturbations.DeathPerturbation
+        bayesbridge.perturbations.NoisePerturbation
 
 Samplers
 ^^^^^^^^

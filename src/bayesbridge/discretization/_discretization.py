@@ -29,7 +29,6 @@ class Discretization(Parameter, ParameterSpace):
             name=name,
             perturb_std=perturb_std,
             spatial_dimensions=spatial_dimensions,        
-            **kwargs
         )
         ParameterSpace.__init__(
             self, 
@@ -42,7 +41,8 @@ class Discretization(Parameter, ParameterSpace):
         )
         self.spatial_dimensions = spatial_dimensions
         self.perturb_std = perturb_std
-        self.birth_from = birth_from        
+        self.birth_from = birth_from
+        self._additional_kwargs = kwargs
     
     @abstractmethod
     def initialize(self, *args) -> ParameterSpaceState:
@@ -73,7 +73,7 @@ class Discretization(Parameter, ParameterSpace):
 
     @abstractmethod
     def perturb_value(
-        self, param_space_state: ParameterSpaceState
+        self, param_space_state: ParameterSpaceState, isite: int
     ) -> Tuple[ParameterSpaceState, Number]:
         raise NotImplementedError
     
@@ -83,3 +83,15 @@ class Discretization(Parameter, ParameterSpace):
 
     def get_perturb_std(self, *args) -> Number:
         return self.perturb_std
+
+    def _repr_dict(self) -> dict:      # to be called by ParameterSpace.__repr__
+        attr_to_show = ParameterSpace._repr_dict(self)
+        attr_to_show["spatial_dimensions"] = self.spatial_dimensions
+        attr_to_show["perturb_std"] = self.perturb_std
+        if self.trans_d:
+            attr_to_show["birth_from"] = self.birth_from
+        attr_to_show.update(self._additional_kwargs)
+        return attr_to_show
+    
+    def __repr__(self) -> str:
+        return ParameterSpace.__repr__(self)

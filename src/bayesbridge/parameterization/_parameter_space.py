@@ -115,3 +115,23 @@ class ParameterSpace:
         if self.trans_d:
             self._perturbation_funcs.append(BirthPerturbation(self))
             self._perturbation_funcs.append(DeathPerturbation(self))
+
+    def _repr_dict(self) -> dict:
+        attr_to_show = {"name": self.name, "parameters": self.parameters.keys()}
+        if self.trans_d:
+            attr_to_show["n_dimensions_min"] = self._n_dimensions_min
+            attr_to_show["n_dimensions_max"] = self._n_dimensions_max
+            attr_to_show["n_dimensions_init_range"] = self._n_dimensions_init_range
+        else:
+            attr_to_show["n_dimensions"] = self._n_dimensions
+        return attr_to_show
+
+    def __repr__(self) -> str:
+        attr_to_show = self._repr_dict()
+        string = "%s(" % attr_to_show["name"]
+        for k, v in attr_to_show.items():
+            if k == "name":
+                continue
+            string += "%s=%s, " % (k, v)
+        string = string[:-2]
+        return string + ")"
