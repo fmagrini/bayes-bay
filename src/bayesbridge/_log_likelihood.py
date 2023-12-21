@@ -28,8 +28,9 @@ class LogLikelihood:
         self.targets = targets
         self.fwd_functions = fwd_functions
         assert len(self.targets) == len(self.fwd_functions)
+        self._check_duplicate_target_names()
         self._init_perturbation_funcs()
-
+    
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
         """A list of perturbation functions associated with the data noise of the
@@ -49,6 +50,11 @@ class LogLikelihood:
 
     def __call__(self, old_misfit, temperature) -> Any:
         return self.log_likelihood_ratio(old_misfit, temperature)
+
+    def _check_duplicate_target_names(self):
+        all_target_names = [t.name for t in self.targets]
+        if len(all_target_names) != len(set(all_target_names)):
+            raise ValueError("duplicate target names found")
 
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []

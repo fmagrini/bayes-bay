@@ -46,7 +46,7 @@ class Parameter(ABC):
         ----------
         position : Union[np.ndarray, Number]
             an array of positions or one position, default to None
-        
+
         Returns
         -------
         Union[np.ndarray, Number]
@@ -286,7 +286,7 @@ class UniformParameter(Parameter):
         Parameters
         ----------
         position: Union[Number, np.ndarray]
-            the position(s) at which the parameter is initialized
+            the position(s) at which the parameter is initialized, default to None
 
         Returns
         -------
@@ -298,7 +298,8 @@ class UniformParameter(Parameter):
         if isinstance(position, Number):
             return random.uniform(vmin, vmax)
         else:
-            return np.random.uniform(vmin, vmax, position.size)
+            n_vals = len(position) if position is not None else 1
+            return np.random.uniform(vmin, vmax, n_vals)
 
     def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
         """perturb the value of a given position from the given current value, and
@@ -447,7 +448,8 @@ class GaussianParameter(Parameter):
         """
         mean = self.get_mean(position)
         std = self.get_std(position)
-        values = np.random.normal(mean, std, position.size)
+        n_vals = len(position) if position is not None else 1
+        values = np.random.normal(mean, std, n_vals)
         return values
 
     def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:

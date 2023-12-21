@@ -108,7 +108,6 @@ class Target:
             if self.noise_is_correlated else None
         model.set_param_values(self.name, DataNoise(std=noise_std, correlation=noise_corr))
 
-
     def inverse_covariance_times_vector(
         self, model: State, vector: np.ndarray
     ) -> np.ndarray:
