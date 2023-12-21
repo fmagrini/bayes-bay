@@ -89,6 +89,10 @@ class Voronoi(Discretization):
             vmin=vmin,
             vmax=vmax
             )
+        msg = "The %s number of Voronoi cells, "
+        assert isinstance(vmin, int), msg % "minimum" + "`vmin`, should be an integer"
+        assert isinstance(vmax, int), msg % "maximum" + "`vmax`, should be an integer"
+        assert vmin > 0, msg % "minimum" "`vmin`, should be greater than zero"
         self.vmin = vmin
         self.vmax = vmax
 
@@ -240,7 +244,7 @@ class Voronoi1D(Voronoi):
         """
         # initialize number of dimensions
         if not self.trans_d:
-            n_dimensions = self._n_dimensions
+            n_voronoi_cells = self._n_dimensions
         else:
             init_range = self._n_dimensions_init_range
             n_dims_min = self._n_dimensions_min
@@ -254,7 +258,7 @@ class Voronoi1D(Voronoi):
         parameter_vals = {self.name: voronoi_sites}
         for name, param in self.parameters.items():
             parameter_vals[name] = param.initialize()
-        return ParameterSpaceState(n_dimensions, parameter_vals)    
+        return ParameterSpaceState(n_voronoi_cells, parameter_vals)    
     
     def _perturb_site(self, site: Number) -> Number:
         """perturbes a Voronoi  site
