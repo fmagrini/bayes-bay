@@ -258,15 +258,15 @@ class Voronoi1D(Voronoi):
         Parameters
         ----------
         old_ps_state : ParameterSpaceState
-            the position of the value to be perturbed
+            the current parameter space state
         isite : Number
             the current value to be perturbed from
 
         Returns
         -------
-        Tuple[Number, Number]
-            the new value of this parameter at the given position, and its associated
-            partial acceptance criteria excluding log likelihood ratio
+        Tuple[ParameterSpaceState, Number]
+            the new parameter space state and its associated partial acceptance 
+            probability excluding log likelihood ratio
         """
 
         old_sites = getattr(old_ps_state, self)
