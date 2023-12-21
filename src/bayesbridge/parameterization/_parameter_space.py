@@ -2,8 +2,10 @@ from typing import List, Callable, Tuple, Dict
 from numbers import Number
 import random
 import math
+import numpy as np
 
 from .._state import State, ParameterSpaceState
+from ..exceptions import DimensionalityException
 from ..parameters import Parameter
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
@@ -77,22 +79,28 @@ class ParameterSpace:
         # initialize parameter values
         parameter_vals = dict()
         for name, param in self.parameters.items():
-            parameter_vals[name] = param.initialize(None)
+            parameter_vals[name] = param.initialize(np.empty(n_dimensions))
         return ParameterSpaceState(n_dimensions, parameter_vals)
     
     def birth(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
         n_dims = ps_state.n_dimensions
+        if n_dims == self._n_dimensions_max:
+            raise DimensionalityException("Birth")
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
-            new_param_values[param_name] = param_vals.copy()
-            new_param_values[param_name].append(self.parameters[param_name].initialize(None))
+            new_param_values[param_name] = np.append(
+                param_vals, 
+                self.parameters[param_name].initialize()
+            )
         new_state = ParameterSpaceState(n_dims+1, new_param_values)
         prob_ratio = math.log(n_dims + 1)
         return new_state, prob_ratio
     
     def death(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
         n_dims = ps_state.n_dimensions
-        i_to_remove = random.randint(0, -1)
+        if n_dims == self._n_dimensions_min:
+            raise DimensionalityException("Death")
+        i_to_remove = random.randint(0, n_dims-1)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
             new_param_values[param_name] = delete(param_vals, i_to_remove)
@@ -105,9 +113,5 @@ class ParameterSpace:
             ParamPerturbation(self.name, self.parameters)
         ]
         if self.trans_d:
-            self._perturbation_funcs.append(
-                BirthPerturbation(self)
-            )
-            self._perturbation_funcs.append(
-                DeathPerturbation(self)
-            )
+            self._perturbation_funcs.append(BirthPerturbation(self))
+            self._perturbation_funcs.append(DeathPerturbation(self))
