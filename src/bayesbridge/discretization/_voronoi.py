@@ -257,7 +257,7 @@ class Voronoi1D(Voronoi):
         # initialize parameter values
         parameter_vals = {self.name: voronoi_sites}
         for name, param in self.parameters.items():
-            parameter_vals[name] = param.initialize()
+            parameter_vals[name] = param.initialize(voronoi_sites)
         return ParameterSpaceState(n_voronoi_cells, parameter_vals)    
     
     def _perturb_site(self, site: Number) -> Number:
