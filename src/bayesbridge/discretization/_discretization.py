@@ -46,7 +46,7 @@ class Discretization(Parameter, ParameterSpace):
         self.birth_from = birth_from        
     
     @abstractmethod
-    def initialize(self) -> ParameterSpaceState:
+    def initialize(self, *args) -> ParameterSpaceState:
         """initializes the values of this discretization including its paramter values
 
         Returns
