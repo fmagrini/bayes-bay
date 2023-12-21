@@ -202,7 +202,7 @@ class UniformParameter(Parameter):
     Parameters
     ----------
     name : str
-        name of the current parameter, for display and storing purposes
+        name of the parameter, for display and storing purposes
     vmin : Union[Number, np.ndarray]
         the lower bound for this parameter. This can either be a scalar or an array
         if the hyper parameters vary with positions

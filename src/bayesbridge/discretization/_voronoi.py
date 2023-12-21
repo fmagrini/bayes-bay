@@ -29,39 +29,37 @@ class Voronoi(Discretization):
 
     Parameters
     ----------
-    n_voronoi_cells : Number, optional
-        the number of Voronoi cells. Needs to be None if this is a trans-dimensional 
-        parameterization, by default None
-    voronoi_sites : Union[np.ndarray, None], optional
-        fixed voronoi site positions (if one would like them to be fixed). This should
-        be set to None if one needs the site positions to be perturbed (including site
-        position perturbation, birth and death). By default None
-    voronoi_site_bounds : Tuple[Number, Number]
-        the minimum and maximum values of the 1D voronoi site positions
-    voronoi_site_perturb_std : Union[Number, np.ndarray]
-        the perturbation standard deviation of the Voronoi site positions
-    position : np.ndarray, optional
-        the breaking points for varied ``voronoi_site_perturb_std``. Activated only
-        when the ``voronoi_site_bounds`` and / or ``voronoi_site_perturb_std`` is
-        not a scalar, by default None
-    free_params : List[Parameter], optional
-        a list of unknown parameters, by default None
-    n_voronoi_cells_min : Number, optional
-        the minimum number of Voronoi cells, by default None
-    n_voronoi_cells_max : Number, optional
-        the maximum number of Voronoi cells, by default None
-    voronoi_cells_init_range : Number, optional
-        the range in which the initialization of Voronoi cell numbers will be in
-        (i.e. the number of Voronoi cells will be uniformly sampled from the range:
-        :math:`(ncells_{min}, ncells_{min}+ninitrange*(ncells_{max}-ncells_{min})`,
-        assuming :math:`ncells_{min} = \\text{n_voronoi_cells_min}`,
-        :math:`ncells_{max} = \\text{n_voronoi_cells_max}` and
-        :math:`ninitrange = \\text{n_voronoi_cells_min}`,
-        by default 0.2
-    birth_from : str, optional
-        whether to initialize newly-born Voronoi cell parameter values from
-        randomly sampling or from a perturbation based on the nearest neighbour, by
-        default "neighbour"
+    name : str
+        name of the discretization, for display and storing purposes
+    spatial_dimensions : int
+        number of dimensions of the desired Voronoi discretization, e.g. 1D,
+        2D, or 3D.
+    vmin, vmax : Union[Number, np.ndarray]
+        minimum/maximum value bounding each dimension
+    perturb_std : Union[Number, np.ndarray]
+        standard deviation of the Gaussians used to randomly perturb the Voronoi
+        sites in each dimension. 
+    n_dimensions : Number, optional
+        number of Voronoi cells. None (default) results in a transdimensional
+        parameterization, with the dimensionality of the parameter space allowed
+        to vary in the range `n_dimensions_min`-`n_dimensions_max`
+    n_dimensions_min, n_dimensions_max : Number, optional
+        minimum and maximum number of Voronoi cells, by default 1 and 10. These
+        parameters are ignored if `n_dimensions` is not None
+    n_dimensions_init_range : Number, optional
+        percentage of the range `n_dimensions_min`-`n_dimensions_max` used to
+        initialize the number of dimensions (0.3. by default). For example, if 
+        `n_dimensions_min`=1, `n_dimensions_max`=10, and `n_dimensions_init_range`=0.5,
+        the maximum number of dimensions at the initialization is::
+            
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            
+    parameters : List[Parameter], optional
+        a list of free parameters, by default None
+    birth_from : {"prior", "neighbour"}, optional
+        whether to initialize the newborn Voronoi cell parameter values by
+        randomly from the prior by perturbing the existing parameters found in
+        the nearest Voronoi cell (default).
     """
 
     def __init__(
@@ -93,20 +91,9 @@ class Voronoi(Discretization):
             )
         self.vmin = vmin
         self.vmax = vmax
-        self._init_perturbation_funcs()
-        self._init_log_prior_ratio_funcs()
 
-    def log_prior(self, value, *args):
-        r"""calculates the log of the prior probability associated with the
-        discretization
-
-        Parameters
-        ----------
-        value : Number
-            the position of the value
-            
-        Notes
-        -----
+    def log_prior(self, *args):
+        r"""
         BayesBridge implements the grid trick, which calculates the prior 
         probability of a Voronoi discretization through the combinatorial 
         formula :math:`{\Perm{N}{k}}^{-1}`, with `k` denoting the number of 
@@ -127,13 +114,6 @@ class Voronoi(Discretization):
         model and a log proposal ratio value
         """
         return self._perturbation_funcs
-
-    @property
-    def log_prior_ratio_functions(self) -> List[Callable[[State, State], Number]]:
-        """a list of log prior ratio functions corresponding to each of the
-        :meth:`perturbation_functions`
-        """
-        return self._log_prior_ratio_funcs
 
     @staticmethod
     def plot_hist_n_voronoi_cells(samples_n_voronoi_cells, ax=None, **kwargs):
@@ -189,7 +169,39 @@ class Voronoi(Discretization):
 
 
 class Voronoi1D(Voronoi):
-    
+    """Utility class for Voronoi discretization
+
+    Parameters
+    ----------
+    name : str
+        name of the discretization, for display and storing purposes
+    vmin, vmax : Number
+        minimum/maximum value bounding the Voronoi sites
+    perturb_std : Number
+        standard deviation of the Gaussian used to randomly perturb the Voronoi
+        sites. 
+    n_dimensions : Number, optional
+        number of Voronoi cells. None (default) results in a transdimensional
+        parameterization, with the dimensionality of the parameter space allowed
+        to vary in the range `n_dimensions_min`-`n_dimensions_max`
+    n_dimensions_min, n_dimensions_max : Number, optional
+        minimum and maximum number of Voronoi cells, by default 1 and 10. These
+        parameters are ignored if `n_dimensions` is not None
+    n_dimensions_init_range : Number, optional
+        percentage of the range `n_dimensions_min`-`n_dimensions_max` used to
+        initialize the number of dimensions (0.3. by default). For example, if 
+        `n_dimensions_min`=1, `n_dimensions_max`=10, and `n_dimensions_init_range`=0.5,
+        the maximum number of dimensions at the initialization is::
+            
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            
+    parameters : List[Parameter], optional
+        a list of free parameters, by default None
+    birth_from : {"prior", "neighbour"}, optional
+        whether to initialize the newborn Voronoi cell parameter values by
+        randomly from the prior by perturbing the existing parameters found in
+        the nearest Voronoi cell (default).
+    """
     def __init__(        
             self,
             name: str,
@@ -244,7 +256,19 @@ class Voronoi1D(Voronoi):
             parameter_vals[name] = param.initialize()
         return ParameterSpaceState(n_dimensions, parameter_vals)    
     
-    def _perturb_site(self, site):
+    def _perturb_site(self, site: Number) -> Number:
+        """perturbes a Voronoi  site
+        
+        Parameters
+        ----------
+        site : float
+            Voronoi site position
+
+        Returns
+        -------
+        Number
+            perturbed Voronoi site position
+        """        
         while True:
             random_deviate = random.normalvariate(0, self.perturb_std)
             new_site = site + random_deviate
@@ -303,7 +327,7 @@ class Voronoi1D(Voronoi):
             position of the newborn Voronoi site
         old_sites : np.ndarray
             all positions of the current Voronoi sites
-        param_space_state : State
+        param_space_state : ParameterSpaceState
             current parameter space state
     
         Returns
@@ -324,9 +348,9 @@ class Voronoi1D(Voronoi):
             new_site: Number, 
             old_sites: np.ndarray, 
             param_space_state: ParameterSpaceState
-            ):
-        """initialize the newborn parameter values by randomly drawing from the 
-        prior
+            ) -> Tuple[Dict[str, np.ndarray], None]:
+        """initialize the newborn dimension by randomly drawing parameter values
+        from the prior
     
         Parameters
         ----------
@@ -334,12 +358,12 @@ class Voronoi1D(Voronoi):
             position of the newborn Voronoi site
         old_sites : np.ndarray
             all positions of the current Voronoi sites
-        param_space_state : State
+        param_space_state : ParameterSpaceState
             current parameter space state
     
         Returns
         -------
-        Dict[str, float]
+        Tuple[Dict[str, np.ndarray], None]
             key value pairs that map parameter names to values of the ``new_site``
         """
         new_born_values = dict()
@@ -353,7 +377,7 @@ class Voronoi1D(Voronoi):
         new_site: Number, 
         old_sites: np.ndarray, 
         param_space_state: ParameterSpaceState
-        ) -> Dict[str, float]:
+        ) -> Tuple[Dict[str, np.ndarray], Number]:
         """initialize the newborn parameter values by perturbing the nearest 
         Voronoi cell
     
@@ -363,13 +387,14 @@ class Voronoi1D(Voronoi):
             position of the newborn Voronoi cell
         old_sites : np.ndarray
             all positions of the current Voronoi cells
-        param_space_state : State
+        param_space_state : ParameterSpaceState
             current parameter space state
     
         Returns
         -------
-        Dict[str, float]
+        Tuple[Dict[str, np.ndarray], Number]
             key value pairs that map parameter names to values of the ``new_site``
+            and the index of the Voronoi neighbour
         """
         isite = nearest_index(xp=new_site, x=old_sites, xlen=old_sites.size)
         new_born_values = dict()
@@ -415,6 +440,20 @@ class Voronoi1D(Voronoi):
         return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1          
     
     def birth(self, old_ps_state: ParameterSpaceState):
+        """create a new Voronoi cell and initialize all parameters associated
+        with it
+    
+        Parameters
+        ----------
+        old_ps_state : ParameterSpaceState
+            current parameter space state
+    
+        Returns
+        -------
+        Tuple[Dict[str, np.ndarray], Number]
+            key value pairs that map parameter names to values of the ``new_site``
+            and the index of the Voronoi neighbour
+        """
         # prepare for birth perturbation
         n_cells = old_ps_state.n_dimensions
         if n_cells == self.n_dimensions_max:
