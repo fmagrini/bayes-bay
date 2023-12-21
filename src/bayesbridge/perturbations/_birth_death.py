@@ -15,10 +15,7 @@ class BirthPerturbation(Perturbation):
     parameter_space : ParameterSpace
         instance of :class:`bayesbridge.parameterization.ParameterSpace`
     """
-    def __init__(
-        self,
-        parameter_space: "ParameterSpace",
-    ):
+    def __init__(self, parameter_space):
         self.param_space = parameter_space
         self.param_space_name = parameter_space.name
 
@@ -62,10 +59,7 @@ class DeathPerturbation(Perturbation):
     parameter_space : ParameterSpace
         instance of :class:`bayesbridge.parameterization.ParameterSpace`
     """
-    def __init__(
-        self,
-        parameter_space: "ParameterSpace",
-    ):
+    def __init__(self, parameter_space,):
         self.param_space = parameter_space
         self.param_space_name = parameter_space.name
 

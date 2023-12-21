@@ -17,6 +17,7 @@ class ParamPerturbation(Perturbation):
     parameter : Parameter
         the :class:`Parameter` instance to be perturbed
     """
+
     def __init__(
         self,
         param_space_name: str,
@@ -27,7 +28,7 @@ class ParamPerturbation(Perturbation):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         """perturb one value of the associated parameter, returning a proposed state
-        after this perturbation and its associated acceptance probability excluding log 
+        after this perturbation and its associated acceptance probability excluding log
         likelihood ratio
 
         Parameters
@@ -49,19 +50,24 @@ class ParamPerturbation(Perturbation):
         new_param_values = dict()
         log_prob_ratio = 0
         for param in self.parameters:
-            old_values = old_ps_state.param_values[param.name]
-            new_param_values[param.name] = old_values.copy()
-            if isinstance(param, "ParameterSpace"):    # if it's a discretization
-                new_value, _ratio = param.perturb_value(old_ps_state, isite)
+            if hasattr(param, "birth"):     # if it's a discretization
+                new_ps_state, log_prob_ratio = param.perturb_value(old_ps_state)
+                new_state = state.copy()
+                new_state.set_param_values(self.param_space_name, new_ps_state)
+                return new_state, log_prob_ratio
             else:
+                old_values = old_ps_state.param_values[param.name]
+                new_param_values[param.name] = old_values.copy()
                 pos = getattr(old_ps_state, self.param_space_name, None)
                 old_value = old_values[isite]
                 new_value, _ratio = param.perturb_value(pos, old_value)
-            log_prob_ratio += _ratio
-            new_param_values[param.name][isite] = new_value
+                log_prob_ratio += _ratio
+                new_param_values[param.name][isite] = new_value
         # structure new param value(s) into new state
         new_state = state.copy()
-        new_state.get_param_values(self.param_space_name).param_values.update(new_param_values)
+        new_state.get_param_values(self.param_space_name).param_values.update(
+            new_param_values
+        )
         return new_state, log_prob_ratio
 
     @property

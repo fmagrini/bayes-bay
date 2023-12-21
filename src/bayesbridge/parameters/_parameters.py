@@ -327,7 +327,7 @@ class UniformParameter(Parameter):
             random_deviate = random.normalvariate(0, std)
             new_value = value + random_deviate
             if new_value >= vmin and new_value <= vmax:
-                return new_value
+                return new_value, 0
 
     def log_prior(self, value: Number, position: Number) -> Number:
         """calculates the log of the prior probability density for the given position
@@ -469,7 +469,11 @@ class GaussianParameter(Parameter):
         """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
-        return value + random_deviate
+        new_value = value + random_deviate
+        mean = self.get_mean(position)
+        std = self.get_std(position)
+        ratio = (value - new_value) * (value + new_value - 2 * mean) / (2 * std**2)
+        return new_value, ratio
     
     def log_prior(self, value: Number, position: Number) -> Number:
         """calculates the log of the prior probability density for the given position
@@ -570,7 +574,9 @@ class CustomParameter(Parameter):
         """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
-        return value + random_deviate
+        new_value = value + random_deviate
+        ratio = self.log_prior(new_value) - self.log_prior(value)
+        return new_value, ratio
 
     def log_prior(self, value: Number, position: Number) -> Number:
         """calculates the log of the prior probability density for the given position

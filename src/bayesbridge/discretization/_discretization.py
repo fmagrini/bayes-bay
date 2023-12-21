@@ -6,6 +6,7 @@ import numpy as np
 from ..parameters._parameters import Parameter
 from ..parameterization._parameter_space import ParameterSpace
 from .._state import ParameterSpaceState
+from ..perturbations._param_values import ParamPerturbation
 
 
 class Discretization(Parameter, ParameterSpace):
@@ -25,8 +26,6 @@ class Discretization(Parameter, ParameterSpace):
         Parameter.__init__(
             self, 
             name=name,
-            vmin=vmin,
-            vmax=vmax,
             perturb_std=perturb_std,
         )
         ParameterSpace.__init__(
@@ -36,7 +35,7 @@ class Discretization(Parameter, ParameterSpace):
             n_dimensions_max=n_dimensions_max,
             n_dimensions_init_range=n_dimensions_init_range,
             parameters=parameters
-            )
+        )
         self.spatial_dimensions = spatial_dimensions
         self.perturb_std = perturb_std
         self.birth_from = birth_from        
@@ -53,9 +52,7 @@ class Discretization(Parameter, ParameterSpace):
         raise NotImplementedError
 
     def _init_perturbation_funcs(self):
-        self._perturbation_funcs.append(
-            ParamPerturbation(self.name, [self])
-            )
+        self._perturbation_funcs.append(ParamPerturbation(self.name, [self]))
         
     @abstractmethod
     def birth(

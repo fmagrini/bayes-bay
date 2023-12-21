@@ -2,7 +2,6 @@ from typing import List, Callable, Tuple, Dict
 from numbers import Number
 import random
 import math
-import numpy as np
 
 from .._state import State, ParameterSpaceState
 from ..parameters import Parameter
