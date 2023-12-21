@@ -93,7 +93,7 @@ class ParameterSpace:
                 self.parameters[param_name].initialize()
             )
         new_state = ParameterSpaceState(n_dims+1, new_param_values)
-        prob_ratio = math.log(n_dims + 1)
+        prob_ratio = - math.log(n_dims + 1)
         return new_state, prob_ratio
     
     def death(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
@@ -105,7 +105,7 @@ class ParameterSpace:
         for param_name, param_vals in ps_state.param_values.items():
             new_param_values[param_name] = delete(param_vals, i_to_remove)
         new_state = ParameterSpaceState(n_dims-1, new_param_values)
-        prob_ratio = - math.log(n_dims)
+        prob_ratio = math.log(n_dims)
         return new_state, prob_ratio
     
     def _init_perturbation_funcs(self):

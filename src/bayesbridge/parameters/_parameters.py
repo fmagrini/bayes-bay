@@ -577,7 +577,7 @@ class CustomParameter(Parameter):
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         new_value = value + random_deviate
-        ratio = self.log_prior(new_value) - self.log_prior(value)
+        ratio = self.log_prior(new_value, position) - self.log_prior(value, position)
         return new_value, ratio
 
     def log_prior(self, value: Number, position: Number) -> Number:
@@ -596,4 +596,7 @@ class CustomParameter(Parameter):
         Number
             the log prior probability density
         """
-        return self._log_prior(position, value)
+        try:
+            return self._log_prior(value, position)
+        except:
+            return self._log_prior(value)

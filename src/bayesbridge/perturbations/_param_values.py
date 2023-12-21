@@ -49,7 +49,7 @@ class ParamPerturbation(Perturbation):
         # randomly perturb the value(s)
         new_param_values = dict()
         log_prob_ratio = 0
-        for param in self.parameters:
+        for param in self.parameters.values():
             if hasattr(param, "birth"):     # if it's a discretization
                 new_ps_state, log_prob_ratio = param.perturb_value(old_ps_state)
                 new_state = state.copy()
@@ -60,7 +60,7 @@ class ParamPerturbation(Perturbation):
                 new_param_values[param.name] = old_values.copy()
                 pos = getattr(old_ps_state, self.param_space_name, None)
                 old_value = old_values[isite]
-                new_value, _ratio = param.perturb_value(pos, old_value)
+                new_value, _ratio = param.perturb_value(old_value, pos)
                 log_prob_ratio += _ratio
                 new_param_values[param.name][isite] = new_value
         # structure new param value(s) into new state
