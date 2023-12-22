@@ -27,9 +27,12 @@ VORONOI_POS_MAX = 150
 N_CHAINS = 48
 
 
+def _calc_thickness(sites: np.ndarray):
+    return bb.discretization.Voronoi1D.compute_cell_extents(np.array(sites, dtype=float))
+
 def _get_thickness(state: bb.State):
     sites = state.get_param_values("voronoi").param_values["voronoi"]
-    return bb.discretization.Voronoi1D.compute_cell_extents(sites)
+    return _calc_thickness(sites)
 
 def forward_sw(model, periods, wave="rayleigh", mode=1):
     voronoi = model.get_param_values("voronoi")
@@ -180,10 +183,6 @@ inversion.run(
     save_every=1_000,
     print_every=1_000,
 )
-
-saved_models = inversion.get_results(concatenate_chains=True)
-interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
-all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi_sites"]]
 
 # -------------- Plot and save results
 saved_models = inversion.get_results(concatenate_chains=True)
