@@ -302,7 +302,7 @@ class UniformParameter(Parameter):
             return np.random.uniform(vmin, vmax, n_vals)
 
     def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
-        """perturb the value of a given position from the given current value, and
+        r"""perturb the value of a given position from the given current value, and
         calculates the associated acceptance probability excluding log likelihood ratio
         
         The value is perturbed using a Gaussian deviate based on the 
@@ -318,8 +318,25 @@ class UniformParameter(Parameter):
         Returns
         -------
         Tuple[Number, Number]
-            the new value of this parameter at the given position, and its associated
-            partial acceptance probability excluding log likelihood ratio
+            the new value of this parameter at the given position, and the log of 
+            the associated partial acceptance probability 
+            
+            .. math::
+                
+                p = 
+                \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+                \times
+                \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
+                \times
+                \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+            
+            which in the case of uniformly distributed parameters is equal to 0.
+            In the above equation, :math:`\bf m'` denotes the new model as obtained 
+            from the perturbation of ``value``. The perturbed ``value`` is generated 
+            through a random deviate from a normal distribution 
+            :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
+            the original value and :math:`\sigma` the standard deviation of the Gaussian 
+            at the specified position (:attr:`UniformParameter.perturb_std`)
         """
         # randomly perturb the value until within range
         std = self.get_perturb_std(position)
@@ -330,22 +347,31 @@ class UniformParameter(Parameter):
             if new_value >= vmin and new_value <= vmax:
                 return new_value, 0
 
-    def log_prior(self, value: Number, position: Number) -> Number:
-        """calculates the log of the prior probability density for the given position
+    def log_prior(self, 
+                  value: Number, 
+                  position: Union[Number, np.ndarray] = None) -> Number:
+        r"""calculates the log of the prior probability density for the given position
         and value
 
         Parameters
         ----------
         value : Number
             the value to calculate the probability density for
-        position : Number
+        position : Number, optional
             the position of the value
 
         Returns
         -------
         Number
-            log prior probability. If `value` is outside the allowed range at
-            the given position, ``-inf`` is returned
+            the log of the prior probability 
+            
+            .. math::
+                p(v) = \frac{1}{\Delta v}
+                
+            where :math:`v` denotes the ``value`` passed by the user and 
+            :math:`\Delta v` the allowed range at the given ``position`` in the 
+            discretization (if position is not None). If ``value`` is outside 
+            the allowed range, ``-inf`` is returned
         """
         vmin, vmax = self.get_vmin_vmax(position)
         if vmin <= value <= vmax:
@@ -392,7 +418,7 @@ class GaussianParameter(Parameter):
         })
     
     def get_mean(
-        self, position: Union[Number, np.ndarray]
+        self, position: Union[Number, np.ndarray] = None
     ) -> Union[Number, np.ndarray]:
         """get the prior mean of the Gaussian at the given position in the 
         discretization domain
@@ -411,13 +437,13 @@ class GaussianParameter(Parameter):
         return self.get_hyper_param("mean", position)
 
     def get_std(
-        self, position: Union[Number, np.ndarray]
+        self, position: Union[Number, np.ndarray] = None
     ) -> Union[Number, np.ndarray]:
         """get the prior standard deviation of the Gaussian at the given position
 
         Parameters
         ----------
-        position: Union[Number, np.ndarray]
+        position: Union[Number, np.ndarray], optional
             the position(s) in the discretization domain at which the uniform 
             distribution range will be returned
 
@@ -436,7 +462,7 @@ class GaussianParameter(Parameter):
         
         Parameters
         ----------
-        position : Union[np.ndarray, Number]
+        position : Union[np.ndarray, Number], optional
             an array of positions or one position, default to None
 
         Returns
@@ -452,8 +478,10 @@ class GaussianParameter(Parameter):
         values = np.random.normal(mean, std, n_vals)
         return values
 
-    def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
-        """perturb the value of a given position from the given current value, and
+    def perturb_value(self, 
+                      value: Number, 
+                      position: Union[Number, np.ndarray] = None) -> Tuple[Number, Number]:
+        r"""perturb the value of a given position from the given current value, and
         calculates the associated acceptance probability excluding log likelihood ratio
         
         Parameters
@@ -466,8 +494,22 @@ class GaussianParameter(Parameter):
         Returns
         -------
         Tuple[Number, Number]
-            the new value of this parameter at the given position, and its associated
-            partial acceptance probability excluding log likelihood ratio
+            the new value of this parameter at the given position, and the log of 
+            the associated partial acceptance probability 
+            
+            .. math::
+                
+                \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+                \times
+                \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
+                \times
+                \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
+            
+            where :math:`\bf m'` denotes the new model as obtained from the perturbation
+            of ``value``. The perturbed ``value`` is generated through a random deviate from a normal 
+            distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
+            the original value and :math:`\sigma` the standard deviation of the Gaussian 
+            at the specified position (:attr:`GaussianParameter.perturb_std`)
         """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
@@ -477,21 +519,32 @@ class GaussianParameter(Parameter):
         ratio = (value - new_value) * (value + new_value - 2 * mean) / (2 * std**2)
         return new_value, ratio
     
-    def log_prior(self, value: Number, position: Number) -> Number:
-        """calculates the log of the prior probability density for the given position
+    def log_prior(self, 
+                  value: Number, 
+                  position: Union[Number, np.ndarray] = None) -> Number:
+        r"""calculates the log of the prior probability density for the given position
         and value
 
         Parameters
         ----------
         value : Number
             the value to calculate the probability density for
-        position : Number
-            the position of the value
+        position : Number, optional
+            the position in the discretization
         
         Returns
         -------
         Number
-            the log prior probability density for the Gaussian parameter
+            the log of the prior probability 
+            
+            .. math::
+                p(v) = \frac{1}{\sigma \sqrt{2 \pi}} 
+                \exp \Bigg \lbrace -\frac{\left( v - \mu \right)^2}
+                {2\sigma^2} \Bigg \rbrace
+            where :math:`\sigma` and :math:`\mu` denote the mean and standard deviation of the 
+            Gaussian prior distribution (at the given ``position`` in the discretization,
+            if position is not None) and :math:`v` the ``value`` passed by
+            the user
         """
         mean = self.get_mean(position)
         std = self.get_std(position)
@@ -543,7 +596,7 @@ class CustomParameter(Parameter):
 
         Parameters
         ----------
-        position : Union[np.ndarray, Number]
+        position : Union[np.ndarray, Number], optional
             an array of positions or one position, default to None
         
         Returns
@@ -553,25 +606,38 @@ class CustomParameter(Parameter):
         """
         return self._initialize(position)
     
-    def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
-        """perturb the value of a given position from the given current value, and
+    def perturb_value(self, 
+                      value: Number, 
+                      position: Union[Number, np.ndarray] = None
+                      ) -> Tuple[Number, Number]:
+        r"""perturb the value of a given position from the given current value, and
         calculates the associated acceptance probability excluding log likelihood ratio
 
         Parameters
         ----------
         value : Number
             the current value to be perturbed from
-        position : Number
+        position : Number, optional
             the position of the value to be perturbed
 
         Returns
         -------
         Tuple[Number, Number]
-            the new value of this parameter at the given position, and its associated
-            partial acceptance probability excluding log likelihood ratio. The 
-            perturbed ``value`` is generated through a random deviate from a normal 
+            the new value of this parameter at the given position, and the log of 
+            the associated partial acceptance probability 
+            
+            .. math::
+                
+                \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+                \times
+                \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
+                \times
+                \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
+            
+            where :math:`\bf m'` denotes the new model as obtained from the perturbation
+            of ``value``. The perturbed ``value`` is generated through a random deviate from a normal 
             distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
-            the original value and :math:`sigma` the standard deviation of the Gaussian 
+            the original value and :math:`\sigma` the standard deviation of the Gaussian 
             at the specified position (:attr:`CustomParameter.perturb_std`)
         """
         perturb_std = self.get_perturb_std(position)
@@ -580,7 +646,9 @@ class CustomParameter(Parameter):
         ratio = self.log_prior(new_value, position) - self.log_prior(value, position)
         return new_value, ratio
 
-    def log_prior(self, value: Number, position: Number) -> Number:
+    def log_prior(self, 
+                  value: Number, 
+                  position: Union[Number, np.ndarray] = None) -> Number:
         """calculates the log of the prior probability density for the given position
         and value
 
@@ -588,7 +656,7 @@ class CustomParameter(Parameter):
         ----------
         value : Number
             the value to calculate the probability density for
-        position : Number
+        position : Number, optional
             the position of the value
         
         Returns
