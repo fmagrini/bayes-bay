@@ -302,7 +302,7 @@ class UniformParameter(Parameter):
             return np.random.uniform(vmin, vmax, n_vals)
 
     def perturb_value(self, value: Number, position: Number) -> Tuple[Number, Number]:
-        """perturb the value of a given position from the given current value, and
+        r"""perturb the value of a given position from the given current value, and
         calculates the associated acceptance probability excluding log likelihood ratio
         
         The value is perturbed using a Gaussian deviate based on the 
@@ -318,8 +318,25 @@ class UniformParameter(Parameter):
         Returns
         -------
         Tuple[Number, Number]
-            the new value of this parameter at the given position, and its associated
-            partial acceptance probability excluding log likelihood ratio
+            the new value of this parameter at the given position, and the log of 
+            the associated partial acceptance probability 
+            
+            .. math::
+                
+                p = 
+                \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+                \times
+                \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
+                \times
+                \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+            
+            which in the case of uniformly distributed parameters is equal to 0.
+            In the above equation, :math:`\bf m'` denotes the new model as obtained 
+            from the perturbation of ``value``. The perturbed ``value`` is generated 
+            through a random deviate from a normal distribution 
+            :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
+            the original value and :math:`\sigma` the standard deviation of the Gaussian 
+            at the specified position (:attr:`UniformParameter.perturb_std`)
         """
         # randomly perturb the value until within range
         std = self.get_perturb_std(position)
@@ -492,7 +509,7 @@ class GaussianParameter(Parameter):
             of ``value``. The perturbed ``value`` is generated through a random deviate from a normal 
             distribution :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
             the original value and :math:`\sigma` the standard deviation of the Gaussian 
-            at the specified position (:attr:`CustomParameter.perturb_std`)
+            at the specified position (:attr:`GaussianParameter.perturb_std`)
         """
         perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
