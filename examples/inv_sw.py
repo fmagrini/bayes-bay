@@ -12,7 +12,6 @@ import bayesbridge as bb
 VP_VS = 1.77
 RAYLEIGH_STD = 0.02
 LOVE_STD = 0.02
-RF_STD = 0.03
 LAYERS_MIN = 3
 LAYERS_MAX = 15
 LAYERS_INIT_RANGE = 0.3
