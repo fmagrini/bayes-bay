@@ -5,8 +5,7 @@ import math
 import numpy as np
 
 from ._utils_1d import inverse_covariance
-from .perturbations._data_noise import NoisePerturbation
-from ._state import State, DataNoise
+from ._state import State, DataNoiseState
 
 
 class Target:
@@ -57,42 +56,27 @@ class Target:
         self.noise_is_correlated = noise_is_correlated
         self.std_min = std_min
         self.std_max = std_max
+        self.std_perturb_std = std_perturb_std
         self.correlation_min = correlation_min
         self.correlation_max = correlation_max
-        if covariance_mat_inv is None:
-            self._perturbation_func = NoisePerturbation(
-                target_name=name,
-                std_min=std_min,
-                std_max=std_max,
-                std_perturb_std=std_perturb_std,
-                correlation_min=correlation_min if noise_is_correlated else None,
-                correlation_max=correlation_max if noise_is_correlated else None,
-                correlation_perturb_std=correlation_perturb_std
-                if noise_is_correlated
-                else None,
-            )
-        else:
+        self.correlation_perturb_std = correlation_perturb_std
+        if covariance_mat_inv is not None:
             self._perturbation_func = None
             if np.isscalar(covariance_mat_inv):
                 self.covariance_mat_inv = covariance_mat_inv
             else:
                 self.covariance_mat_inv = np.array(covariance_mat_inv)
+        else:
+            self.covariance_mat_inv = None
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def perturbation_function(self) -> Callable[[State], Tuple[State, Number]]:
-        """a list of perturbation functions generated based on whether there are
-        unknown data noise values such as data noise standard deviation and correaltion
-        """
-        return self._perturbation_func
-
-    @property
     def is_hierarchical(self):
         """whether the data noise parameters are unknown (i.e. to be inversed)"""
-        return self.perturbation_function is not None
+        return self.covariance_mat_inv is None
 
     def initialize(self, state: State):
         """initializes the data noise parameters
@@ -100,14 +84,14 @@ class Target:
         Parameters
         ----------
         state : State
-            the current state where initialized DataNoise parameter is to be updated to
+            the current state where initialized DataNoiseState parameter is to be updated to
         """
         if self.is_hierarchical:
             noise_std = random.uniform(self.std_min, self.std_max)
             # state.set_param_values((self.name, "noise_std"), noise_std)
             noise_corr = random.uniform(self.correlation_min, self.correlation_max) \
                 if self.noise_is_correlated else None
-            state.set_param_values(self.name, DataNoise(std=noise_std, correlation=noise_corr))
+            state.set_param_values(self.name, DataNoiseState(std=noise_std, correlation=noise_corr))
 
     def inverse_covariance_times_vector(
         self, state: State, vector: np.ndarray

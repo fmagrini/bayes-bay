@@ -6,6 +6,7 @@ import numpy as np
 from .exceptions import ForwardException
 from ._state import State
 from ._target import Target
+from .perturbations._data_noise import NoisePerturbation
 
 
 class LogLikelihood:
@@ -30,7 +31,7 @@ class LogLikelihood:
         assert len(self.targets) == len(self.fwd_functions)
         self._check_duplicate_target_names()
         self._init_perturbation_funcs()
-    
+
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
         """A list of perturbation functions associated with the data noise of the
@@ -40,7 +41,7 @@ class LogLikelihood:
         the target(s) is explicitly set to be unknown(s).
         """
         return self._perturbation_funcs
-    
+
     def log_likelihood_ratio(self, old_state, new_state):
         old_misfit, old_log_det = self._get_misfit_and_det(old_state)
         new_misfit, new_log_det = self._get_misfit_and_det(new_state)
@@ -57,10 +58,10 @@ class LogLikelihood:
             raise ValueError("duplicate target names found")
 
     def _init_perturbation_funcs(self):
-        self._perturbation_funcs = []
-        for target in self.targets:
-            if target.is_hierarchical:
-                self._perturbation_funcs.append(target.perturbation_function)
+        hier_targets = [t for t in self.targets if t.is_hierarchical]
+        self._perturbation_funcs = (
+            [NoisePerturbation(self.targets)] if hier_targets else []
+        )
 
     def _get_misfit_and_det(self, state: State) -> Tuple[Number, Number]:
         misfit = 0

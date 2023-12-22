@@ -43,7 +43,7 @@ Data structure for states
 
     bayesbridge.State
     bayesbridge.ParameterSpaceState
-    bayesbridge.DataNoise
+    bayesbridge.DataNoiseState
 
 Parameterizations
 ^^^^^^^^^^^^^^^^^

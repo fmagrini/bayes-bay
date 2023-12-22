@@ -1,4 +1,4 @@
-from ._state import DataNoise, ParameterSpaceState, State
+from ._state import DataNoiseState, ParameterSpaceState, State
 from ._target import Target
 from ._log_likelihood import LogLikelihood
 from ._markov_chain import MarkovChain, BaseMarkovChain
@@ -10,7 +10,7 @@ from ._version import __version__
 
 
 __all__ = [
-    "DataNoise", 
+    "DataNoiseState", 
     "ParameterSpaceState", 
     "State",
     "Target",

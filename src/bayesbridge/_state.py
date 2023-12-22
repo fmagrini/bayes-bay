@@ -5,17 +5,17 @@ from numbers import Number
 import numpy as np
 
 
-_DataNoise = namedtuple("DataNoise", ["std", "correlation"])
+_DataNoiseState = namedtuple("DataNoiseState", ["std", "correlation"])
 
-class DataNoise(_DataNoise):
-    def copy(self) -> "DataNoise":
+class DataNoiseState(_DataNoiseState):
+    def copy(self) -> "DataNoiseState":
         return self._replace()
     
     def export_dict(self, name: str) -> dict:
-        return {
-            f"{name}.std": self.std, 
-            f"{name}.correlation": self.correlation, 
-        }
+        res = {f"{name}.std": self.std}
+        if self.correlation is not None:
+            res[f"{name}.correlation"] = self.correlation
+        return res
 
 
 @dataclass
@@ -74,10 +74,10 @@ class State:
 
     Parameters
     ----------
-    param_values : Dict[str, Union[ParameterSpaceState, DataNoise]]
+    param_values : Dict[str, Union[ParameterSpaceState, DataNoiseState]]
         dictionary containing parameter values, e.g. 
         ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs": 
-        np.array([4,5,6])}), "rayleigh": DataNoise(std=0.01, 
+        np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01, 
         correlation=None)}``
     temperature : float
         the temperature of the Markov chain associated with this state
@@ -93,7 +93,7 @@ class State:
         when ``param_values`` is not a dict
     """
 
-    param_values: Dict[str, Union[ParameterSpaceState, DataNoise]] = \
+    param_values: Dict[str, Union[ParameterSpaceState, DataNoiseState]] = \
         field(default_factory=dict)
     temperature: float = 1
     cache: Dict[str, Any] = field(default_factory=dict)
@@ -108,7 +108,7 @@ class State:
             self.set_param_values(name, values)
 
     def set_param_values(
-        self, param_name: str, values: Union[ParameterSpaceState, DataNoise]
+        self, param_name: str, values: Union[ParameterSpaceState, DataNoiseState]
     ):
         """Changes the value(s) of a parameter
 
@@ -116,21 +116,21 @@ class State:
         ----------
         param_name : str
             the parameter name (i.e. the key in the ``param_values``)
-        values : Union[ParameterSpaceState, DataNoise]
+        values : Union[ParameterSpaceState, DataNoiseState]
             the value(s) to be set for the given ``param_name``
         """
         if isinstance(param_name, str):
-            if not isinstance(values, (ParameterSpaceState, DataNoise)):
+            if not isinstance(values, (ParameterSpaceState, DataNoiseState)):
                 raise TypeError(
                     "parameter values should either be a ParameterSpaceState or a "
-                    "`DataNoise` instance"
+                    "`DataNoiseState` instance"
                 )
             self.param_values[param_name] = values
             setattr(self, param_name, values)
         else:
             raise ValueError("`param_name` should be a string")
 
-    def get_param_values(self, param_name: str) -> Union[ParameterSpaceState, DataNoise]:
+    def get_param_values(self, param_name: str) -> Union[ParameterSpaceState, DataNoiseState]:
         """Get the value(s) of a parameter
 
         Parameters
@@ -140,7 +140,7 @@ class State:
 
         Returns
         -------
-        Union[ParameterSpaceState, DataNoise]
+        Union[ParameterSpaceState, DataNoiseState]
             the value(s) of the given ``param_name``
         """
         if isinstance(param_name, str):

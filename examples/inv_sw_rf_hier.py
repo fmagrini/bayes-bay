@@ -94,7 +94,7 @@ love1 = forward_sw(true_model, periods1, "love", 1)
 love1_dobs = love1 + np.random.normal(0, LOVE_STD, love1.size)
 
 rf = forward_rf(true_model)
-rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
+rf_dobs = rf + np.random.normal(0, RF_STD, rf.size)
 
 
 # -------------- Define bayesbridge objects
@@ -115,7 +115,7 @@ targets = [
     ),
     bb.Target(
         "rf", 
-        rf, 
+        rf_dobs, 
         std_min=RF_STD_MIN, 
         std_max=RF_STD_MAX, 
         std_perturb_std=RF_STD_PERTURB_STD, 
