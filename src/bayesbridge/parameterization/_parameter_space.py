@@ -13,7 +13,29 @@ from .._utils_1d import delete
 
 
 class ParameterSpace:
-    """Utility class to parameterize the Bayesian inference problem"""
+    """Utility class to parameterize the Bayesian inference problem
+    
+    Parameters
+    ----------
+    name : str
+        name of the discretization, for display and storing purposes
+    n_dimensions : Number, optional
+        number of Voronoi cells. None (default) results in a transdimensional
+        parameterization, with the dimensionality of the parameter space allowed
+        to vary in the range `n_dimensions_min`-`n_dimensions_max`
+    n_dimensions_min, n_dimensions_max : Number, optional
+        minimum and maximum number of Voronoi cells, by default 1 and 10. These
+        parameters are ignored if `n_dimensions` is not None
+    n_dimensions_init_range : Number, optional
+        percentage of the range `n_dimensions_min`-`n_dimensions_max` used to
+        initialize the number of dimensions (0.3. by default). For example, if 
+        `n_dimensions_min`=1, `n_dimensions_max`=10, and `n_dimensions_init_range`=0.5,
+        the maximum number of dimensions at the initialization is::
+            
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+    parameters : List[Parameter], optional
+        a list of free parameters, by default None
+    """
     def __init__(
         self, 
         name: str,
@@ -83,6 +105,30 @@ class ParameterSpace:
         return ParameterSpaceState(n_dimensions, parameter_vals)
     
     def birth(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        r"""adds a dimension to the current parameter space
+        
+        Parameters
+        ----------
+        ParameterSpaceState
+            initial parameter space state
+
+        Returns
+        -------
+        ParameterSpaceState
+            new parameter space state
+        Number
+            log of the partial acceptance probability 
+            
+            .. math::
+                
+                \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+                \times
+                \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
+                \times
+                \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
+                
+            where :math:`\bf m'` denotes the new model
+        """
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_max:
             raise DimensionalityException("Birth")
@@ -97,6 +143,30 @@ class ParameterSpace:
         return new_state, prob_ratio
     
     def death(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        r"""removes a dimension from the current parameter space
+        
+        Parameters
+        ----------
+        ParameterSpaceState
+            initial parameter space state
+
+        Returns
+        -------
+        ParameterSpaceState
+            new parameter space state
+        Number
+            log of the partial acceptance probability 
+            
+            .. math::
+                
+                \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+                \times
+                \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
+                \times
+                \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
+            
+            where :math:`\bf m'` denotes the new model
+        """
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_min:
             raise DimensionalityException("Death")
