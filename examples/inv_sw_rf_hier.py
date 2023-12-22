@@ -36,19 +36,9 @@ VORONOI_POS_MAX = 150
 N_CHAINS = 48
 
 
-def _calc_thickness(sites: np.ndarray):
-    depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
-    return thickness
-
-def _get_thickness(model: bb.State):
-    sites = model.get_param_values("voronoi").param_values["voronoi"]
-    if model.has_cache("thickness"):
-        thickness = model.load_cache("thickness")
-    else:
-        thickness = _calc_thickness(sites)
-        model.store_cache("thickness", thickness)
-    return thickness
+def _get_thickness(state: bb.State):
+    sites = state.get_param_values("voronoi").param_values["voronoi"]
+    return bb.discretization.Voronoi1D.compute_cell_extents(sites)
 
 def forward_sw(model, periods, wave="rayleigh", mode=1):
     voronoi = model.get_param_values("voronoi")

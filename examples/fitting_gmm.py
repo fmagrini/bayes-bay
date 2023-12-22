@@ -6,7 +6,7 @@ import bayesbridge as bb
 
 
 # -------------- Setting up constants, fwd func, data
-DATA_FILE = "toy_sw_standard_api_saved_models.npy"
+DATA_FILE = "inv_rf_sw_saved_models.npy"
 N_DATA = 100
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -19,7 +19,7 @@ N_CHAINS = 10
 
 saved_models = np.load(DATA_FILE, allow_pickle=True).item()
 depths = []
-for sites in saved_models["voronoi_sites"]:
+for sites in saved_models["voronoi"]:
     depths.extend((sites[:-1] + sites[1:])/2)
 h, e = np.histogram(depths, bins=N_DATA, density=True)
 data_x = (e[:-1] + e[1:]) / 2.0
@@ -34,10 +34,10 @@ def _forward(n_mixtures, means, stds, weights):
     return result
 
 def forward_gaussian_mixtures(model: bb.State):
-    n_mixtures = model.n_voronoi_cells
-    means = model.voronoi_sites
-    stds = model.std
-    weights = model.weight
+    n_mixtures = model.get_param_values("voronoi").n_dimensions
+    means = model.get_param_values("voronoi").get_param_values("voronoi")
+    stds = model.get_param_values("voronoi").get_param_values("std")
+    weights = model.get_param_values("voronoi").get_param_values("weight")
     return _forward(n_mixtures, means, stds, weights)
 
 
@@ -49,14 +49,17 @@ free_parameters = [
     bb.parameters.UniformParameter("weight", vmin=0, vmax=1, perturb_std=0.01),
 ]
 
-parameterization = bb.Voronoi1D(
-    voronoi_site_bounds=(VORONOI_POS_MIN, VORONOI_POS_MAX),
-    voronoi_site_perturb_std=VORONOI_PERTURB_STD,
-    n_voronoi_cells=None,
-    n_voronoi_cells_min=LAYERS_MIN,
-    n_voronoi_cells_max=LAYERS_MAX,
-    free_params=free_parameters,
-    birth_from="prior", 
+parameterization = bb.parameterization.Parameterization(
+    bb.discretization.Voronoi1D(
+        name="voronoi", 
+        vmin=VORONOI_POS_MIN, 
+        vmax=VORONOI_POS_MAX, 
+        perturb_std=VORONOI_PERTURB_STD, 
+        n_dimensions_min=LAYERS_MIN,
+        n_dimensions_max=LAYERS_MAX, 
+        parameters=free_parameters,
+        birth_from="prior", 
+    )
 )
 
 
@@ -65,10 +68,10 @@ inversion = bb.BayesianInversion(
     parameterization, targets, fwd_functions, n_cpus=N_CHAINS, n_chains=N_CHAINS
 )
 inversion.run(
-    n_iterations=1_000,
-    burnin_iterations=500,
-    save_every=100,
-    print_every=100,
+    n_iterations=10_000,
+    burnin_iterations=5_000,
+    save_every=200,
+    print_every=200,
 )
 
 
@@ -76,8 +79,8 @@ inversion.run(
 saved_models = inversion.get_results(concatenate_chains=True)
 saved_models_dpred = [
     _forward(*m) for m in zip(
-        saved_models["n_voronoi_cells"], 
-        saved_models["voronoi_sites"], 
+        saved_models["voronoi.n_dimensions"], 
+        saved_models["voronoi"], 
         saved_models["std"], 
         saved_models["weight"], 
     )
