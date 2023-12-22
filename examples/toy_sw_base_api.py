@@ -44,16 +44,13 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
         flat_earth=False,
     )
 
-def forward_sw_rayleigh(model):
-    return forward_sw(model, periods1, "rayleigh", 1)
-
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
 true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
 true_model = np.hstack((true_thickness, true_vs))
 
 periods1 = np.linspace(4, 80, 20)
-rayleigh1 = forward_sw_rayleigh(true_model)
+rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
 
 
@@ -67,7 +64,7 @@ def log_prior(model):
 
 
 def log_likelihood(model):
-    rayleigh_dpred = forward_sw_rayleigh(model)
+    rayleigh_dpred = forward_sw(model, periods1)
     rayleigh_residual = rayleigh1_dobs - rayleigh_dpred
     rayleigh_loglike = -0.5 * np.sum(
         (rayleigh_residual / RAYLEIGH_STD) ** 2
@@ -94,8 +91,8 @@ def perturbation_vs(model):
     new_vs = vs.copy()
     new_vs[isite] = new_value
     new_model = np.hstack((sites, new_vs))
-    log_proposal_ratio = 0
-    return new_model, log_proposal_ratio
+    log_prob_ratio = 0
+    return new_model, log_prob_ratio
 
 
 def perturbation_voronoi_site(model):
@@ -123,8 +120,8 @@ def perturbation_voronoi_site(model):
     new_sites = new_sites[isort]
     new_vs = vs[isort]
     new_model = np.hstack((new_sites, new_vs))
-    log_proposal_ratio = 0
-    return new_model, log_proposal_ratio
+    log_prob_ratio = 0
+    return new_model, log_prob_ratio
 
 
 def perturbation_birth(model):
@@ -149,9 +146,9 @@ def perturbation_birth(model):
     new_sites = new_sites[isort]
     new_vs = new_vs[isort]
     new_model = np.hstack((new_sites, new_vs))
-    # calculate proposal ratio
-    log_proposal_ratio = -math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
-    return new_model, log_proposal_ratio
+    # calculate partial acceptance probability
+    log_prob_ratio = 0
+    return new_model, log_prob_ratio
 
 
 def perturbation_death(model):
@@ -166,9 +163,9 @@ def perturbation_death(model):
     new_sites = np.delete(sites, isite)
     new_vs = np.delete(vs, isite)
     new_model = np.hstack((new_sites, new_vs))
-    # calculate proposal ratio
-    log_proposal_ratio = math.log(VS_UNIFORM_MAX - VS_UNIFORM_MIN)
-    return new_model, log_proposal_ratio
+    # calculate partial acceptance probability
+    log_prob_ratio = 0
+    return new_model, log_prob_ratio
 
 
 # -------------- Initialize walkers
@@ -191,7 +188,6 @@ inversion = bb.BaseBayesianInversion(
         perturbation_birth,
         perturbation_death,
     ],
-    log_prior_func=log_prior,
     log_likelihood_func=log_likelihood,
     n_chains=N_CHAINS,
     n_cpus=N_CHAINS,
@@ -221,22 +217,22 @@ all_thicknesses = [_calc_thickness(m) for m in saved_models]
 all_vs = [_get_vs(m) for m in saved_models]
 
 # plot samples, true model and statistics (mean, median, quantiles, etc.)
-ax = bb.Voronoi1D.plot_param_samples(
+ax = bb.discretization.Voronoi1D.plot_param_samples(
     all_thicknesses, all_vs, linewidth=0.1, color="k"
 )
-bb.Voronoi1D.plot_param_samples(
+bb.discretization.Voronoi1D.plot_param_samples(
     [true_thickness], [true_vs], alpha=1, ax=ax, color="r", label="True"
 )
-bb.Voronoi1D.plot_ensemble_statistics(
+bb.discretization.Voronoi1D.plot_ensemble_statistics(
     all_thicknesses, all_vs, interp_depths, ax=ax
 )
 
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
-bb.Voronoi1D.plot_depth_profile(
+bb.discretization.Voronoi1D.plot_depth_profile(
     all_thicknesses, all_vs, ax=axes[0]
 )
-bb.Voronoi1D.plot_interface_distribution(
+bb.discretization.Voronoi1D.plot_interface_distribution(
     all_thicknesses, ax=axes[1]
 )
 for d in np.cumsum(true_thickness):

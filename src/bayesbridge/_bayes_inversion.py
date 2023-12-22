@@ -70,17 +70,17 @@ class BaseBayesianInversion:
                     "at least one of `log_like_ratio_func` and `log_likelihood_func` needs"
                     "to be provided"
                 )
-            log_like_ratio_func = _LogLikeRatioFromFunc(log_likelihood_func)
+            self.log_like_ratio_func = _LogLikeRatioFromFunc(log_likelihood_func)
         else:
-            log_like_ratio_func = _preprocess_func(log_like_ratio_func)
+            self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
             BaseMarkovChain(
                 i,
-                walkers_starting_models[i],
-                perturbation_funcs,
-                log_like_ratio_func,
+                self.walkers_starting_models[i],
+                self.perturbation_funcs,
+                self.log_like_ratio_func,
             )
             for i in range(n_chains)
         ]
@@ -261,6 +261,10 @@ class _FunctionWrapper:
             return self.f(*args, *self.args, **self.kwargs)
         except Exception as e:
             raise UserFunctionError(e)
+    
+    @property
+    def __name__(self) -> str:
+        return self.f.__name__
 
 
 class _LogLikeRatioFromFunc:
@@ -276,3 +280,7 @@ class _LogLikeRatioFromFunc:
         except Exception as e:
             raise UserFunctionError(e)
         return new_loglike - old_loglike
+
+    @property
+    def __name__(self) -> str:
+        return self.f.__name__
