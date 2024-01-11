@@ -73,6 +73,6 @@ class ParamPerturbation(Perturbation):
     def __name__(self) -> str:
         param_names = [p.name for p in self.parameters]
         param_names_str = (
-            str(param_names) if len(param_names) > 1 else str(param_names[0])
+            str(param_names) if len(param_names) != 1 else str(param_names[0])
         )
         return f"{self.type}({param_names_str})"

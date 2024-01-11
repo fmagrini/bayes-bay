@@ -426,7 +426,7 @@ class Voronoi1D(Voronoi):
             old_ps_state: ParameterSpaceState, 
             new_isite: Number, 
             new_ps_state: ParameterSpaceState
-        ):
+    ):
         old_site = old_ps_state["discretization"][old_isite]
         new_site = new_ps_state["discretization"][new_isite]
         log_prior_ratio = 0

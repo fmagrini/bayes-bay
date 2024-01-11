@@ -1,7 +1,6 @@
 from typing import List, Callable, Tuple, Dict
 from numbers import Number
 import random
-import math
 import numpy as np
 
 from .._state import State, ParameterSpaceState
@@ -9,7 +8,7 @@ from ..exceptions import DimensionalityException
 from ..parameters import Parameter
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
-from .._utils_1d import delete
+from .._utils_1d import delete, insert_scalar
 
 
 class ParameterSpace:
@@ -132,14 +131,16 @@ class ParameterSpace:
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_max:
             raise DimensionalityException("Birth")
+        i_insert = random.randint(0, n_dims)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
-            new_param_values[param_name] = np.append(
+            new_param_values[param_name] = insert_scalar(
                 param_vals, 
+                i_insert, 
                 self.parameters[param_name].initialize()
             )
         new_state = ParameterSpaceState(n_dims+1, new_param_values)
-        prob_ratio = - math.log(n_dims + 1)
+        prob_ratio = 0
         return new_state, prob_ratio
     
     def death(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
@@ -175,13 +176,15 @@ class ParameterSpace:
         for param_name, param_vals in ps_state.param_values.items():
             new_param_values[param_name] = delete(param_vals, i_to_remove)
         new_state = ParameterSpaceState(n_dims-1, new_param_values)
-        prob_ratio = math.log(n_dims)
+        prob_ratio = 0
         return new_state, prob_ratio
     
     def _init_perturbation_funcs(self):
-        self._perturbation_funcs = [
-            ParamPerturbation(self.name, list(self.parameters.values()))
-        ]
+        self._perturbation_funcs = []
+        if self.parameters:
+            self._perturbation_funcs.append(
+                ParamPerturbation(self.name, list(self.parameters.values()))
+            )
         if self.trans_d:
             self._perturbation_funcs.append(BirthPerturbation(self))
             self._perturbation_funcs.append(DeathPerturbation(self))
