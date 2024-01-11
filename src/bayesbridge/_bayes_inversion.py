@@ -46,7 +46,9 @@ class BaseBayesianInversion:
         in a model :math:`\mathbf{m}` (any type is allowed, as long as it is 
         consistent with ``walkers_starting_models`` and the below functions) and 
         perturb it to produce the new model :math:`\bf m'`. Each perturbation function 
-        should return :math:`\bf m'` along with :math:`\log(\frac{q\left({\bf m} 
+        should return :math:`\bf m'` along with :math:`\log(
+        \frac{p({\bf m'})}{p({\bf m})}
+        \frac{q\left({\bf m} 
         \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
         \lvert \mathbf{J} \rvert)`, which is used in the calculation of 
         the acceptance probability.
