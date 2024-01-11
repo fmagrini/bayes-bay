@@ -195,8 +195,8 @@ class BaseMarkovChain:
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
         print_every : int, optional
-            the frequency in which we print the progress and information during the
-            sampling, by default 100
+            the frequency with which we print the progress and information during the
+            sampling, by default 100 iterations
         on_begin_iteration : Callable[["BaseMarkovChain"], None], optional
             customized function that's to be run at before an iteration
         on_end_iteration : Callable[["BaseMarkovChain"], None], optional

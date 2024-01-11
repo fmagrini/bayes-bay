@@ -12,7 +12,7 @@ from .._utils_1d import delete, insert_scalar
 
 
 class ParameterSpace:
-    """Utility class to parameterize the Bayesian inference problem
+    r"""Utility class to parameterize the Bayesian inference problem
     
     Parameters
     ----------

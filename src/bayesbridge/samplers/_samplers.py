@@ -189,8 +189,8 @@ class Sampler(ABC):
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
         print_every : int, optional
-            the frequency in which we print the progress and information during the
-            sampling, by default 100
+            the frequency with which we print the progress and information during the
+            sampling, by default 100 iterations
 
         Returns
         -------
@@ -219,6 +219,9 @@ class Sampler(ABC):
 
 
 class VanillaSampler(Sampler):
+    """High-level class to be used to sample the posterior by means of 
+    reversible-jump Markov chain Monte Carlo.
+    """
     def __init__(self):
         super().__init__()
 
@@ -242,7 +245,7 @@ class VanillaSampler(Sampler):
         save_every=100,
         verbose=True,
         print_every=100,
-    ):
+    ) -> List[BaseMarkovChain]:
         return self.advance_chain(
             n_iterations=n_iterations,
             n_cpus=n_cpus,
@@ -254,6 +257,28 @@ class VanillaSampler(Sampler):
 
 
 class ParallelTempering(Sampler):
+    """High-level class to be used to sample the posterior by means of 
+    reversible-jump Markov chain Monte Carlo accelerated with parallel tempering 
+    [1]_, [2]_.
+    
+    Parameters
+    ----------
+    temperature_max : Number
+        the maximum temperature attributed to the chains
+    chains_with_unit_temperature : float
+        the fraction of chains having unit temperature, 0.4 by default (i.e. 40%
+        of the chains)
+    swap_every : int
+        the frequency with which the chain temperatures are randomly chosen 
+        and possibly swapped during the sampling, by default 500 iterations
+    
+    References
+    ----------
+    .. [1] Ray et al. 2013, Robust and accelerated Bayesian inversion of marine 
+        controlled-source electromagnetic data using parallel tempering
+    .. [2] Sambridge 2014, A parallel tempering algorithm for probabilistic 
+        sampling and multimodal optimization
+    """
     def __init__(
         self,
         temperature_max=5,
@@ -302,7 +327,7 @@ class ParallelTempering(Sampler):
         save_every=100,
         verbose=True,
         print_every=100,
-    ):
+    ) -> List[BaseMarkovChain]:
         while True:
             iteration = self.chains[0].statistics["n_explored_models_total"]
             n_it = min(self._swap_every, n_iterations - iteration)
@@ -323,6 +348,26 @@ class ParallelTempering(Sampler):
 
 
 class SimulatedAnnealing(Sampler):
+    r"""High-level class to be used to sample the posterior by means of 
+    reversible-jump Markov chain Monte Carlo accelerated with simulated annealing 
+    [1]_.
+    
+    .. note::
+        In our implementation, the temperature of each Markov chain is decreased
+        exponentially with iteration, from :attr:`temperature_start` to 1, 
+        during the burn-in phase. Using this ``SimulatedAnnealing`` is therefore 
+        incompatible with setting ``burnin_iterations`` to zero in :meth:`run`.
+    
+    Parameters
+    ----------
+    temperature_start : Number
+        the starting temperature of the Markov chains
+        
+        
+    References
+    ----------
+    .. [1] Kirkpatrick et al. 1983, Optimization by simulated annealing
+    """
     def __init__(self, temperature_start=10):
         super().__init__()
         self.temperature_start = temperature_start
@@ -354,7 +399,7 @@ class SimulatedAnnealing(Sampler):
         save_every=100,
         verbose=True,
         print_every=100,
-    ):
+    ) -> List[BaseMarkovChain]:
         self.burnin_iterations = burnin_iterations
         if burnin_iterations != 0:
             self.cooling_rate = math.log(self.temperature_start) / burnin_iterations

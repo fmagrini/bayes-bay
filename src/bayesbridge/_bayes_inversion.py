@@ -142,8 +142,8 @@ class BaseBayesianInversion:
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
         print_every : int, optional
-            the frequency in which we print the progress and information during the
-            sampling, by default 100
+            the frequency with which we print the progress and information during the
+            sampling, by default 100 iterations
         """
         if sampler is None:
             sampler = VanillaSampler()

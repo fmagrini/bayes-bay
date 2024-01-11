@@ -33,19 +33,19 @@ class NoisePerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance probability excluding log
-            likelihood ratio for this perturbation
+            proposed new state and the partial acceptance probability (equal to
+            zero, in this case) excluding log likelihood ratio for this perturbation
         """
         new_data_noise_all = dict()
         for target in self.targets:
             old_data_noise_state = state[target.name]
-            new_data_noise_state = self.perturb_target(target, old_data_noise_state)
+            new_data_noise_state = self._perturb_target(target, old_data_noise_state)
             new_data_noise_all[target.name] = new_data_noise_state
         new_state = state.copy()
         new_state.param_values.update(new_data_noise_all)
         return new_state, 0
     
-    def perturb_target(
+    def _perturb_target(
         self, target: Target, data_noise_state: DataNoiseState
     ) -> DataNoiseState:
         to_be_perturbed = ["std"]
@@ -68,6 +68,7 @@ class NoisePerturbation(Perturbation):
 
     @property
     def __name__(self) -> str:
+        """Identifier for the perturbation"""
         target_names = [t.name for t in self.targets]
         target_names_str = (
             str(target_names) if len(target_names) > 1 else str(target_names[0])
