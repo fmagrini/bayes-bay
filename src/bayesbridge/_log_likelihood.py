@@ -7,6 +7,7 @@ from .exceptions import ForwardException
 from ._state import State
 from ._target import Target
 from .perturbations._data_noise import NoisePerturbation
+from ._utils import _preprocess_func
 
 
 class LogLikelihood:
@@ -27,7 +28,7 @@ class LogLikelihood:
         fwd_functions: Callable[[State], np.ndarray],
     ):
         self.targets = targets
-        self.fwd_functions = fwd_functions
+        self.fwd_functions = [_preprocess_func(func) for func in fwd_functions]
         assert len(self.targets) == len(self.fwd_functions)
         self._check_duplicate_target_names()
         self._init_perturbation_funcs()
