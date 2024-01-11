@@ -24,7 +24,7 @@ SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
 
 class Voronoi(Discretization):
-    """Utility class for Voronoi discretization
+    r"""Utility class for Voronoi discretization
 
     Parameters
     ----------
@@ -173,7 +173,7 @@ class Voronoi(Discretization):
 
 
 class Voronoi1D(Voronoi):
-    """Utility class for Voronoi discretization
+    r"""Utility class for Voronoi discretization
 
     Parameters
     ----------

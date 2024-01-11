@@ -1,7 +1,6 @@
 from abc import abstractmethod, ABC
 from typing import Tuple
 from numbers import Number
-
 from .._state import State
 
 
