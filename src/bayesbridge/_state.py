@@ -8,10 +8,36 @@ import numpy as np
 _DataNoiseState = namedtuple("DataNoiseState", ["std", "correlation"])
 
 class DataNoiseState(_DataNoiseState):
+    """Data structure that stores the state of the data noise parameters during
+    the inference.
+    """
     def copy(self) -> "DataNoiseState":
+        """Returns a deep-copy of the current DataNoiseState
+        
+        Returns
+        -------
+        DataNoiseState
+            the clone of self
+        """
         return self._replace()
     
-    def export_dict(self, name: str) -> dict:
+    def todict(self, name: str) -> dict:
+        """Returns a dictionary containing the noise properties
+        
+        Parameters
+        ----------
+        name : str
+            identifier for the ``DataNoiseState`` instance
+            
+        Returns
+        -------
+        dict
+            dictionary object with keys
+            
+            - :attr:`name`.std
+            - :attr:`name`.correlation (only returned if set as a free parameter,
+              see :class:`Target`)
+        """
         res = {f"{name}.std": self.std}
         if self.correlation is not None:
             res[f"{name}.correlation"] = self.correlation
@@ -20,6 +46,23 @@ class DataNoiseState(_DataNoiseState):
 
 @dataclass
 class ParameterSpaceState:
+    """Data structure that stores the state of a parameter space.
+
+    Parameters
+    ----------
+    n_dimensions : int
+        number of dimensions characterizing the parameter space
+    param_values : Dict[str, Union[ParameterSpaceState, DataNoiseState]]
+        dictionary containing parameter values, e.g. 
+        ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs": 
+        np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01, 
+        correlation=None)}``
+
+    Raises
+    ------
+    TypeError
+        when ``param_values`` is not a dict
+    """
     n_dimensions: int
     param_values: Dict[str, np.ndarray] = field(default_factory=dict)
     
@@ -39,6 +82,15 @@ class ParameterSpaceState:
     def set_param_values(
         self, param_name: str, values: np.ndarray
     ):
+        """Changes the numerical value(s) of a parameter
+
+        Parameters
+        ----------
+        param_name : str
+            the parameter name (i.e. the key in the ``param_values``)
+        values : np.ndarray
+            the value(s) to be set for the given ``param_name``
+        """
         if isinstance(param_name, str):
             if not isinstance(values, np.ndarray):
                 raise TypeError(
@@ -50,18 +102,54 @@ class ParameterSpaceState:
             raise ValueError("`param_name` should be a string")
 
     def get_param_values(self, param_name: str) -> np.ndarray:
+        """Get the value(s) of a parameter
+
+        Parameters
+        ----------
+        param_name : str
+            the parameter name (i.e. the key in the ``param_values`` dict)
+
+        Returns
+        -------
+        Union[np.ndarray, None]
+            the value(s) of the given ``param_name``, if present in
+            :attr:`param_values`
+        """
         if isinstance(param_name, str):
             return self.param_values.get(param_name, None)
         else:
             raise ValueError("`param_name` should be a string")
     
     def copy(self) -> "ParameterSpaceState":
+        """Returns a clone of self
+        
+        Returns
+        -------
+        ParameterSpaceState
+        """
         new_param_values = dict()
         for name, param_vals in self.param_values.items():
             new_param_values[name] = param_vals.copy()
         return ParameterSpaceState(self.n_dimensions, new_param_values)
     
-    def export_dict(self, name: str) -> dict:
+    def todict(self, name: str) -> dict:
+        """Returns a dictionary containing the numerical values defining the 
+        parameter space
+        
+        Parameters
+        ----------
+        name : str
+            identifier for the ``ParameterSpaceState`` instance
+            
+        Returns
+        -------
+        dict
+            dictionary object with keys
+            
+            - :attr:`name`.std
+            - :attr:`name`.correlation (only returned if set as a free parameter,
+              see :class:`Target`)
+        """
         res = {f"{name}.n_dimensions": self.n_dimensions}
         res.update(self.param_values)
         return res
@@ -92,7 +180,6 @@ class State:
     TypeError
         when ``param_values`` is not a dict
     """
-
     param_values: Dict[str, Union[ParameterSpaceState, DataNoiseState]] = \
         field(default_factory=dict)
     temperature: float = 1
@@ -193,7 +280,7 @@ class State:
     def _vars(self):
         all_vars = dict()
         for k, v in self.param_values.items():
-            all_vars.update(v.export_dict(k))
+            all_vars.update(v.todict(k))
         all_vars.update(self.extra_storage)
         return all_vars
 

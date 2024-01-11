@@ -12,7 +12,7 @@ from .exceptions import DimensionalityException, ForwardException, UserFunctionE
 
 
 class BaseMarkovChain:
-    """
+    r"""
     Low-level interface for a Markov Chain.
 
     Instantiation of this class is usually done by :class:`BaseBayesianInversion`.
@@ -27,9 +27,10 @@ class BaseMarkovChain:
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
     log_like_ratio_func: Callable[[Any, Any], Number], optional
-        the log likelihood ratio function :math:`\\log (\\frac{p(d|m_2)}{p(d|m_1)})`.
+        function that calculates that the log likelihood ratio 
+        :math:`\frac{p\left({{\bf d}_{obs} \mid  {\bf m'}}\right)}{p\left({{\bf d}_{obs} \mid  {\bf m}}\right)}`.
         It takes in two models (of consistent type as other arguments of this class)
-        and returns the log likelihood ratio as a number. This is utilised in the
+        and returns a scalar corresponding to the log likelihood ratio. This is utilised in the
         inversion by default, and ``log_likelihood_func`` gets used instead only when
         this argument is None. Default to None
     temperature : int, optional
@@ -219,8 +220,7 @@ class BaseMarkovChain:
 
 
 class MarkovChain(BaseMarkovChain):
-    """
-    High-level interface for a Markov Chain.
+    """High-level interface for a Markov Chain.
 
     This is a subclass of :class:`BaseMarkovChain`.
 
@@ -264,8 +264,7 @@ class MarkovChain(BaseMarkovChain):
         self._init_saved_models()
 
     def initialize(self):
-        """Initialize the parameterization and the parameter values. In other words,
-        to initialize the starting points of this chain.
+        """Initialize the parameterization by defining a starting model.
         """
         self.current_model = self.parameterization.initialize()
         for target in self.log_like_ratio_func.targets:
