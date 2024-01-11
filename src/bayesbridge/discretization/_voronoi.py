@@ -23,7 +23,6 @@ from .._utils_1d import (
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
 
-
 class Voronoi(Discretization):
     """Utility class for Voronoi discretization
 
@@ -256,7 +255,7 @@ class Voronoi1D(Voronoi):
         voronoi_sites = np.sort(np.random.uniform(lb, ub, n_voronoi_cells))
 
         # initialize parameter values
-        parameter_vals = {self.name: voronoi_sites}
+        parameter_vals = {"discretization": voronoi_sites}
         for name, param in self.parameters.items():
             parameter_vals[name] = param.initialize(voronoi_sites)
         return ParameterSpaceState(n_voronoi_cells, parameter_vals)    
@@ -297,18 +296,17 @@ class Voronoi1D(Voronoi):
             the new parameter space state and its associated partial acceptance 
             probability excluding log likelihood ratio
         """
-
-        old_sites = getattr(old_ps_state, self.name)
+        old_sites = old_ps_state["discretization"]
         old_site = old_sites[isite]
         new_site = self._perturb_site(old_sites[isite])
         new_sites = old_sites.copy()
         new_sites[isite] = new_site
         isort = np.argsort(new_sites)
         new_sites = new_sites[isort]
-        new_values = {self.name: new_sites}
+        new_values = {"discretization": new_sites}
         log_prior_ratio = 0
         for param_name, param in self.parameters.items():
-            values = getattr(old_ps_state, param_name)
+            values = old_ps_state[param_name]
             if param.position is not None:
                 log_prior_old = param.log_prior(values[isite], old_site)
                 log_prior_new = param.log_prior(values[isite], new_site)
@@ -404,7 +402,7 @@ class Voronoi1D(Voronoi):
         isite = nearest_index(xp=new_site, x=old_sites, xlen=old_sites.size)
         new_born_values = dict()
         for param_name, param in self.parameters.items():
-            old_values = getattr(param_space_state, param_name)
+            old_values = param_space_state[param_name]
             new_value, _ = param.perturb_value(old_values[isite], new_site)
             new_born_values[param_name] = new_value
         return new_born_values, isite
@@ -419,8 +417,8 @@ class Voronoi1D(Voronoi):
         if self.birth_from == 'prior':
             return 0
         return self._log_probability_ratio_birth_from_neighbour(
-                old_isite, old_ps_state, new_isite, new_ps_state
-                )
+            old_isite, old_ps_state, new_isite, new_ps_state
+        )
     
     def _log_probability_ratio_birth_from_neighbour(
             self, 
@@ -428,16 +426,16 @@ class Voronoi1D(Voronoi):
             old_ps_state: ParameterSpaceState, 
             new_isite: Number, 
             new_ps_state: ParameterSpaceState
-            ):
-        old_site = getattr(old_ps_state, self.name)[old_isite]
-        new_site = getattr(new_ps_state, self.name)[new_isite]
+        ):
+        old_site = old_ps_state["discretization"][old_isite]
+        new_site = new_ps_state["discretization"][new_isite]
         log_prior_ratio = 0
         log_proposal_ratio = 0
         for param_name, param in self.parameters.items():
-            new_value = getattr(new_ps_state, param_name)[new_isite]
+            new_value = new_ps_state[param_name][new_isite]
             log_prior_ratio += param.log_prior(new_value, new_site)
             
-            old_value = getattr(old_ps_state, param_name)[old_isite]
+            old_value = old_ps_state[param_name][old_isite]
             perturb_std = param.get_perturb_std(old_site)
             log_proposal_ratio += (
                 math.log(perturb_std * SQRT_TWO_PI)
@@ -467,21 +465,21 @@ class Voronoi1D(Voronoi):
         # randomly choose a new Voronoi site position
         lb, ub = self.vmin, self.vmax
         new_site = random.uniform(lb, ub)
-        old_sites = getattr(old_ps_state, self.name)
+        old_sites = old_ps_state["discretization"]
         unsorted_values, i_nearest = self._initialize_newborn_params(
             new_site, old_sites, old_ps_state
-            )
+        )
         new_values = dict()
         idx_insert = bisect_left(old_sites, new_site)
         new_sites = insert_scalar(old_sites, idx_insert, new_site)
-        new_values[self.name] = new_sites
+        new_values["discretization"] = new_sites
         for name, value in unsorted_values.items():
-            old_values = getattr(old_ps_state, name)
+            old_values = old_ps_state[name]
             new_values[name] = insert_scalar(old_values, idx_insert, value)
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, self._log_probability_ratio_birth(
             i_nearest, old_ps_state, idx_insert, new_ps_state
-            )       
+        )
     
     def _log_probability_ratio_death(
             self, 
@@ -492,8 +490,8 @@ class Voronoi1D(Voronoi):
         if self.birth_from == 'prior':
             return 0
         return self._log_probability_ratio_death_from_neighbour(
-                iremove, old_ps_state, new_ps_state
-                )
+            iremove, old_ps_state, new_ps_state
+        )
     
     def _log_probability_ratio_death_from_neighbour(
             self, 
@@ -501,14 +499,14 @@ class Voronoi1D(Voronoi):
             old_ps_state: ParameterSpaceState, 
             new_ps_state: ParameterSpaceState
             ):
-        new_sites = getattr(new_ps_state, self.name)
-        old_sites = getattr(old_ps_state, self.name)
+        old_sites = old_ps_state["discretization"]
+        new_sites = new_ps_state["discretization"]
         i_nearest = nearest_index(
             xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
         )
         return -self._log_probability_ratio_birth(
             i_nearest, new_ps_state, iremove, old_ps_state
-            )
+        )
 
     def death(self, old_ps_state: ParameterSpaceState):
         # prepare for death perturbation
@@ -519,13 +517,12 @@ class Voronoi1D(Voronoi):
         iremove = random.randint(0, n_cells - 1)
         # remove parameter values for the removed site
         new_values = dict()
-        for name, value in old_ps_state.param_values.items():
-            old_values = getattr(old_ps_state, name)
+        for name, old_values in old_ps_state.param_values.items():
             new_values[name] = delete(old_values, iremove)
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
         return new_ps_state, self._log_probability_ratio_death(
             iremove, old_ps_state, new_ps_state
-            )
+        )
     
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):

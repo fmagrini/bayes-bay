@@ -43,7 +43,7 @@ class ParamPerturbation(Perturbation):
             likelihood ratio for this perturbation
         """
         # randomly choose a position to perturb the value(s)
-        old_ps_state = state.get_param_values(self.param_space_name)
+        old_ps_state = state[self.param_space_name]
         n_dims = old_ps_state.n_dimensions
         isite = random.randint(0, n_dims - 1)
         # randomly perturb the value(s)
@@ -56,19 +56,17 @@ class ParamPerturbation(Perturbation):
                 new_state.set_param_values(self.param_space_name, new_ps_state)
                 return new_state, log_prob_ratio
             else:
-                old_values = old_ps_state.param_values[param.name]
+                old_values = old_ps_state[param.name]
                 new_param_values[param.name] = old_values.copy()
                 old_value = old_values[isite]
-                old_pos = getattr(old_ps_state, self.param_space_name, None)
+                old_pos = old_ps_state["discretization"]
                 pos = old_pos[isite] if old_pos is not None else None
                 new_value, _ratio = param.perturb_value(old_value, pos)
                 log_prob_ratio += _ratio
                 new_param_values[param.name][isite] = new_value
         # structure new param value(s) into new state
         new_state = state.copy()
-        new_state.get_param_values(self.param_space_name).param_values.update(
-            new_param_values
-        )
+        new_state[self.param_space_name].param_values.update(new_param_values)
         return new_state, log_prob_ratio
 
     @property

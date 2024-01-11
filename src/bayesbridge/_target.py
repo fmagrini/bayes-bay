@@ -117,7 +117,7 @@ class Target:
             else:
                 return self.covariance_mat_inv @ vector
         else:
-            noise = state.get_param_values(self.name)
+            noise = state[self.name]
             std = noise.std
             correlation = noise.correlation
             if correlation is None:
@@ -140,7 +140,7 @@ class Target:
         float
             the log determinant value
         """
-        noise = state.get_param_values(self.name)
+        noise = state[self.name]
         std = noise.std
         r = noise.correlation
         if r is None:

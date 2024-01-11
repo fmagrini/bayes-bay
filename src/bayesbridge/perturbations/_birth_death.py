@@ -40,7 +40,7 @@ class BirthPerturbation(Perturbation):
             when the current state has already reached the maximum number of Voronoi
             cells
         """
-        old_ps_state = state.get_param_values(self.param_space_name)
+        old_ps_state = state[self.param_space_name]
         new_ps_state, log_prob_ratio = self.param_space.birth(old_ps_state)
         new_state = state.copy()
         new_state.set_param_values(self.param_space_name, new_ps_state)
@@ -85,7 +85,7 @@ class DeathPerturbation(Perturbation):
             when the current state has already reached the minimum number of Voronoi
             cells
         """
-        old_ps_state = state.get_param_values(self.param_space_name)
+        old_ps_state = state[self.param_space_name]
         new_ps_state, log_prob_ratio = self.param_space.death(old_ps_state)
         new_state = state.copy()
         new_state.set_param_values(self.param_space_name, new_ps_state)

@@ -132,6 +132,7 @@ class BaseMarkovChain:
         return self.log_like_ratio_func(self.current_model, new_model)
     
     def _next_iteration(self, save_model):
+        _last_exception = None
         for i in range(500):
             # choose one perturbation function and type
             i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
@@ -142,7 +143,7 @@ class BaseMarkovChain:
             try:
                 new_model, log_prob_ratio = perturb_func(self.current_model)
             except (DimensionalityException, UserFunctionError) as e:
-                i -= 1  # this doesn't have to go into failure counter
+                _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
 
@@ -150,6 +151,7 @@ class BaseMarkovChain:
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model)
             except (ForwardException, UserFunctionError) as e:
+                _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
 
@@ -165,8 +167,9 @@ class BaseMarkovChain:
                 self._save_model()
             return
         raise RuntimeError(
-            f"Chain {self.id} failed in forward calculation for 500 times"
-        )
+            f"Chain {self.id} failed in perturb or forward calculation for 500 times. "
+            "See above for the last exception."
+        ) from _last_exception
 
     def advance_chain(
         self,

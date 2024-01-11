@@ -6,7 +6,7 @@ import bayesbridge as bb
 
 
 # -------------- Setting up constants, fwd func, data
-DATA_FILE = "inv_rf_sw_saved_models.npy"
+DATA_FILE = "toy_sw_saved_models.npy"
 N_DATA = 100
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -19,7 +19,7 @@ N_CHAINS = 10
 
 saved_models = np.load(DATA_FILE, allow_pickle=True).item()
 depths = []
-for sites in saved_models["voronoi"]:
+for sites in saved_models["voronoi.discretization"]:
     depths.extend((sites[:-1] + sites[1:])/2)
 h, e = np.histogram(depths, bins=N_DATA, density=True)
 data_x = (e[:-1] + e[1:]) / 2.0
@@ -34,10 +34,10 @@ def _forward(n_mixtures, means, stds, weights):
     return result
 
 def forward_gaussian_mixtures(model: bb.State):
-    n_mixtures = model.get_param_values("voronoi").n_dimensions
-    means = model.get_param_values("voronoi").get_param_values("voronoi")
-    stds = model.get_param_values("voronoi").get_param_values("std")
-    weights = model.get_param_values("voronoi").get_param_values("weight")
+    n_mixtures = model["voronoi"].n_dimensions
+    means = model["voronoi"]["discretization"]
+    stds = model["voronoi"]["std"]
+    weights = model["voronoi"]["weight"]
     return _forward(n_mixtures, means, stds, weights)
 
 
@@ -80,7 +80,7 @@ saved_models = inversion.get_results(concatenate_chains=True)
 saved_models_dpred = [
     _forward(*m) for m in zip(
         saved_models["voronoi.n_dimensions"], 
-        saved_models["voronoi"], 
+        saved_models["voronoi.discretization"], 
         saved_models["std"], 
         saved_models["weight"], 
     )

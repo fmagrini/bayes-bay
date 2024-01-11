@@ -38,7 +38,7 @@ class NoisePerturbation(Perturbation):
         """
         new_data_noise_all = dict()
         for target in self.targets:
-            old_data_noise_state = state.get_param_values(target.name)
+            old_data_noise_state = state[target.name]
             new_data_noise_state = self.perturb_target(target, old_data_noise_state)
             new_data_noise_all[target.name] = new_data_noise_state
         new_state = state.copy()

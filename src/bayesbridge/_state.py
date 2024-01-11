@@ -35,7 +35,10 @@ class ParameterSpaceState:
                     f"({self.n_dimensions}) but have {len(values)} instead"
                 )
             self.set_param_values(name, values)
-            
+
+    def __getitem__(self, name: str) -> np.ndarray:
+        return self.get_param_values(name)
+    
     def set_param_values(
         self, param_name: str, values: np.ndarray
     ):
@@ -62,8 +65,11 @@ class ParameterSpaceState:
         return ParameterSpaceState(self.n_dimensions, new_param_values)
     
     def export_dict(self, name: str) -> dict:
+        _discretization = "discretization"
         res = {f"{name}.n_dimensions": self.n_dimensions}
-        res.update(self.param_values)
+        res.update({k: v for k, v in self.param_values.items() if k != _discretization})
+        if _discretization in self.param_values:
+            res[f"{name}.{_discretization}"] = self.param_values[_discretization]
         return res
 
 
@@ -106,6 +112,9 @@ class State:
             raise TypeError("param_values should be a dict")
         for name, values in self.param_values.items():
             self.set_param_values(name, values)
+            
+    def __getitem__(self, name: str) -> Union[ParameterSpaceState, DataNoiseState]:
+        return self.get_param_values(name)
 
     def set_param_values(
         self, param_name: str, values: Union[ParameterSpaceState, DataNoiseState]

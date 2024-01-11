@@ -29,17 +29,16 @@ def _calc_thickness(sites: np.ndarray):
     return bb.discretization.Voronoi1D.compute_cell_extents(np.array(sites, dtype=float))
 
 def _get_thickness(state: bb.State):
-    sites = state.get_param_values("voronoi").param_values["voronoi"]
+    sites = state["voronoi"]["discretization"]
     return _calc_thickness(sites)
 
-def forward_sw(model, periods, wave="rayleigh", mode=1):
-    voronoi = model.get_param_values("voronoi")
-    vs = voronoi.get_param_values("vs")
-    thickness = _get_thickness(model)
+def forward_sw(state: bb.State, periods, wave="rayleigh", mode=1):
+    vs = state["voronoi"]["vs"]
+    h = _get_thickness(state)
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
-        thickness,
+        h,
         vp,
         vs,
         rho,
@@ -56,7 +55,8 @@ true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
 true_model = bb.State(
     {
         "voronoi": bb.ParameterSpaceState(
-            len(true_vs), {"voronoi": true_voronoi_positions, "vs": true_vs}
+            len(true_vs), 
+            {"discretization": true_voronoi_positions, "vs": true_vs}
         )
     }
 )
@@ -172,7 +172,7 @@ inversion.run(
 # -------------- Plot and save results
 saved_models = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
-all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi"]]
+all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi.discretization"]]
 
 # plot samples, true model and statistics (mean, median, quantiles, etc.)
 ax = bb.discretization.Voronoi1D.plot_param_samples(

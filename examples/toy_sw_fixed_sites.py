@@ -22,7 +22,7 @@ N_CHAINS = 2
 
 
 def forward_sw(model, periods, wave="rayleigh", mode=1):
-    vs = model.get_param_values("parameter_space").get_param_values("vs")
+    vs = model["parameter_space"]["vs"]
     thickness = THICKNESS
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
