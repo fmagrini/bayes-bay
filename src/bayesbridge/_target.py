@@ -9,19 +9,19 @@ from ._state import State, DataNoiseState
 
 
 class Target:
-    """Data target that can be configured to have noise level as knowns or unknowns
+    """Observed data with noise that can be treated as an unknown
 
     Parameters
     ----------
     name : str
-        name of the data target, for display purposes only
+        name of the data, for display purposes
     dobs : np.ndarray
-        data observations
+        numerical data
     covariance_mat_inv : Union[Number, np.ndarray], optional
         the inverse of the data covariance matrix, either a number or a full matrix, by
         default None
     noise_is_correlated : bool, optional
-        whether the noise between data points are correlated or not, by default False
+        whether the noise between data points is correlated or not, by default False
     std_min : Number, optional
         the minimum value of the standard deviation of data noise, by default 0.01
     std_max : Number, optional
@@ -75,7 +75,7 @@ class Target:
 
     @property
     def is_hierarchical(self):
-        """whether the data noise parameters are unknown (i.e. to be inversed)"""
+        """whether the data noise is unknown (i.e. to be inverted for)"""
         return self.covariance_mat_inv is None
 
     def initialize(self, state: State):
@@ -84,7 +84,8 @@ class Target:
         Parameters
         ----------
         state : State
-            the current state where initialized DataNoiseState parameter is to be updated to
+            the current state in the Bayesian inference, in which DataNoiseState 
+            is to be set
         """
         if self.is_hierarchical:
             noise_std = random.uniform(self.std_min, self.std_max)
@@ -128,17 +129,33 @@ class Target:
                 return mat @ vector
 
     def log_determinant_covariance(self, state: State) -> float:
-        """the log determinant value of the covariance matrix
+        r"""the log of the determinant of the covariance matrix
+        
+        The determinant of the data covariance matrix is calculated assuming
+        an exponential decay in the noise correlation between adjacent data 
+        points [1]_, i.e.,
+        
+        .. math::
+            \lvert \mathbf{C}_e \rvert = \sigma^{2n} (1 - r^2)^{n-1},
+            
+        where :math:`\sigma` denotes the standard deviation, :math:`r` the
+        correlation, and :math:`n` the size of the data vector.
+        
 
         Parameters
         ----------
         state : State
-            the current state state
+            the current Bayesian inferernce state
 
         Returns
         -------
         float
-            the log determinant value
+            the log of the determinant
+            
+        References
+        ----------
+        .. [1] Bodin et al. 2012, Transdimensional inversion of receiver functions 
+            and surface wave dispersion.
         """
         noise = state[self.name]
         std = noise.std

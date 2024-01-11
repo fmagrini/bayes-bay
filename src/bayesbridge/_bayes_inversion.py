@@ -14,13 +14,26 @@ from ._utils import _preprocess_func, _FunctionWrapper, _LogLikeRatioFromFunc
 
 class BaseBayesianInversion:
     r"""
-    A low-level class for performing Bayesian inversion using Markov Chain Monte Carlo
-    (McMC) methods.
+    A low-level class for Bayesian sampling based on Markov chain Monte Carlo (McMC).
 
-    This class provides the basic structure for setting up and running MCMC sampling,
+    This class provides the basic structure for setting up and running McMC sampling,
     given user-provided definition of perturbations, likelihood functions and the
-    initialization of walkers.
-
+    initialization of walkers. At each iteration of the inference process,
+    the current model :math:`\bf m` is perturbed to produce :math:`\bf m'`, and
+    the new model is accepted with probability
+    
+    .. math::
+        
+        \alpha({\bf m' \mid m}) = \mbox{min} \Bigg[1, 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)}}_{\text{Likelihood ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
+        \Bigg],
+                        
+    where :math:`p({\bf d}_{obs})` denotes the observed data and 
+    :math:`\mathbf{J}` the Jacobian of the transformation.                                                                                                                                                                                                                                                                                                                                                   
+    
     Parameters
     ----------
     walkers_starting_models: List[Any]
@@ -29,26 +42,34 @@ class BaseBayesianInversion:
         functions and probability functions. The length of this list must be equal to
         the number of chains, i.e. ``n_chains``
     perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]]
-        a list of perturbation functions. Each of which takes in a model (whichever the
-        allowed type is, as long as it's consistent with ``walkers_starting_models``
-        and other probability functions), produces a new model and log of the
-        corresponding partial acceptance probability excluding the log likelihood ratio
+        a list of perturbation functions. Each perturbation function should take 
+        in a model :math:`\mathbf{m}` (any type is allowed, as long as it is 
+        consistent with ``walkers_starting_models`` and the below functions) and 
+        perturb it to produce the new model :math:`\bf m'`. Each perturbation function 
+        should return :math:`\bf m'` along with :math:`\log(
+        \frac{p({\bf m'})}{p({\bf m})}
+        \frac{q\left({\bf m} 
+        \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+        \lvert \mathbf{J} \rvert)`, which is used in the calculation of 
+        the acceptance probability.
     log_likelihood_func: Callable[[Any], Number], optional
-        the log likelihood function :math:`\log p(d|m)`. It takes in a model (the type
-        of which is consistent with other arguments of this class) and returns the log
-        of the likelihood function. This will be used and cannot be None when
-        ``log_like_ratio_func`` is None. Default to None
+        the log likelihood function :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`. 
+        It takes in a model :math:`\mathbf{m}` (any type is allowed, as long as it is 
+        consistent with the other arguments of this class) and returns the log 
+        of the likelihood function. This function is only used when ``log_like_ratio_func`` 
+        is None. Default is None
     log_like_ratio_func: Callable[[Any, Any], Number], optional
-        the log likelihood ratio function :math:`\log (\frac{p(d|m_2)}{p(d|m_1)})`.
-        It takes in two models (of consistent type as other arguments of this class)
-        and returns the log likelihood ratio as a number. This is utilised in the
-        inversion by default, and ``log_likelihood_func`` gets used instead only when
-        this argument is None. Default to None
+        the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid \mathbf{m'})}
+        {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and proposed models,
+        :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should be consistent 
+        with the other arguments of this class, and returns a scalar corresponding to
+        the log likelihood ratio. This is utilised in the calculation of the
+        acceptance probability. If None, ``log_likelihood_func`` gets used instead. Default is None
     n_chains: int, optional
-        the number of chains in the McMC sampling, default to 10
+        the number of chains in the McMC sampling. Default is 10
     n_cpus: int, optional
         the number of CPUs available. This is usually set to be equal to the number of
-        chains if there are enough CPUs, default to 10
+        chains if there are enough CPUs. Default is 10
     """
 
     def __init__(

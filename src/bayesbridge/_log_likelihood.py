@@ -11,14 +11,14 @@ from ._utils import _preprocess_func
 
 
 class LogLikelihood:
-    """High-level class that helps evaluate log likelihood ratio
+    """Helper class to evaluate the log likelihood ratio
 
     Parameters
     ----------
     targets : bayesbridge.Target
         a list of data targets
     fwd_functions : Callable[[bayesbridge.State], np.ndarray]
-        a lsit of forward functions corresponding to each data targets provided above.
+        a list of forward functions corresponding to each data targets provided above.
         Each function takes in a model and produces a numpy array of data predictions.
     """
 
@@ -43,7 +43,38 @@ class LogLikelihood:
         """
         return self._perturbation_funcs
 
-    def log_likelihood_ratio(self, old_state, new_state):
+    def log_likelihood_ratio(self, old_state: State, new_state: State) -> Number:
+        r"""Returns the (possibly tempered) log of the likelihood ratio
+        
+        .. math::
+            \left[ 
+                \frac{p\left(\mathbf{d}_{obs} \mid \mathbf{m'}\right)}{p\left(\mathbf{d}_{obs} \mid \mathbf{m}\right)}
+            \right]^{\frac{1}{T}} 
+            = 
+            \left[ 
+            \frac{\lvert \mathbf{C}_e \rvert}{\lvert \mathbf{C}^{\prime}_e \rvert}
+            \exp\left(- \frac{\Phi(\mathbf{m'}) - \Phi(\mathbf{m})}{2}\right)
+            \right]^{\frac{1}{T}},
+
+            
+        where :math:`\mathbf{C}_e` denotes the data covariance matrix, 
+        :math:`\Phi(\mathbf{m})` the data misfit associated with the model
+        :math:`\mathbf{m}`, :math:`T` the chain temperature, and the prime 
+        superscript indicates that the model has been perturbed.
+            
+        
+        Parameters
+        ----------
+        old_state : bayesbridge.State
+            the state of the Bayesian inference prior to the model perturbation
+        new_state : bayesbridge.State
+            the state of the Bayesian inference after the model perturbation
+            
+        Returns
+        -------
+        Number
+            log likelihood ratio
+        """
         old_misfit, old_log_det = self._get_misfit_and_det(old_state)
         new_misfit, new_log_det = self._get_misfit_and_det(new_state)
         log_like_ratio = (old_log_det - new_log_det) + (old_misfit - new_misfit) / 2
