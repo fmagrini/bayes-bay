@@ -11,7 +11,6 @@ from .._markov_chain import MarkovChain, BaseMarkovChain
 
 class Sampler(ABC):
     def __init__(self):
-        self._iteration = 0
         self._extra_on_initialize = []
         self._extra_on_begin_iteration = []
         self._extra_on_end_iteration = []
@@ -79,10 +78,6 @@ class Sampler(ABC):
     def chains(self) -> List[BaseMarkovChain]:
         return self._chains
 
-    @property
-    def iteration(self) -> int:
-        return self._iteration
-
     def advance_chain(
         self,
         n_iterations,
@@ -110,7 +105,6 @@ class Sampler(ABC):
         else:
             self._chains = [func(chain) for chain in self.chains]
         self.on_end_advance_chain()
-        self._iteration += n_iterations
         return self.chains
 
 
@@ -200,9 +194,10 @@ class ParallelTempering(Sampler):
         print_every=100,
     ):
         while True:
-            n_it = min(self._swap_every, n_iterations - self.iteration)
+            iteration = self.chains[0].statistics["n_explored_models_total"]
+            n_it = min(self._swap_every, n_iterations - iteration)
             burnin_it = max(
-                0, min(self._swap_every, burnin_iterations - self.iteration)
+                0, min(self._swap_every, burnin_iterations - iteration)
             )
             self.advance_chain(
                 n_iterations=n_it,
@@ -212,7 +207,7 @@ class ParallelTempering(Sampler):
                 verbose=verbose,
                 print_every=print_every,
             )
-            if self.iteration >= n_iterations:
+            if iteration >= n_iterations:
                 break
         return self.chains
 
