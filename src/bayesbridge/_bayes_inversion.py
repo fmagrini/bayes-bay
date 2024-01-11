@@ -120,22 +120,25 @@ class BaseBayesianInversion:
         verbose: bool = True,
         print_every: int = 100,
     ):
-        """To run the inversion
+        r"""To run the inversion
 
         Parameters
         ----------
         sampler : bayesbridge.samplers.Sampler, optional
-            a sampler instance describing how chains intereact or modifie their
-            properties during sampling, where it could be
+            a sampler instance describing how chains intereact or modify their
+            properties during sampling. This could be a sampler from the 
+            module :mod:`bayesbridge.samplers` such as
             :class:`bayesbridge.samplers.VanillaSampler` (default),
-            :class:`bayesbridge.samplers.ParallelTempering`
-            and so on, or a customised sampler instance, by default None
+            :class:`bayesbridge.samplers.ParallelTempering`, or
+            :class:`bayesbridge.samplers.SimulatedAnnealing`,
+            or a customised sampler instance.
         n_iterations : int, optional
             total number of iterations to run, by default 1000
         burnin_iterations : int, optional
             the iteration number from which we start to save samples, by default 0
         save_every : int, optional
-            the frequency in which we save the samples, by default 100
+            the frequency with which we save the samples. By default a model is
+            saved every after 100 iterations after the burn-in phase
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
         print_every : int, optional
@@ -164,7 +167,7 @@ class BaseBayesianInversion:
         Parameters
         ----------
         keys : Union[str, List[str]]
-            one or more keys to retrieve from saved models. This will be ignored when
+            one or more keys to retrieve from the saved models. This will be ignored when
             models are not of type :class:`State` or dict
         concatenate_chains : bool, optional
             whether to aggregate samples from all the Markov chains or to keep them
@@ -216,10 +219,10 @@ class BayesianInversion(BaseBayesianInversion):
         a list of data targets
     fwd_functions : Callable[[bayesbridge.State], np.ndarray]
         a lsit of forward functions corresponding to each data targets provided above.
-        Each function takes in a model and produces a numpy array of data predictions.
-    n_chains: int, default to 10
+        Each function takes in a model and returns a numpy array of data predictions.
+    n_chains: int, 10 by default
         the number of chains in the McMC sampling
-    n_cpus: int, default to 10
+    n_cpus: int, 10 by default
         the number of CPUs available. This is usually set to be equal to the number of
         chains if there are enough CPUs
     """

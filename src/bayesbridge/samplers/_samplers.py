@@ -10,6 +10,9 @@ from .._markov_chain import MarkovChain, BaseMarkovChain
 
 
 class Sampler(ABC):
+    """Low-level class for defining the sampling criterion of a Markov chain
+    and/or modifying its attributes in-between iterations
+    """
     def __init__(self):
         self._extra_on_initialize = []
         self._extra_on_begin_iteration = []
@@ -17,22 +20,48 @@ class Sampler(ABC):
         self._extra_on_end_advance_chain = []
 
     def initialize(self, chains: List[BaseMarkovChain]):  # called by external
+        """initializes the given Markov Chains by calling :meth:`on_initialize`
+        
+        Parameters
+        ----------
+        chains : List[BaseMarkovChain]
+            List of Markov chains used to sample the posterior
+        """
         self.on_initialize(chains)
         self._chains = chains
         for func in self._extra_on_initialize:
             func(self, chains)
 
     def begin_iteration(self, chain: BaseMarkovChain):  # called by external
+        """calls :meth:`on_begin_iteration` before beginning the current Markov
+        chain iteration
+        
+        Parameters
+        ----------
+        chain : bayesbridge.BaseMarkovChain
+            Markov chain used to sample the posterior
+        """
         self.on_begin_iteration(chain)
         for func in self._extra_on_begin_iteration:
             func(self, chain)
 
     def end_iteration(self, chain: BaseMarkovChain):  # called by external
+        """calls :meth:`on_end_iteration` before passing to the next Markov
+        chain iteration.
+        
+        Parameters
+        ----------
+        chain : bayesbridge.BaseMarkovChain
+            Markov chain used to sample the posterior
+        """
         self.on_iteration_end(chain)
         for func in self._extra_on_end_iteration:
             func(self, chain)
 
     def end_advance_chain(self):  # called by external
+        """calls :meth:`on_end_advance_chain` before concluding the batch of
+        Markov chain iterations taking place after calling :meth:`advance_chain`
+        """
         self.on_end_advance_chain()
         for func in self._extra_on_end_advance_chain:
             func(self)
@@ -41,41 +70,99 @@ class Sampler(ABC):
         self,
         func: Callable[["Sampler", List[MarkovChain]], None],
     ):
+        """adds a custom function that will be called at the end of the chains
+        initialization (see :meth:`initialize`)
+        
+        Parameters
+        ----------
+        func : Callable
+            Function that takes as arguments a Sampler and a list of MarkovChains
+        """
         self._extra_on_initialize.append(func)
 
     def add_on_begin_iteration(
         self, func: Callable[["Sampler", BaseMarkovChain], None]
     ):
+        """adds a custom function that will be called at the beginning of each 
+        Markov chain iteration (see :meth:`on_begin_iteration`)
+        """
         self._extra_on_begin_iteration.append(func)
 
     def add_on_end_iteration(self, func: Callable[["Sampler", BaseMarkovChain], None]):
+        """adds a custom function that will be called at the end of each Markov 
+        chain iteration (see :meth:`on_end_iteration`)
+        """
         self._extra_on_end_iteration.append(func)
 
     def add_on_end_advance_chain(self, func: Callable[["Sampler"], None]):
+        """adds a custom function that will be called at the end of the batch of
+        Markov chain iterations taking place after calling :meth:`advance_chain`
+        """
         self._extra_on_end_advance_chain.append(func)
 
     @abstractmethod
     def on_initialize(self, chains):  # customized by subclass
+        """defines the behaviour of the sampler at the initialization of the 
+        Markov chains
+        
+        Parameters
+        ----------
+        chains : List[BaseMarkovChain]
+            List of Markov chains used to sample the posterior
+        """
         raise NotImplementedError
 
     @abstractmethod
     def on_begin_iteration(self, chain: BaseMarkovChain):  # customized by subclass
+        """defines the behaviour of the sampler at the beginning of each
+        Markov chain iteration
+        
+        Parameters
+        ----------
+        chain : BaseMarkovChain
+            Markov chain used to sample the posterior
+        """
         raise NotImplementedError
 
     @abstractmethod
     def on_end_iteration(self, chain: BaseMarkovChain):  # customized by subclass
+        """defines the behaviour of the sampler at the end of each
+        Markov chain iteration
+        
+        Parameters
+        ----------
+        chain : BaseMarkovChain
+            Markov chain used to sample the posterior
+        """
         raise NotImplementedError
 
     @abstractmethod
     def on_end_advance_chain(self):  # customized by subclass
+        """defines the behaviour of the sampler at the end of the batch of
+        Markov chain iterations taking place after calling :meth:`advance_chain`
+        
+        Parameters
+        ----------
+        chain : BaseMarkovChain
+            Markov chain used to sample the posterior
+        """
         raise NotImplementedError
 
     @abstractmethod
     def run(self):  # customized by subclass; called by external
+        """function that allows for running the Bayesian inference by calling 
+        :meth:`advance_chain`. 
+        
+        .. important::
+            
+            To work properly, a custom Sampler has to call within this function
+            the method :meth:`advance_chain`.
+        """
         raise NotImplementedError
 
     @property
     def chains(self) -> List[BaseMarkovChain]:
+        """the ``MarkovChain`` instances of the current Bayesian inference"""
         return self._chains
 
     def advance_chain(
@@ -86,7 +173,30 @@ class Sampler(ABC):
         save_every=100,
         verbose=True,
         print_every=100,
-    ):
+    ) -> List[BaseMarkovChain]:
+        """advances the Markov chains for a given number of iterations
+
+        Parameters
+        ----------
+        n_iterations : int
+            the number of iterations to advance
+        n_cpus : int, optional
+            the number of CPUs to use
+        burnin_iterations : int, optional
+            the iteration number from which we start to save samples, by default 0
+        save_every : int, optional
+            the frequency in which we save the samples, by default 100
+        verbose : bool, optional
+            whether to print the progress during sampling or not, by default True
+        print_every : int, optional
+            the frequency in which we print the progress and information during the
+            sampling, by default 100
+
+        Returns
+        -------
+        List[BaseMarkovChain]
+            the Markov chains
+        """
         func = partial(
             MarkovChain.advance_chain,
             n_iterations=n_iterations,
