@@ -30,7 +30,7 @@ experiments.
    :maxdepth: 1
    :caption: Tutorials
 
-   tutorials/vanilla
+   tutorials/0_basic
 
 .. toctree::
    :maxdepth: 1
