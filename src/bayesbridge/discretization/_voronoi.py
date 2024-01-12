@@ -6,6 +6,8 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ..parameterization._parameter_space import ParameterSpace
+from ..perturbations._param_values import ParamPerturbation
 from ._discretization import Discretization
 from ..exceptions import DimensionalityException
 from ..parameters import Parameter
@@ -86,7 +88,7 @@ class Voronoi(Discretization):
             birth_from=birth_from,
             vmin=vmin,
             vmax=vmax
-            )
+        )
         self.vmin = vmin
         self.vmax = vmax
         msg = "The %s number of Voronoi cells, "
@@ -109,6 +111,10 @@ class Voronoi(Discretization):
             jump algorithm
         """
         raise NotImplementedError
+
+    def _init_perturbation_funcs(self):
+        ParameterSpace._init_perturbation_funcs(self)
+        self._perturbation_funcs.append(ParamPerturbation(self.name, [self]))
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
@@ -217,8 +223,7 @@ class Voronoi1D(Voronoi):
             n_dimensions_init_range: Number = 0.3, 
             parameters: List[Parameter] = None, 
             birth_from: str = "neighbour"  # either "neighbour" or "prior"
-            ):
-        
+        ): 
         super().__init__(
             name=name,
             spatial_dimensions=1,
@@ -231,7 +236,7 @@ class Voronoi1D(Voronoi):
             n_dimensions_init_range=n_dimensions_init_range,
             parameters=parameters,
             birth_from=birth_from
-            )
+        )
     
     def initialize(self) -> ParameterSpaceState:
         """initializes the parameter space including its parameter values

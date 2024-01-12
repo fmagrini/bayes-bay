@@ -6,7 +6,6 @@ import numpy as np
 from ..parameters._parameters import Parameter
 from ..parameterization._parameter_space import ParameterSpace
 from .._state import ParameterSpaceState
-from ..perturbations._param_values import ParamPerturbation
 
 
 class Discretization(Parameter, ParameterSpace):
@@ -56,8 +55,7 @@ class Discretization(Parameter, ParameterSpace):
         raise NotImplementedError
 
     def _init_perturbation_funcs(self):
-        ParameterSpace._init_perturbation_funcs(self)
-        self._perturbation_funcs.append(ParamPerturbation(self.name, [self]))
+        raise NotImplementedError
         
     @abstractmethod
     def birth(
@@ -78,7 +76,7 @@ class Discretization(Parameter, ParameterSpace):
         raise NotImplementedError
     
     @abstractmethod
-    def log_prior(self, value: Number, *args) -> Number:
+    def log_prior(self, param_space_state: ParameterSpaceState) -> Number:
         raise NotImplementedError
 
     def get_perturb_std(self, *args) -> Number:

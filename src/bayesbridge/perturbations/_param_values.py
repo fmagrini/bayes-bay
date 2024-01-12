@@ -54,25 +54,25 @@ class ParamPerturbation(Perturbation):
         # randomly choose a position to perturb the value(s)
         old_ps_state = state[self.param_space_name]
         n_dims = old_ps_state.n_dimensions
-        isite = random.randint(0, n_dims - 1)
+        idx = random.randint(0, n_dims - 1)
         # randomly perturb the value(s)
         new_param_values = dict()
         log_prob_ratio = 0
         for param in self.parameters:
             if hasattr(param, "birth"):  # if it's a discretization
-                new_ps_state, log_prob_ratio = param.perturb_value(old_ps_state, isite)
+                new_ps_state, log_prob_ratio = param.perturb_value(old_ps_state, idx)
                 new_state = state.copy()
                 new_state.set_param_values(self.param_space_name, new_ps_state)
                 return new_state, log_prob_ratio
             else:
                 old_values = old_ps_state[param.name]
                 new_param_values[param.name] = old_values.copy()
-                old_value = old_values[isite]
+                old_value = old_values[idx]
                 old_pos = old_ps_state["discretization"]
-                pos = old_pos[isite] if old_pos is not None else None
+                pos = old_pos[idx] if old_pos is not None else None
                 new_value, _ratio = param.perturb_value(old_value, pos)
                 log_prob_ratio += _ratio
-                new_param_values[param.name][isite] = new_value
+                new_param_values[param.name][idx] = new_value
         # structure new param value(s) into new state
         new_state = state.copy()
         new_state[self.param_space_name].param_values.update(new_param_values)

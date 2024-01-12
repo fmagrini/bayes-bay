@@ -114,6 +114,14 @@ class ParameterSpace:
             parameter_vals[name] = param.initialize(np.empty(n_dimensions))
         return ParameterSpaceState(n_dimensions, parameter_vals)
     
+    def log_prior(self, param_space_state: ParameterSpaceState) -> Number:
+        joint_log_prior = 0
+        for param_name, param in self.parameters.items():
+            param_values = param_space_state[param_name]
+            all_log_priors = [param.log_prior(v, None) for v in param_values]
+            joint_log_prior += sum(all_log_priors)
+        return joint_log_prior
+    
     def birth(self, ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
         r"""adds a dimension to the current parameter space and returns the
         thus obtained new state along with the log of the corresponding partial 
