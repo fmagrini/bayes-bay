@@ -36,6 +36,8 @@ copybutton_prompt_text = ">>> "
 
 autodoc_typehints = 'none'
 
+nb_execution_mode = "cache"
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

@@ -30,7 +30,8 @@ experiments.
    :maxdepth: 1
    :caption: Tutorials
 
-   tutorials/0_basic
+   tutorials/0_quickstart
+   tutorials/1_hierarchical
 
 .. toctree::
    :maxdepth: 1

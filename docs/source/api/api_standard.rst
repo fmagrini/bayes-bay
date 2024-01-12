@@ -21,7 +21,7 @@ Typically, this invovles the following steps:
    end of each iteration or each batch of iterations
 #. Run the inversion (:meth:`bayesbridge.BayesianInversion.run`)
 
-If you are new to BayesBridge, we recommend :ref:`our tutorial page <basic-usage>` to 
+If you are new to BayesBridge, we recommend :ref:`our tutorial page <quickstart>` to 
 get started.
 
 .. toctree::
