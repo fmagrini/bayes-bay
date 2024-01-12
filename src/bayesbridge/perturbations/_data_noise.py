@@ -21,9 +21,17 @@ class NoisePerturbation(Perturbation):
         self.targets = targets
 
     def perturb(self, state: State) -> Tuple[State, Number]:
-        """propose a new state that changes the data noise estimation from the given
-        state and calcualtes its associated acceptance probability excluding log 
-        likelihood ratio
+        r"""proposes a new state by perturbing the data noise of the given
+        state and calculates the log of the corresponding partial acceptance probability 
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+        
+        which in this case equals zero since a uniform probability distribution is
+        inherently assumed for the noise properties.
 
         Parameters
         ----------
@@ -33,8 +41,12 @@ class NoisePerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance probability (equal to
-            zero, in this case) excluding log likelihood ratio for this perturbation
+            the proposed new state and
+            :math:`\alpha_{p} = \log(
+            \frac{p({\bf m'})}{p({\bf m})}
+            \frac{q\left({\bf m} 
+            \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+            \lvert \mathbf{J} \rvert) = 0`
         """
         new_data_noise_all = dict()
         for target in self.targets:

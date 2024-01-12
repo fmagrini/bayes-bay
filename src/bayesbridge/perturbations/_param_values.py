@@ -14,8 +14,8 @@ class ParamPerturbation(Perturbation):
     ----------
     param_name : str
         the name of the parameter to be perturbed
-    parameter : Parameter
-        the :class:`Parameter` instance to be perturbed
+    parameters : List[Parameter]
+        list containing the :class:`Parameter` instances to be perturbed
     """
 
     def __init__(
@@ -27,9 +27,14 @@ class ParamPerturbation(Perturbation):
         self.parameters = parameters
 
     def perturb(self, state: State) -> Tuple[State, Number]:
-        """perturb one value of the associated parameter, returning a proposed state
-        after this perturbation and its associated acceptance probability excluding log
-        likelihood ratio
+        r"""perturb one value for each parameter in :attr:`self.parameters`, returning 
+        a proposed state and the log of the corresponding partial acceptance probability 
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
 
         Parameters
         ----------
@@ -39,8 +44,12 @@ class ParamPerturbation(Perturbation):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance probability excluding log
-            likelihood ratio for this perturbation
+            proposed new state and
+            :math:`\alpha_{p} = \log(
+            \frac{p({\bf m'})}{p({\bf m})}
+            \frac{q\left({\bf m} 
+            \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+            \lvert \mathbf{J} \rvert)`
         """
         # randomly choose a position to perturb the value(s)
         old_ps_state = state[self.param_space_name]

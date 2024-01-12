@@ -10,7 +10,6 @@ from ._discretization import Discretization
 from ..exceptions import DimensionalityException
 from ..parameters import Parameter
 from .._state import State, ParameterSpaceState
-from ..perturbations import ParamPerturbation
 from .._utils_1d import (
     interpolate_result, 
     compute_voronoi1d_cell_extents, 
@@ -100,7 +99,7 @@ class Voronoi(Discretization):
         r"""
         BayesBridge implements the grid trick, which calculates the prior 
         probability of a Voronoi discretization through the combinatorial 
-        formula :math:`{\Perm{N}{k}}^{-1}`, with `k` denoting the number of 
+        formula :math:`{N \choose k}^{-1}`, with `k` denoting the number of 
         Voronoi sites and `N` the number of possible positions allowed for the 
         sites [1]_.
         
@@ -280,7 +279,7 @@ class Voronoi1D(Voronoi):
                 return new_site   
         
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
-        """perturb the value of a given Voronoi site from the given current value, and
+        r"""perturb the value of a given Voronoi site from the given current value, and
         calculates the associated acceptance probability excluding log likelihood ratio
 
         Parameters
@@ -526,7 +525,7 @@ class Voronoi1D(Voronoi):
     
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):
-        """compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
+        r"""compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
         boundaries are first drawn at the midpoint between consecutive Voronoi
         nuclei. The extent is then derived from the distance between consecutive
         boundaries.

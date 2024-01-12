@@ -1,8 +1,8 @@
 class DimensionalityException(Exception):
     """
-    Exception raised when trying to add/remove a Voronoi site in a
-    parameterization that has already reached the maximum/minimum number of
-    allowed voronoi cells
+    Exception raised when trying to add/remove a dimension in a
+    parameter space that has already reached the maximum/minimum number of
+    allowed dimensions (see :class:`bayesbridge.parameterization.ParameterSpace`).
     """
 
     def __init__(self, move):
@@ -20,9 +20,8 @@ class DimensionalityException(Exception):
 
 class ForwardException(Exception):
     """
-    Exception raised when the user-provided forward function raises an error
+    Exception raised when a user-provided forward function raises an error
     """
-
     def __init__(self, original_exc):
         self.message = "error occurred when running the forward function - " + (
             original_exc.message
@@ -40,7 +39,6 @@ class InitException(Exception):
     Exception raised when users try to access a certain field that hasn't been
     intialized yet
     """
-
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
@@ -50,7 +48,7 @@ class InitException(Exception):
 
 
 class UserFunctionException(Exception):
-    """Exception raised when user-provided function raises an exception"""
+    """Exception raised when a user-provided function raises an exception"""
 
     def __init__(self, original_exc):
         self.message = "error occurred when running the user-provided function - " + (

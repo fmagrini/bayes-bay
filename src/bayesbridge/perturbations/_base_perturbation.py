@@ -17,8 +17,17 @@ class Perturbation(ABC):
     """
     @abstractmethod
     def perturb(self, state: State) -> Tuple[State, Number]:
-        """propose a new state from the given state and calculates its associated
-        proposal ratio
+        r"""proposes a new state from the given state and calculates the log of
+        the corresponding partial acceptance probability 
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
+        
+        where :math:`p({\bf d}_{obs})` denotes the observed data and 
+        :math:`\mathbf{J}` the Jacobian of the transformation.                                                                                                                                                                                                                                                                                                                                   
 
         Parameters
         ----------
@@ -28,8 +37,12 @@ class Perturbation(ABC):
         Returns
         -------
         Tuple[State, Number]
-            proposed new state and the partial acceptance probability excluding log 
-            likelihood ratio for this perturbation
+            the proposed new state and
+            :math:`\alpha_{p} = \log(
+            \frac{p({\bf m'})}{p({\bf m})}
+            \frac{q\left({\bf m} 
+            \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+            \lvert \mathbf{J} \rvert)`
         """
         raise NotImplementedError
 
