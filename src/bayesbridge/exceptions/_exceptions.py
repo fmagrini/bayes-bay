@@ -49,7 +49,7 @@ class InitException(Exception):
         return self.message
 
 
-class UserFunctionError(Exception):
+class UserFunctionException(Exception):
     """Exception raised when user-provided function raises an exception"""
 
     def __init__(self, original_exc):

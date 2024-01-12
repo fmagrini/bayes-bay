@@ -1,4 +1,4 @@
-from .exceptions import UserFunctionError
+from .exceptions import UserFunctionException
 from ._state import State
 
 
@@ -35,7 +35,7 @@ class _FunctionWrapper:
         try:
             return self.f(*args, *self.args, **self.kwargs)
         except Exception as e:
-            raise UserFunctionError(e)
+            raise UserFunctionException(e)
     
     @property
     def __name__(self) -> str:
@@ -53,7 +53,7 @@ class _LogLikeRatioFromFunc:
             old_loglike = self.f(old_state)
             new_loglike = self.f(new_state)
         except Exception as e:
-            raise UserFunctionError(e)
+            raise UserFunctionException(e)
         return new_loglike - old_loglike
 
     @property

@@ -8,7 +8,7 @@ from ._log_likelihood import LogLikelihood
 from ._target import Target
 from .parameterization import Parameterization
 from ._state import State
-from .exceptions import DimensionalityException, ForwardException, UserFunctionError
+from .exceptions import DimensionalityException, ForwardException, UserFunctionException
 
 
 class BaseMarkovChain:
@@ -143,7 +143,7 @@ class BaseMarkovChain:
             # likelihood ratio
             try:
                 new_model, log_prob_ratio = perturb_func(self.current_model)
-            except (DimensionalityException, UserFunctionError) as e:
+            except (DimensionalityException, UserFunctionException) as e:
                 _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
@@ -151,7 +151,7 @@ class BaseMarkovChain:
             # calculate the log likelihood ratio
             try:
                 log_likelihood_ratio = self._log_likelihood_ratio(new_model)
-            except (ForwardException, UserFunctionError) as e:
+            except (ForwardException, UserFunctionException) as e:
                 _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
