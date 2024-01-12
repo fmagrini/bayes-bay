@@ -44,6 +44,14 @@ class Parameterization:
             self._perturbation_funcs.extend(ps.perturbation_functions)
     
     def initialize(self) -> State:
+        """initializes the parameter space(s) constituting the parameterization
+        
+        Returns
+        -------
+        State
+            Numerical values corresponding to the free parameters in the
+            parameter space(s) constituting the parameterization
+        """
         param_values = dict()
         for ps in self.parameter_spaces:
             param_values[ps.name] = ps.initialize()
@@ -51,4 +59,7 @@ class Parameterization:
     
     @property
     def perturbation_functions(self) -> List[Perturbation]:
+        """the list of perturbation functions allowed to perturb the
+        parameterization
+        """
         return self._perturbation_funcs
