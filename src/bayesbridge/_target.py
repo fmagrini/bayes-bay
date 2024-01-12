@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, Union
+from typing import Union
 from numbers import Number
 import random
 import math
@@ -60,6 +60,7 @@ class Target:
         self.correlation_min = correlation_min
         self.correlation_max = correlation_max
         self.correlation_perturb_std = correlation_perturb_std
+        assert std_min >= 0, "standard deviation should always be positive"
         if covariance_mat_inv is not None:
             self._perturbation_func = None
             if np.isscalar(covariance_mat_inv):
