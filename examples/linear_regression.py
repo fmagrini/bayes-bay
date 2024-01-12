@@ -44,23 +44,26 @@ inversion = bb.BayesianInversion(
 )
 inversion.run(
     sampler=None, 
-    n_iterations=500_000, 
-    burnin_iterations=4_000, 
-    save_every=1000, 
-    print_every=1000, 
+    n_iterations=100_000, 
+    burnin_iterations=10_000, 
+    save_every=500, 
+    print_every=500, 
 )
 
 # get results and plot
 results = inversion.get_results()
 coefficients_samples = results["coefficients"]
 fig, ax = plt.subplots()
+all_y_pred = np.zeros((len(coefficients_samples), len(y)))
 for i, coefficients in enumerate(coefficients_samples):
     y_pred = fwd_jacobian @ coefficients
+    all_y_pred[i,:] = y_pred
     if i == 0:
         ax.plot(x, y_pred, c="gray", lw=0.05, label="Predicted data from samples")
     else:
         ax.plot(x, y_pred, c="gray", lw=0.05)
 ax.plot(x, y, c="orange", label="Noise-free data from true model")
+ax.plot(x, np.median(all_y_pred, axis=0), c="blue", label="Median predicted sample")
 ax.scatter(x, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
 ax.legend()
 fig.savefig("linear_regression_samples_pred")
