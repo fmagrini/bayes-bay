@@ -32,7 +32,7 @@ def my_fwd(state: bb.State) -> np.ndarray:
 fwd_functions = [my_fwd]
 
 # define data target
-targets = [bb.Target("my_data", y_noisy, 1/DATA_NOISE_STD**2)]
+targets = [bb.Target("my_data", y_noisy, std_min=0, std_max=100, std_perturb_std=5)]
 
 # run the sampling
 inversion = bb.BayesianInversion(
@@ -53,14 +53,16 @@ inversion.run(
 # get results and plot
 results = inversion.get_results()
 coefficients_samples = results["coefficients"]
-fig, ax = plt.subplots()
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 for i, coefficients in enumerate(coefficients_samples):
     y_pred = fwd_jacobian @ coefficients
     if i == 0:
-        ax.plot(x, y_pred, c="gray", lw=0.05, label="Predicted data from samples")
+        axes[0].plot(x, y_pred, c="gray", lw=0.05, label="Predicted data from samples")
     else:
-        ax.plot(x, y_pred, c="gray", lw=0.05)
-ax.plot(x, y, c="orange", label="Noise-free data from true model")
-ax.scatter(x, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
-ax.legend()
-fig.savefig("linear_regression_samples_pred")
+        axes[0].plot(x, y_pred, c="gray", lw=0.05)
+axes[0].plot(x, y, c="orange", label="Noise-free data from true model")
+axes[0].scatter(x, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
+axes[0].legend()
+axes[1].hist(results["my_data.std"], bins=100, ec="w")
+fig.savefig("linear_regression_hier_samples_pred")
