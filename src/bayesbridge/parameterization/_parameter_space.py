@@ -78,16 +78,16 @@ class ParameterSpace:
     
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
-        r"""a list of perturbation functions allowed in the current parameter space, 
-        each of which takes in a state (see :class:`State`) and returns a new
-        state and the corresponding partial acceptance probability,
+        r"""a list of perturbation functions allowed in the current parameter space.
+        Each function takes in a state (see :class:`State`) and returns a new
+        state along with the corresponding partial acceptance probability,
         
         .. math::
             \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
             \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
             \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
-
+            
         """
         return self._perturbation_funcs
     
@@ -136,30 +136,31 @@ class ParameterSpace:
         In this case, we have
         
         .. math::
-            \frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)} = \prod_i{p\left({\mathbf{m}_i^{k+1}}\right)}
+            \frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)} = \prod_i{p\left({m_i^{k+1}}\right)},
                          
-        and
+        because all entries of the :math:`i`\ th free parameter, :math:`\mathbf{m}_i`, 
+        are equal to those of :math:`\mathbf{m'}_i` except for the newly born 
+        :math:`m_i^{k+1}`, with :math:`k` denoting the number of dimensions in 
+        the parameter space prior to the birth perturbation.
+        
+        Furthermore, since :math:`m_i^{k+1}` is drawn from the prior and there are
+        :math:`k+1` positions available to randomly remove a dimension or add a 
+        new one,
         
         .. math::
             \frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)} =
-            \frac{1}{k+1} \frac{\prod_i{p\left({\mathbf{m}_i^{k+1}}\right)}}{\frac{1}{(k+1)}} =
-            \frac{1}{\prod_i{p\left({\mathbf{m}_i^{k+1}}\right)}},
+            \frac{1}{k+1} \frac{\prod_i{p\left({m_i^{k+1}}\right)}}{\frac{1}{(k+1)}} =
+            \frac{1}{\prod_i{p\left({m_i^{k+1}}\right)}}.
             
-        where :math:`k` denotes the number of dimensions in the parameter space 
-        prior to the perturbation and the subscript :math:`i` the 
-        :math:`i`\ th free parameter. :math:`\mathbf{m}_i^{k+1}` denotes the
-        newly added value in the :math:`i`\ th parameter as a result of the birth
-        of a new dimension. (Note that in this case the new value is added
-        by sampling from the prior.)
         
-        Moreover, it can be shown that in this cases the Jacobian determinant
-        is equal to one. It follows that
+        Finally, it is easy to shown that in this case :math:`\lvert \mathbf{J} \rvert = 1`. 
+        It follows that
                 
         .. math::
             \alpha_{p} = 
             \frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}
             \frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
-            = \prod_i{p\left({\mathbf{m}_i^{k+1}}\right)} \frac{1}{\prod_i{p\left({\mathbf{m}_i^{k+1}}\right)}}
+            = \prod_i{p\left({\mathbf{m}_i^{k+1}}\right)} \frac{1}{\prod_i{p\left({m_i^{k+1}}\right)}}
             = 1,
         
         and :math:`\log(\alpha_{p}) = 0`.
@@ -179,7 +180,7 @@ class ParameterSpace:
             \frac{p({\bf m'})}{p({\bf m})}
             \frac{q\left({\bf m} 
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
-            \lvert \mathbf{J} \rvert)`
+            \lvert \mathbf{J} \rvert) = 0`
         """
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_max:
@@ -205,7 +206,10 @@ class ParameterSpace:
             \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
             \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
             \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
-            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}.
+            
+        Following a reasoning similar to that explained in the documentation of
+        :meth:`birth`, in this case :math:`\log(\alpha_{p}) = 0`.
         
         Parameters
         ----------
@@ -222,7 +226,7 @@ class ParameterSpace:
             \frac{p({\bf m'})}{p({\bf m})}
             \frac{q\left({\bf m} 
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
-            \lvert \mathbf{J} \rvert)`
+            \lvert \mathbf{J} \rvert) = 0`
         """
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_min:

@@ -25,14 +25,15 @@ SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
 
 class Voronoi(Discretization):
-    r"""Utility class for Voronoi discretization
+    r"""Utility class for Voronoi tessellation
 
     Parameters
     ----------
     name : str
-        name of the discretization, for display and storing purposes
+        name attributed to the Voronoi tessellation, for display and storing 
+        purposes
     spatial_dimensions : int
-        number of dimensions of the desired Voronoi discretization, e.g. 1D,
+        number of dimensions of the desired Voronoi tessellation, e.g. 1D,
         2D, or 3D.
     vmin, vmax : Union[Number, np.ndarray]
         minimum/maximum value bounding each dimension
@@ -40,28 +41,28 @@ class Voronoi(Discretization):
         standard deviation of the Gaussians used to randomly perturb the Voronoi
         sites in each dimension. 
     n_dimensions : Number, optional
-        number of Voronoi cells. None (default) results in a transdimensional
-        parameterization, with the dimensionality of the parameter space allowed
-        to vary in the range `n_dimensions_min`-`n_dimensions_max`
+        number of dimensions. None (default) results in a trans-dimensional
+        discretization, with the dimensionality of the parameter space allowed
+        to vary in the range ``n_dimensions_min``-``n_dimensions_max``
     n_dimensions_min, n_dimensions_max : Number, optional
-        minimum and maximum number of Voronoi cells, by default 1 and 10. These
-        parameters are ignored if `n_dimensions` is not None
+        minimum and maximum number of dimensions, by default 1 and 10. These
+        parameters are ignored if ``n_dimensions`` is not None, i.e. if the
+        discretization is not trans-dimensional
     n_dimensions_init_range : Number, optional
-        percentage of the range `n_dimensions_min`-`n_dimensions_max` used to
+        percentage of the range `n_dimensions_min``-``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if 
-        `n_dimensions_min`=1, `n_dimensions_max`=10, and `n_dimensions_init_range`=0.5,
-        the maximum number of dimensions at the initialization is::
+        ``n_dimensions_min``=1, ``n_dimensions_max``=10, and ``n_dimensions_init_range``=0.5,
+        the maximum number of dimensions at the initialization is
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
     parameters : List[Parameter], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional
-        whether to initialize the newborn Voronoi cell parameter values by
-        randomly from the prior by perturbing the existing parameters found in
-        the nearest Voronoi cell (default).
+        whether to initialize the free parameters associated with the newborn 
+        Voronoi cell by randomly drawing from their prior or by perturbing the 
+        value found in the nearest Voronoi cell (default).
     """
-
     def __init__(
         self,
         name: str,
@@ -118,9 +119,17 @@ class Voronoi(Discretization):
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
-        """a list of perturbation functions allowed in the current parameterization
-        configurations, each of which takes in a model :class:`State` and returns a new
-        model and a log proposal ratio value
+        r"""the list of perturbation functions allowed in the parameter space linked to
+        the Voronoi discretization. Each function takes in a state (see :class:`State`) 
+        and returns a new state along with the corresponding partial acceptance 
+        probability,
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+
         """
         return self._perturbation_funcs
 
@@ -178,38 +187,40 @@ class Voronoi(Discretization):
 
 
 class Voronoi1D(Voronoi):
-    r"""Utility class for Voronoi discretization
+    r"""Utility class for Voronoi tessellation in 1D
 
     Parameters
     ----------
     name : str
-        name of the discretization, for display and storing purposes
-    vmin, vmax : Number
-        minimum/maximum value bounding the Voronoi sites
-    perturb_std : Number
-        standard deviation of the Gaussian used to randomly perturb the Voronoi
-        sites. 
+        name attributed to the Voronoi tessellation, for display and storing 
+        purposes
+    vmin, vmax : Union[Number, np.ndarray]
+        minimum/maximum value bounding each dimension
+    perturb_std : Union[Number, np.ndarray]
+        standard deviation of the Gaussians used to randomly perturb the Voronoi
+        sites in each dimension. 
     n_dimensions : Number, optional
-        number of Voronoi cells. None (default) results in a transdimensional
-        parameterization, with the dimensionality of the parameter space allowed
-        to vary in the range `n_dimensions_min`-`n_dimensions_max`
+        number of dimensions. None (default) results in a trans-dimensional
+        discretization, with the dimensionality of the parameter space allowed
+        to vary in the range ``n_dimensions_min``-``n_dimensions_max``
     n_dimensions_min, n_dimensions_max : Number, optional
-        minimum and maximum number of Voronoi cells, by default 1 and 10. These
-        parameters are ignored if `n_dimensions` is not None
+        minimum and maximum number of dimensions, by default 1 and 10. These
+        parameters are ignored if ``n_dimensions`` is not None, i.e. if the
+        discretization is not trans-dimensional
     n_dimensions_init_range : Number, optional
-        percentage of the range `n_dimensions_min`-`n_dimensions_max` used to
+        percentage of the range `n_dimensions_min``-``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if 
-        `n_dimensions_min`=1, `n_dimensions_max`=10, and `n_dimensions_init_range`=0.5,
-        the maximum number of dimensions at the initialization is::
+        ``n_dimensions_min``=1, ``n_dimensions_max``=10, and ``n_dimensions_init_range``=0.5,
+        the maximum number of dimensions at the initialization is
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
     parameters : List[Parameter], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional
-        whether to initialize the newborn Voronoi cell parameter values by
-        randomly from the prior by perturbing the existing parameters found in
-        the nearest Voronoi cell (default).
+        whether to initialize the free parameters associated with the newborn 
+        Voronoi cell by randomly drawing from their prior or by perturbing the 
+        value found in the nearest Voronoi cell (default).
     """
     def __init__(        
             self,
@@ -239,7 +250,7 @@ class Voronoi1D(Voronoi):
         )
     
     def initialize(self) -> ParameterSpaceState:
-        """initializes the parameter space including its parameter values
+        """initializes the parameter space linked to the Voronoi tessellation
 
         Returns
         -------
@@ -284,15 +295,21 @@ class Voronoi1D(Voronoi):
                 return new_site   
         
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
-        r"""perturb the value of a given Voronoi site from the given current value, and
-        calculates the associated acceptance probability excluding log likelihood ratio
+        r"""perturbs the value of one Voronoi site and calculates the log of the
+        partial acceptance probability
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}.
 
         Parameters
         ----------
         old_ps_state : ParameterSpaceState
             the current parameter space state
         isite : Number
-            the current value to be perturbed from
+            the index of the Voronoi site to be perturbed
 
         Returns
         -------
@@ -447,9 +464,72 @@ class Voronoi1D(Voronoi):
             )
         return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1          
     
-    def birth(self, old_ps_state: ParameterSpaceState):
-        """create a new Voronoi cell and initialize all parameters associated
-        with it
+    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        r"""creates a new Voronoi cell, initializes all free parameters 
+        associated with it, and returns the pertubed state along with the
+        log of the corresponding partial acceptance probability,
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}.
+    
+        In this case, the prior probability of the model :math:`{\bf m}` is
+        
+        .. math::
+            p({\bf m}) = p({\bf c} \mid k) p(k) \prod_i{p({\bf v}_i \mid {\bf c})} ,
+        
+        where :math:`k` denotes the number of Voronoi cells, each entry of the 
+        vector :math:`{\bf c}` corresponds to the position of a Voronoi site, 
+        and each :math:`i`\ th free parameter :math:`{\bf v}` has the same 
+        dimensionality as :math:`{\bf c}`. 
+        
+        Following [1]_, :math:`p({\bf c} \mid k) = \frac{k! \left(N - k \right)!}{N!}`. If we then
+        assume that :math:`p(k) = \frac{1}{\Delta k}`, where :math:`\Delta k = k_{max} - k_{min}`,
+        the prior ratio reads
+        
+        .. math::
+            \frac{p({\bf m'})}{p({\bf m})} = 
+            \frac{(k+1) \prod_i p(v_i^{k+1})}{(N-k)},
+                                         
+        where :math:`p(v_i^{k+1})` denotes the prior probability of the newly
+        born :math:`i`\ th parameter, which may be dependent on :math:`{\bf c}`.
+        The proposal ratio reads
+        
+        .. math::
+            \frac{q({\bf m} \mid {\bf m'})}{q({\bf m'} \mid {\bf m})} =
+            \frac{(N-k)}{(k+1) \prod_i q_{v_i}^{k+1}},
+                         
+        where :math:`q_{v_i}^{k+1}` denotes the proposal probability for the
+        newly born :math:`i`\ th parameter in the new dimension. It is easy to
+        show that, in the case of a birth from neighbor [1]_ or a birth from
+        prior [2]_ (see :attr:`birth_from`), :math:`\lvert \mathbf{J} \rvert = 1`
+        and :math:`\alpha_{p} = \frac{p({\bf m'})}{p({\bf m})} \frac{q({\bf m} \mid {\bf m'})}{q({\bf m'} \mid {\bf m})}`. 
+        It follows that
+        
+        .. math::
+            \alpha_{p} = 
+            \frac{(k+1) \prod_i p(v_i^{k+1})}{(N-k)} \frac{(N-k)}{(k+1) \prod_i q_{v_i}^{k+1}} = 
+            \frac{\prod_i p(v_i^{k+1})}{\prod_i{q_{v_i}^{k+1}}}.
+            
+        In the case of a birth from prior, :math:`q_{v_i}^{k+1} = p(v_i^{k+1})`
+        and
+        
+        .. math::
+            \alpha_{p} = 
+            \frac{\prod_i p(v_i^{k+1})}{\prod_i{p(v_i^{k+1})}} = 1.
+                                                                  
+        In the case of a birth from neighbor, :math:`q_{v_i}^{k+1} = 
+        \frac{1}{\theta \sqrt{2 \pi}} \exp \lbrace -\frac{\left( v_i^{k+1} - v_i \right)^2}{2\theta^2} \rbrace`,
+        where the newly born value, :math:`v_i^{k+1}`, is generated by perturbing
+        the original value, :math:`v_i`, of the :math:`i`\ th parameter. This is 
+        achieved through a random deviate from the normal distribution 
+        :math:`\mathcal{N}(v_i, \theta)`, with :math:`\theta` denoting the 
+        standard deviation of the Gaussian used to carry out the perturbation
+        (see, for example, :attr:`bayesbridge.parameters.UniformParameter.perturb_std`) . 
+        The partial acceptance probability is then computed numerically.
+                  
     
         Parameters
         ----------
@@ -458,9 +538,18 @@ class Voronoi1D(Voronoi):
     
         Returns
         -------
-        Tuple[Dict[str, np.ndarray], Number]
-            key value pairs that map parameter names to values of the ``new_site``
-            and the index of the Voronoi neighbour
+        ParameterSpaceState
+            new parameter space state
+        Number
+            log of the partial acceptance probability, 
+            :math:`log(\alpha_{p}) = \log(\frac{\prod_i p(v_i^{k+1})}{\prod_i{q_{v_i}^{k+1}}})`
+            
+        References
+        ----------
+        .. [1] Bodin et al. 2012, Transdimensional inversion of receiver functions 
+            and surface wave dispersion
+        .. [2] Hawkins and Sambridge 2015, Geophysical imaging using trans-dimensional 
+            trees
         """
         # prepare for birth perturbation
         n_cells = old_ps_state.n_dimensions
@@ -513,6 +602,42 @@ class Voronoi1D(Voronoi):
         )
 
     def death(self, old_ps_state: ParameterSpaceState):
+        r"""removes a new Voronoi cell and returns the pertubed state along with 
+        the log of the corresponding partial acceptance probability,
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}.
+    
+        It is straightforward to show that this equals the reciprocal of
+        the partial acceptance probability obtained in the case of a birth
+        perturbation (see :meth:`birth`), i.e.,
+                
+        .. math::
+            \alpha_{p} = \frac{\prod_i{q_{v_i}^{k+1}}}{\prod_i p(v_i^{k+1})}.
+    
+        Parameters
+        ----------
+        old_ps_state : ParameterSpaceState
+            current parameter space state
+    
+        Returns
+        -------
+        ParameterSpaceState
+            new parameter space state
+        Number
+            log of the partial acceptance probability, 
+            :math:`log(\alpha_{p}) = -\log(\frac{\prod_i p(v_i^{k+1})}{\prod_i{q_{v_i}^{k+1}}})`
+            
+        References
+        ----------
+        .. [1] Bodin et al. 2012, Transdimensional inversion of receiver functions 
+            and surface wave dispersion
+        .. [2] Hawkins and Sambridge 2015, Geophysical imaging using trans-dimensional 
+            trees
+        """
         # prepare for death perturbation
         n_cells = old_ps_state.n_dimensions
         if n_cells == self._n_dimensions_min:

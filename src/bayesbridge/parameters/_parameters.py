@@ -58,7 +58,7 @@ class Parameter(ABC):
 
     @abstractmethod
     def perturb_value(self, value: Number, position: Number = None) -> Tuple[Number, Number]:
-        r"""perturbs the given value, in way that may depend on the position 
+        r"""perturbs the given value, in a way that may depend on the position 
         associated with such a parameter value, and calculates the log of the 
         corresponding partial acceptance probability 
         
