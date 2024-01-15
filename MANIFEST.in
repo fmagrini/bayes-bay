@@ -1,0 +1,11 @@
+include README.md
+
+include src/bayesbay/*.py
+include src/bayesbay/*.pyx
+include src/bayesbay/*.pxd
+
+prune docs/build
+prune docs/source/generated
+prune */__pycache__
+prune */*/__pycache__
+prune */*/*/__pycache__
