@@ -5,4 +5,5 @@ sphinx-togglebutton
 sphinx-copybutton
 sphinxcontrib-mermaid
 myst-nb
+cython
 bayesbay
