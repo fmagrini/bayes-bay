@@ -8,6 +8,10 @@ import os
 extra_compile_args = ["-O3", "-ffast-math", "-march=native"]
 
 
+def readme():
+    with open("README.md", "r") as f:
+        return f.read()
+
 def read_version():
     version_file = os.path.join("src", "bayesbay", "_version.py")
     with open(version_file, "r") as f:
@@ -31,6 +35,7 @@ ext_modules = [
 setup(
     name="bayesbay",
     version=read_version(),
+    long_description=readme(),
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
