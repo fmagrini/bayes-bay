@@ -49,12 +49,12 @@ span.project-version {
 div.mermaid:not([data-processed]) {
     display: none;
 }
-div.mermaid {
+/* div.mermaid {
     transition: transform .2s;
 }
 div.mermaid:hover {
     transform: translateX(15%) scale(1.3);
-}
+} */
 
 
 /* HOME: panel button */

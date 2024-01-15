@@ -9,8 +9,8 @@ trans-dimensional or fixed-dimensional McMC sampler and to run it.
 Typically, this invovles the following steps:
 
 #. Define your parameters (:doc:`api_standard_parameters`)
-#. Define your parameter space(s), which can be a discretization (
-   :doc:`api_standard_discretizations`), or a parameter space (without discretization
+#. Define your parameter space(s), which can be a discretization
+   (:doc:`api_standard_discretizations`), or a parameter space (without discretization
    to be inverted :class:`ParameterSpace`)
 #. Define your parameterization with all the parameter space(s) above
    (:class:`Parameterization`)
