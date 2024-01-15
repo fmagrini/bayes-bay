@@ -1,0 +1,16 @@
+name: docs
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.7
+  - cython
+  - sphinx==4.2.0
+  - numpydoc==1.1.0
+  - pip:
+    - sphinx_rtd_theme==1.0.0
+    - sphinx-design
+    - sphinx-togglebutton
+    - sphinx-copybutton
+    - sphinxcontrib-mermaid
+    - myst-nb

@@ -1,0 +1,8 @@
+sphinx
+sphinx-rtd-theme
+sphinx-design
+sphinx-togglebutton
+sphinx-copybutton
+sphinxcontrib-mermaid
+myst-nb
+bayesbay
