@@ -8,5 +8,5 @@ for calculating the acceptance criteria.
     :toctree: generated/
     :nosignatures:
 
-    bayesbridge.Target
-    bayesbridge.LogLikelihood
+    bayesbay.Target
+    bayesbay.LogLikelihood

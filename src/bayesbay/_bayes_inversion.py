@@ -124,13 +124,13 @@ class BaseBayesianInversion:
 
         Parameters
         ----------
-        sampler : bayesbridge.samplers.Sampler, optional
+        sampler : bayesbay.samplers.Sampler, optional
             a sampler instance describing how chains intereact or modify their
             properties during sampling. This could be a sampler from the 
-            module :mod:`bayesbridge.samplers` such as
-            :class:`bayesbridge.samplers.VanillaSampler` (default),
-            :class:`bayesbridge.samplers.ParallelTempering`, or
-            :class:`bayesbridge.samplers.SimulatedAnnealing`,
+            module :mod:`bayesbay.samplers` such as
+            :class:`bayesbay.samplers.VanillaSampler` (default),
+            :class:`bayesbay.samplers.ParallelTempering`, or
+            :class:`bayesbay.samplers.SimulatedAnnealing`,
             or a customised sampler instance.
         n_iterations : int, optional
             total number of iterations to run, by default 1000
@@ -212,12 +212,12 @@ class BayesianInversion(BaseBayesianInversion):
 
     Parameters
     ----------
-    parameterization : bayesbridge.parameterization.Parameterization
+    parameterization : bayesbay.parameterization.Parameterization
         pre-configured parameterization. This includes information about the dimension,
         parameterization bounds and properties of unknown parameterizations
-    targets : List[bayesbridge.Target]
+    targets : List[bayesbay.Target]
         a list of data targets
-    fwd_functions : Callable[[bayesbridge.State], np.ndarray]
+    fwd_functions : Callable[[bayesbay.State], np.ndarray]
         a lsit of forward functions corresponding to each data targets provided above.
         Each function takes in a model and returns a numpy array of data predictions.
     n_chains: int, 10 by default

@@ -1,7 +1,7 @@
 from typing import Tuple
 from numbers import Number
 
-from bayesbridge._state import State
+from bayesbay._state import State
 
 from ._base_perturbation import Perturbation
 from .._state import State
@@ -13,7 +13,7 @@ class BirthPerturbation(Perturbation):
     Parameters
     ----------
     parameter_space : ParameterSpace
-        instance of :class:`bayesbridge.parameterization.ParameterSpace`
+        instance of :class:`bayesbay.parameterization.ParameterSpace`
     """
     def __init__(self, parameter_space):
         self.param_space = parameter_space
@@ -71,7 +71,7 @@ class DeathPerturbation(Perturbation):
     Parameters
     ----------
     parameter_space : ParameterSpace
-        instance of :class:`bayesbridge.parameterization.ParameterSpace`
+        instance of :class:`bayesbay.parameterization.ParameterSpace`
     """
     def __init__(self, parameter_space,):
         self.param_space = parameter_space

@@ -2,7 +2,7 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 
-import bayesbridge as bb
+import bayesbay as bb
 
 
 # -------------- Setting up constants, fwd func, data
@@ -43,7 +43,7 @@ def forward_gaussian_mixtures(model: bb.State):
     return _forward(n_mixtures, means, stds, weights)
 
 
-# -------------- Define bayesbridge objects
+# -------------- Define bayesbay objects
 targets = [
     bb.Target(
         "density", 

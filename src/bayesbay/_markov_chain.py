@@ -234,12 +234,12 @@ class MarkovChain(BaseMarkovChain):
     id : Union[int, str]
         an integer or a string representing the ID of the current chain. For display
         purposes only
-    parameterization : bayesbridge.parameterization.Parameterization
+    parameterization : bayesbay.parameterization.Parameterization
         pre-configured parameterization. This includes information about the dimension,
         parameterization bounds and properties of unknown parameterizations
-    targets : List[bayesbridge.Target]
+    targets : List[bayesbay.Target]
         a list of data targets
-    fwd_functions : Callable[[bayesbridge.State], np.ndarray]
+    fwd_functions : Callable[[bayesbay.State], np.ndarray]
         a lsit of forward functions corresponding to each data targets provided above.
         Each function takes in a model and produces a numpy array of data predictions.
     temperature : int, optional

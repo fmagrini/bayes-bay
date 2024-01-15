@@ -1,4 +1,4 @@
-name: bayesbridge_dev
+name: bayesbay_dev
 channels:
   - defaults
   - conda-forge

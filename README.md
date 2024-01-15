@@ -1,4 +1,4 @@
-# BayesBridge
+# BayesBay
 
 Trans-dimensional McMC sampling implemented in Python and Cython.
 
@@ -13,8 +13,8 @@ Trans-dimensional McMC sampling implemented in Python and Cython.
     or 
 
     ```console
-    $ python -m venv bayesbridge_dev
-    $ source bayesbridge_dev/bin/activate
+    $ python -m venv bayesbay_dev
+    $ source bayesbay_dev/bin/activate
     $ pip install -r envs/requirements_dev.txt
     ```
 

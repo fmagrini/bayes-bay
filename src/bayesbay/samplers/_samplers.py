@@ -38,7 +38,7 @@ class Sampler(ABC):
         
         Parameters
         ----------
-        chain : bayesbridge.BaseMarkovChain
+        chain : bayesbay.BaseMarkovChain
             Markov chain used to sample the posterior
         """
         self.on_begin_iteration(chain)
@@ -51,7 +51,7 @@ class Sampler(ABC):
         
         Parameters
         ----------
-        chain : bayesbridge.BaseMarkovChain
+        chain : bayesbay.BaseMarkovChain
             Markov chain used to sample the posterior
         """
         self.on_iteration_end(chain)

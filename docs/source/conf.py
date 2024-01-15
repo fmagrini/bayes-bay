@@ -4,12 +4,12 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import datetime
-import bayesbridge as bb
+import bayesbay as bb
 
 
 # -- Project information -----------------------------------------------------
-project = "BayesBridge"
-copyright = f"{datetime.date.today().year}, InLab, BayesBridge development team"
+project = "BayesBay"
+copyright = f"{datetime.date.today().year}, InLab, BayesBay development team"
 version = "dev" if "dev" in bb.__version__ else f"v{bb.__version__}"
 
 # -- General configuration ---------------------------------------------------

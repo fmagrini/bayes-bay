@@ -8,5 +8,5 @@ list of ``MarkovChain`` as field.
     :toctree: generated/
     :nosignatures:
 
-    bayesbridge.BayesianInversion
-    bayesbridge.MarkovChain
+    bayesbay.BayesianInversion
+    bayesbay.MarkovChain

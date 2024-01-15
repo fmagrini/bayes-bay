@@ -118,7 +118,7 @@ class Parameter(ABC):
 
         Parameters
         ----------
-        initialize_func: Callable[[bayesbridge.parameters.Parameter, Union[np.ndarray, Number]], Union[np.ndarray, Number]]
+        initialize_func: Callable[[bayesbay.parameters.Parameter, Union[np.ndarray, Number]], Union[np.ndarray, Number]]
             The function to use for initialization. This function should take no arguments.
 
         Examples

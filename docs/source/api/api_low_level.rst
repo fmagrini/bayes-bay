@@ -5,5 +5,5 @@ Low level API
     :toctree: generated/
     :nosignatures:
 
-    bayesbridge.BaseBayesianInversion
-    bayesbridge.BaseMarkovChain
+    bayesbay.BaseBayesianInversion
+    bayesbay.BaseMarkovChain

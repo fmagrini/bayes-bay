@@ -3,15 +3,15 @@ Perturbations
 
 Perturbation functions are generated (under the hood) as instances of the below 
 classes, in the initialization stage of 
-:class:`bayesbridge.parameterization.Parameterization` and 
-:class:`bayesbridge.LogLikelihood`.
+:class:`bayesbay.parameterization.Parameterization` and 
+:class:`bayesbay.LogLikelihood`.
 
 .. autosummary::
     :toctree: generated/
     :nosignatures:
 
-    bayesbridge.perturbations.Perturbation
-    bayesbridge.perturbations.ParamPerturbation
-    bayesbridge.perturbations.BirthPerturbation
-    bayesbridge.perturbations.DeathPerturbation
-    bayesbridge.perturbations.NoisePerturbation
+    bayesbay.perturbations.Perturbation
+    bayesbay.perturbations.ParamPerturbation
+    bayesbay.perturbations.BirthPerturbation
+    bayesbay.perturbations.DeathPerturbation
+    bayesbay.perturbations.NoisePerturbation

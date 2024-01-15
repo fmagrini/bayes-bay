@@ -7,7 +7,7 @@ plans:
 
 - Simulated annealing and simulated tempering techniques
 - 2D and 3D Voronoi nuclei parameterization utilities
-- Expanding our scientific examples set by running BayesBridge against your own problem
+- Expanding our scientific examples set by running BayesBay against your own problem
 
 Local setup
 -----------
@@ -22,8 +22,8 @@ Local setup
 
    .. code-block:: console
 
-        $ python -m venv bayesbridge_dev
-        $ source bayesbridge_dev/bin/activate
+        $ python -m venv bayesbay_dev
+        $ source bayesbay_dev/bin/activate
         $ pip install -r envs/requirements_dev.txt
 
 2. To install the package in editable mode

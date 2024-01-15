@@ -5,7 +5,7 @@ Discretizations are special parameter spaces that are also parameters. They have
 that represent spatial discretizations, and hold a list of parameters that are 
 dependent on these values.
 
-Here is a class inheritance diagram of related classes we have in BayesBridge so far:
+Here is a class inheritance diagram of related classes we have in BayesBay so far:
 
 .. mermaid::
 
@@ -19,6 +19,6 @@ Here is a class inheritance diagram of related classes we have in BayesBridge so
     :toctree: generated/
     :nosignatures:
 
-    bayesbridge.discretization.Discretization
-    bayesbridge.discretization.Voronoi
-    bayesbridge.discretization.Voronoi1D
+    bayesbay.discretization.Discretization
+    bayesbay.discretization.Voronoi
+    bayesbay.discretization.Voronoi1D

@@ -1,7 +1,7 @@
 import math
 import random
 import numpy as np
-import bayesbridge as bb
+import bayesbay as bb
 
 
 uniform_param = bb.parameters.UniformParameter("uniform_param", -1, 1, 0.1)

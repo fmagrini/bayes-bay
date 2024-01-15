@@ -1,9 +1,9 @@
 Standard API
 ============
 
-.. automodule:: bayesbridge.parameterization
+.. automodule:: bayesbay.parameterization
 
-BayesBridge's standard API includes full-fledged utilities to define a 
+BayesBay's standard API includes full-fledged utilities to define a 
 trans-dimensional or fixed-dimensional McMC sampler and to run it.
 
 Typically, this invovles the following steps:
@@ -19,9 +19,9 @@ Typically, this invovles the following steps:
 #. (optional) Define and customize your own sampler (:doc:`api_standard_samplers`), if 
    you'd like to customize chain initialization, or to add callback functions on the 
    end of each iteration or each batch of iterations
-#. Run the inversion (:meth:`bayesbridge.BayesianInversion.run`)
+#. Run the inversion (:meth:`bayesbay.BayesianInversion.run`)
 
-If you are new to BayesBridge, we recommend :ref:`our tutorial page <quickstart>` to 
+If you are new to BayesBay, we recommend :ref:`our tutorial page <quickstart>` to 
 get started.
 
 .. toctree::

@@ -2,7 +2,7 @@ class DimensionalityException(Exception):
     """
     Exception raised when trying to add/remove a dimension in a
     parameter space that has already reached the maximum/minimum number of
-    allowed dimensions (see :class:`bayesbridge.parameterization.ParameterSpace`).
+    allowed dimensions (see :class:`bayesbay.parameterization.ParameterSpace`).
     """
 
     def __init__(self, move):

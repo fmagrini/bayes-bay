@@ -9,7 +9,7 @@ extra_compile_args = ["-O3", "-ffast-math", "-march=native"]
 
 
 def read_version():
-    version_file = os.path.join("src", "bayesbridge", "_version.py")
+    version_file = os.path.join("src", "bayesbay", "_version.py")
     with open(version_file, "r") as f:
         lines = f.read()
     for line in lines.split("\n"):
@@ -21,15 +21,15 @@ def read_version():
 
 ext_modules = [
     Extension(
-        name="bayesbridge._utils_1d",
-        sources=["src/bayesbridge/_utils_1d.pyx"],
+        name="bayesbay._utils_1d",
+        sources=["src/bayesbay/_utils_1d.pyx"],
         extra_compile_args=extra_compile_args,
         language="c++",
     )
 ]
 
 setup(
-    name="bayesbridge",
+    name="bayesbay",
     version=read_version(),
     packages=find_packages(where="src"),
     package_dir={"": "src"},

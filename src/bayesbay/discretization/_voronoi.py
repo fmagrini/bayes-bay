@@ -100,7 +100,7 @@ class Voronoi(Discretization):
             
     def log_prior(self, *args):
         r"""
-        BayesBridge implements the grid trick, which calculates the prior 
+        BayesBay implements the grid trick, which calculates the prior 
         probability of a Voronoi discretization through the combinatorial 
         formula :math:`{N \choose k}^{-1}`, with `k` denoting the number of 
         Voronoi sites and `N` the number of possible positions allowed for the 
@@ -476,7 +476,7 @@ class Voronoi1D(Voronoi):
         achieved through a random deviate from the normal distribution 
         :math:`\mathcal{N}(v_i, \theta)`, with :math:`\theta` denoting the 
         standard deviation of the Gaussian used to carry out the perturbation
-        (see, for example, :attr:`bayesbridge.parameters.UniformParameter.perturb_std`) . 
+        (see, for example, :attr:`bayesbay.parameters.UniformParameter.perturb_std`) . 
         The partial acceptance probability is then computed numerically.
                   
     
@@ -674,7 +674,7 @@ class Voronoi1D(Voronoi):
         --------
         .. code-block:: python
         
-            from bayesbridge.discretization import Voronoi1D
+            from bayesbay.discretization import Voronoi1D
             
             # define and run the Bayesian inversion
             ...

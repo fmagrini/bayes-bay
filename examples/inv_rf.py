@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from BayHunter import SynthObs
-import bayesbridge as bb
+import bayesbay as bb
 
 
 # -------------- Setting up constants, fwd func, synth data
@@ -54,7 +54,7 @@ rf = forward_rf(true_model)
 rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
 
 
-# -------------- Define bayesbridge objects
+# -------------- Define bayesbay objects
 targets = [
     bb.Target("rf", rf, covariance_mat_inv=1 / RF_STD**2),
 ]

@@ -2,14 +2,14 @@
 Installation
 ============
 
-Install BayesBridge
+Install BayesBay
 -------------------
 
 **Step 1**: (*Optional*) Set up a virtual environment.
 
-We strongly recommend installing BayesBridge within a 
+We strongly recommend installing BayesBay within a 
 `virtual environment <https://docs.python.org/3/tutorial/venv.html>`_. 
-This ensures that BayesBridge can install the various modules that it needs without the 
+This ensures that BayesBay can install the various modules that it needs without the 
 risk of breaking anything else on your system. There are a number of tools that can 
 facilitate this, including `venv`, `virtualenv`, `conda` and `mamba`.
 
@@ -45,16 +45,16 @@ facilitate this, including `venv`, `virtualenv`, `conda` and `mamba`.
         $ source <path-to-new-env>/<env-name>/bin/activate
 
       At this point you effectively have a 'clean' Python installation. You can now 
-      install and use BayesBridge, following the instructions at step 2. When you are 
+      install and use BayesBay, following the instructions at step 2. When you are 
       finished, you can run the command
       
       .. code-block:: console
 
         $ deactivate
 
-      and your system will return to its default state. If you want to use BayesBridge again, 
+      and your system will return to its default state. If you want to use BayesBay again, 
       simply re-run the 'activate' step above; you do not need to repeat the 
-      installation process. Alternatively, you can remove BayesBridge and the virtual 
+      installation process. Alternatively, you can remove BayesBay and the virtual 
       environment from your system by running
 
       .. code-block:: console
@@ -88,16 +88,16 @@ facilitate this, including `venv`, `virtualenv`, `conda` and `mamba`.
         $ source <path-to-new-env>/<env-name>/bin/activate
 
       At this point you effectively have a 'clean' Python installation. You can now 
-      install and use BayesBridge, following the instructions at step 2. When you are 
+      install and use BayesBay, following the instructions at step 2. When you are 
       finished, you can run the command
 
       .. code-block:: console
 
         $ deactivate
 
-      and your system will return to its default state. If you want to use BayesBridge again, 
+      and your system will return to its default state. If you want to use BayesBay again, 
       simply re-run the 'activate' step above; you do not need to repeat the 
-      installation process. Alternatively, you can remove BayesBridge and the virtual 
+      installation process. Alternatively, you can remove BayesBay and the virtual 
       environment from your system by running
 
       .. code-block:: console
@@ -129,16 +129,16 @@ facilitate this, including `venv`, `virtualenv`, `conda` and `mamba`.
         $ conda activate <env-name>
 
       At this point you effectively have a 'clean' Python installation. You can now 
-      install and use BayesBridge, following the instructions at step 2. When you are 
+      install and use BayesBay, following the instructions at step 2. When you are 
       finished, you can run the command
       
       .. code-block:: console
 
         $ conda deactivate
 
-      and your system will return to its default state. If you want to use BayesBridge again, 
+      and your system will return to its default state. If you want to use BayesBay again, 
       simply re-run the 'activate' step above; you do not need to repeat the 
-      installation process. Alternatively, you can remove BayesBridge and the virtual 
+      installation process. Alternatively, you can remove BayesBay and the virtual 
       environment from your system by running
       
       .. code-block:: console
@@ -147,23 +147,23 @@ facilitate this, including `venv`, `virtualenv`, `conda` and `mamba`.
 
 
 
-**Step 2**: Install BayesBridge
+**Step 2**: Install BayesBay
 
 .. tab-set::
 
   .. tab-item:: pip
 
-    BayesBridge is available on `PyPI <https://pypi.org/project/bayesbridge/>`_, so for most users
+    BayesBay is available on `PyPI <https://pypi.org/project/bayesbay/>`_, so for most users
     installation is as simple as:
 
     .. code-block:: console
 
-      $ pip install bayesbridge
+      $ pip install bayesbay
 
   .. tab-item:: From source
 
-    You can build BayesBridge from source. You are most likely to want to do this if you 
-    want to work in 'developer mode', and make changes to BayesBridge's source code.
+    You can build BayesBay from source. You are most likely to want to do this if you 
+    want to work in 'developer mode', and make changes to BayesBay's source code.
 
     .. code-block:: console
 

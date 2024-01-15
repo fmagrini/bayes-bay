@@ -15,9 +15,9 @@ class LogLikelihood:
 
     Parameters
     ----------
-    targets : bayesbridge.Target
+    targets : bayesbay.Target
         a list of data targets
-    fwd_functions : Callable[[bayesbridge.State], np.ndarray]
+    fwd_functions : Callable[[bayesbay.State], np.ndarray]
         a list of forward functions corresponding to each data targets provided above.
         Each function takes in a model and produces a numpy array of data predictions.
     """
@@ -65,9 +65,9 @@ class LogLikelihood:
         
         Parameters
         ----------
-        old_state : bayesbridge.State
+        old_state : bayesbay.State
             the state of the Bayesian inference prior to the model perturbation
-        new_state : bayesbridge.State
+        new_state : bayesbay.State
             the state of the Bayesian inference after the model perturbation
             
         Returns

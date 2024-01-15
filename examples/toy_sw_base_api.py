@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pysurf96 import surf96
-import bayesbridge as bb
+import bayesbay as bb
 
 
 # -------------- Setting up constants, fwd func, synth data

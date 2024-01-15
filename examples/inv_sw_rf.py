@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from pysurf96 import surf96
 from BayHunter import SynthObs
-import bayesbridge as bb
+import bayesbay as bb
 
 
 # -------------- Setting up constants, fwd func, synth data
@@ -100,7 +100,7 @@ rf = forward_rf(true_model)
 rf_noisy = rf + np.random.normal(0, RF_STD, rf.size)
 
 
-# -------------- Define bayesbridge objects
+# -------------- Define bayesbay objects
 targets = [
     bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2),
     bb.Target("love1", love1_dobs, covariance_mat_inv=1 / LOVE_STD**2),

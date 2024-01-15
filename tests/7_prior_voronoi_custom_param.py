@@ -2,7 +2,7 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-import bayesbridge as bb
+import bayesbay as bb
 
 
 # define parameter: customly defined uniform parameter
