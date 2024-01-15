@@ -10,7 +10,7 @@ dependencies:
   - pip:
     - nox
     - sphinx
-    - sphinx-book-theme
+    - sphinx-rtd-theme
     - sphinx-design
     - sphinx-togglebutton
     - sphinx-copybutton

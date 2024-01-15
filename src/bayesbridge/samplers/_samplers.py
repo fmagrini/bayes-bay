@@ -257,7 +257,7 @@ class VanillaSampler(Sampler):
 
 
 class ParallelTempering(Sampler):
-    """High-level class to be used to sample the posterior by means of 
+    r"""High-level class to be used to sample the posterior by means of 
     reversible-jump Markov chain Monte Carlo accelerated with parallel tempering 
     [1]_, [2]_.
     

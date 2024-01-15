@@ -5,7 +5,7 @@ matplotlib>=3.0.0
 # Development tools
 nox
 sphinx
-sphinx-book-theme
+sphinx-rtd-theme
 sphinx-design
 sphinx-togglebutton
 sphinx-copybutton

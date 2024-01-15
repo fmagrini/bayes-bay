@@ -217,22 +217,22 @@ all_thicknesses = [_calc_thickness(m) for m in saved_models]
 all_vs = [_get_vs(m) for m in saved_models]
 
 # plot samples, true model and statistics (mean, median, quantiles, etc.)
-ax = bb.discretization.Voronoi1D.plot_param_samples(
+ax = bb.discretization.Voronoi1D.plot_depth_profiles(
     all_thicknesses, all_vs, linewidth=0.1, color="k"
 )
-bb.discretization.Voronoi1D.plot_param_samples(
+bb.discretization.Voronoi1D.plot_depth_profiles(
     [true_thickness], [true_vs], alpha=1, ax=ax, color="r", label="True"
 )
-bb.discretization.Voronoi1D.plot_ensemble_statistics(
+bb.discretization.Voronoi1D.plot_depth_profiles_statistics(
     all_thicknesses, all_vs, interp_depths, ax=ax
 )
 
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
-bb.discretization.Voronoi1D.plot_depth_profile(
+bb.discretization.Voronoi1D.plot_depth_profiles_density(
     all_thicknesses, all_vs, ax=axes[0]
 )
-bb.discretization.Voronoi1D.plot_interface_distribution(
+bb.discretization.Voronoi1D.plot_interface_hist(
     all_thicknesses, ax=axes[1]
 )
 for d in np.cumsum(true_thickness):

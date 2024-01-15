@@ -127,7 +127,7 @@ cdef int floor_index(double xp, double[:] x, ssize_t xlen):
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef interpolate_result(double[:] x, double[:] y, double[:] x0):
+cpdef interpolate_depth_profile(double[:] x, double[:] y, double[:] x0):
     cdef size_t ilayer = 0
     cdef size_t i
     cdef size_t x0_len = x0.shape[0]

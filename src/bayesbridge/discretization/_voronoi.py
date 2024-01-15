@@ -13,7 +13,7 @@ from ..exceptions import DimensionalityException
 from ..parameters import Parameter
 from .._state import State, ParameterSpaceState
 from .._utils_1d import (
-    interpolate_result, 
+    interpolate_depth_profile, 
     compute_voronoi1d_cell_extents, 
     insert_scalar,
     nearest_index,
@@ -104,11 +104,11 @@ class Voronoi(Discretization):
         probability of a Voronoi discretization through the combinatorial 
         formula :math:`{N \choose k}^{-1}`, with `k` denoting the number of 
         Voronoi sites and `N` the number of possible positions allowed for the 
-        sites [1]_.
+        sites [3]_.
         
         References
         ----------
-        .. [1] Bodin and Sambridge (2009), Seismic tomography with the reversible 
+        .. [3] Bodin and Sambridge (2009), Seismic tomography with the reversible 
             jump algorithm
         """
         raise NotImplementedError
@@ -133,58 +133,6 @@ class Voronoi(Discretization):
         """
         return self._perturbation_funcs
 
-    @staticmethod
-    def plot_hist_n_voronoi_cells(samples_n_voronoi_cells, ax=None, **kwargs):
-        """plot a histogram of the distribution of the number of Voronoi cells.
-
-        Parameters
-        ----------
-        samples_n_voronoi_cells : list or ndarray
-            list or array containing the number of Voronoi cells in each sample
-        ax : Axes, optional
-            an optional Axes object to plot on
-        kwargs : dict, optional
-            additional keyword arguments to pass to ax.hist
-
-        Returns
-        -------
-        ax : Axes
-            The Axes object containing the plot
-        """
-        # create a new plot if no ax is provided
-        if ax is None:
-            _, ax = plt.subplots()
-
-        # determine bins aligned to integer values
-        min_val = np.min(samples_n_voronoi_cells)
-        max_val = np.max(samples_n_voronoi_cells)
-        bins = np.arange(min_val, max_val + 2) - 0.5  # bins between integers
-
-        # default histogram style
-        hist_style = {
-            "bins": bins,
-            "align": "mid",
-            "rwidth": 0.8,
-            "alpha": 0.0,
-            "color": kwargs.pop(
-                "color", kwargs.pop("c", "blue")
-            ),  # Fixed color for the sample lines
-        }
-
-        # override or extend with any provided kwargs
-        hist_style.update(kwargs)
-
-        # plotting the histogram
-        ax.hist(samples_n_voronoi_cells, **hist_style)
-
-        # set plot details
-        ax.set_xlabel("Number of Voronoi Cells")
-        ax.set_ylabel("Frequency")
-        ax.set_title("Distribution of Number of Voronoi Cells")
-        ax.grid(True, axis="y")
-
-        return ax
-
 
 class Voronoi1D(Voronoi):
     r"""Utility class for Voronoi tessellation in 1D
@@ -208,10 +156,11 @@ class Voronoi1D(Voronoi):
         parameters are ignored if ``n_dimensions`` is not None, i.e. if the
         discretization is not trans-dimensional
     n_dimensions_init_range : Number, optional
-        percentage of the range `n_dimensions_min``-``n_dimensions_max`` used to
+        percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if 
-        ``n_dimensions_min``=1, ``n_dimensions_max``=10, and ``n_dimensions_init_range``=0.5,
-        the maximum number of dimensions at the initialization is
+        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and 
+        ``n_dimensions_init_range`` = 0.5,
+        the maximum number of dimensions at the initialization is::
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
@@ -630,13 +579,6 @@ class Voronoi1D(Voronoi):
         Number
             log of the partial acceptance probability, 
             :math:`log(\alpha_{p}) = -\log(\frac{\prod_i p(v_i^{k+1})}{\prod_i{q_{v_i}^{k+1}}})`
-            
-        References
-        ----------
-        .. [1] Bodin et al. 2012, Transdimensional inversion of receiver functions 
-            and surface wave dispersion
-        .. [2] Hawkins and Sambridge 2015, Geophysical imaging using trans-dimensional 
-            trees
         """
         # prepare for death perturbation
         n_cells = old_ps_state.n_dimensions
@@ -696,14 +638,15 @@ class Voronoi1D(Voronoi):
         )
 
     @staticmethod
-    def plot_depth_profile(
-        samples_voronoi_cell_extents,
-        samples_param_values,
-        bins=100,
+    def plot_depth_profiles_density(
+        samples_voronoi_cell_extents: np.ndarray,
+        samples_param_values: np.ndarray,
+        depths_bins: Union[int, np.ndarray] = 100, 
+        param_values_bins: Union[int, np.ndarray] = 100,
         ax=None,
         **kwargs,
     ):
-        """plot a 2D histogram (depth profile) of points including the interfaces.
+        """plot a 2D histogram of parameter values density at refined depth positions
 
         Parameters
         ----------
@@ -713,12 +656,10 @@ class Voronoi1D(Voronoi):
         samples_param_values : ndarray
             A 2D numpy array where each row represents a sample of parameter values
             (e.g., velocities)
-        bins : int or [int, int], optional
-            The number of bins to use along each axis (default is 100). If you pass a
-            single int, it will use that
-            many bins for both axes. If you pass a list of two ints, it will use the
-            first for the x-axis (velocity)
-            and the second for the y-axis (depth).
+        depths_bins: int or np.ndarray, optional
+            The depth bins or their number, default to 100
+        param_values_bins: int or np.ndarray, optional
+            The parameter value bins or their number, default to 100
         ax : Axes, optional
             An optional Axes object to plot on
         kwargs : dict, optional
@@ -728,35 +669,69 @@ class Voronoi1D(Voronoi):
         -------
         ax : Axes
             The Axes object containing the plot
+        
+        Examples
+        --------
+        .. code-block:: python
+        
+            from bayesbridge.discretization import Voronoi1D
+            
+            # define and run the Bayesian inversion
+            ...
+            
+            # plot
+            results = inversion.get_results()
+            samples_voronoi_cell_extents = [
+                Voronoi1D.compute_cell_extents(d) for d in results["my_voronoi.discretization"]
+            ]
+            samples_param_values = results["vs"]
+            ax = Voronoi1D.plot_depth_profiles_density(
+                samples_voronoi_cell_extents, samples_param_values
+            )
         """
         if ax is None:
             _, ax = plt.subplots()
-        depths = []
-        velocities = []
-        for thicknesses, values in zip(
-            samples_voronoi_cell_extents, samples_param_values
-        ):
-            depths.extend(np.cumsum(np.array(thicknesses)))
-            velocities.extend(values)
+        
+        if isinstance(depths_bins, int):
+            depths = []
+            for cell_extents in samples_voronoi_cell_extents:
+                depths.extend(np.cumsum(np.array(cell_extents)))
+            depth_max = np.max(depths)
+            depth_min = 0
+            new_depths = np.linspace(depth_min, depth_max, depths_bins)
+        elif isinstance(depths_bins, np.ndarray):
+            new_depths = depths_bins
+        else:
+            raise TypeError("depths_bins should be either an int or np.ndarray")
+
+        new_param_values = Voronoi1D._interpolate_depth_profiles(
+            samples_voronoi_cell_extents, samples_param_values, new_depths
+        )
+        
         # plotting the 2D histogram
-        cax = ax.hist2d(velocities, depths, bins=bins, **kwargs)
+        cax = ax.hist2d(
+            new_param_values.ravel(), 
+            np.tile(new_depths, new_param_values.shape[0]), 
+            bins=(param_values_bins, len(new_depths)), 
+            **kwargs
+        )
         # colorbar (for the histogram density)
         cbar = plt.colorbar(cax[3], ax=ax)
         cbar.set_label("Density")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
-        ax.set_xlabel("Velocity (km/s)")
-        ax.set_ylabel("Depth (km)")
+        ax.set_xlabel("Parameter values")
+        ax.set_ylabel("Depth")
         return ax
 
     @staticmethod
-    def plot_interface_distribution(
+    def plot_interface_hist(
         samples_voronoi_cell_extents,
         bins=100,
         ax=None,
         **kwargs,
     ):
-        """plot the 1D depth distribution
+        """plot the 1D depth histogram of interfaces
 
         Parameters
         ----------
@@ -783,12 +758,12 @@ class Voronoi1D(Voronoi):
         ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
-        ax.set_xlabel("p(discontinuity)")
-        ax.set_ylabel("Depth (km)")
+        ax.set_xlabel("Number of interfaces")
+        ax.set_ylabel("Depth")
         return ax
 
     @staticmethod
-    def plot_param_samples(
+    def plot_depth_profiles(
         samples_voronoi_cell_extents: list,
         samples_param_values: list,
         ax=None,
@@ -836,46 +811,56 @@ class Voronoi1D(Voronoi):
 
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
-        ax.set_xlabel("Velocity (km/s)")
-        ax.set_ylabel("Depth (km)")
+        ax.set_xlabel("Parameter values")
+        ax.set_ylabel("Depth")
 
         return ax
-
-    @staticmethod
-    def interpolate_samples(
-        samples_voronoi_cell_extents, samples_param_values, interp_positions
+    
+    def interpolate_depth_profile(
+        voronoi_cell_extents, param_values, interp_positions
     ):
-        """interpolates the samples given the site positions and interpolate points
+        """interpolates the values of a physical parameter that is a function of depth
+        as defined by the Voronoi discretization onto the specified depth positions
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : list
-            a list of voronoi cell extents (thicknesses in the 1D case)
-        samples_param_values : list
-            a list of physical parameter values to draw statistics from
-        interp_positions : _type_
-            points to interpolate
+        voronoi_cell_extents : np.ndarray
+            the extent of each Voronoi cell
+        param_values : np.ndarray
+            the physical parameter value associated with each Voronoi cell
+        interp_positions : np.ndarray
+            the depths at which the parameter values will be returned
 
         Returns
         -------
         np.ndarray
-            the resulting samples
-        """
+            the physical parameter values associated with ``interp_positions``
+        """ 
+        return interpolate_depth_profile(
+            np.array(voronoi_cell_extents),
+            np.array(param_values), 
+            interp_positions, 
+        )
+
+    @staticmethod
+    def _interpolate_depth_profiles(
+        samples_voronoi_cell_extents, samples_param_values, interp_positions
+    ):
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
         for i, (sample_extents, sample_values) in enumerate(
             zip(samples_voronoi_cell_extents, samples_param_values)
         ):
-            interp_params[i, :] = interpolate_result(
+            interp_params[i, :] = interpolate_depth_profile(
                 np.array(sample_extents), np.array(sample_values), interp_positions
             )
         return interp_params
 
     @staticmethod
-    def get_ensemble_statistics(
+    def get_depth_profiles_statistics(
         samples_voronoi_cell_extents: list,
         samples_param_values: list,
         interp_positions: np.ndarray,
-        percentiles=(10, 90),
+        percentiles: tuple = (10, 90),
     ) -> dict:
         """get the mean, median, std and percentiles of the given ensemble
 
@@ -885,7 +870,7 @@ class Voronoi1D(Voronoi):
             a list of voronoi cell extents (thicknesses in the 1D case)
         samples_param_values : list
             a list of physical parameter values to draw statistics from
-        interp_positions : _type_
+        interp_positions : np.ndarray
             points to interpolate
         percentiles : tuple, optional
             percentiles to calculate, by default (10, 90)
@@ -895,7 +880,7 @@ class Voronoi1D(Voronoi):
         dict
             a dictionary with these keys: "mean", "median", "std" and "percentile"
         """
-        interp_params = Voronoi1D.interpolate_samples(
+        interp_params = Voronoi1D._interpolate_depth_profiles(
             samples_voronoi_cell_extents, samples_param_values, interp_positions
         )
         statistics = {
@@ -907,13 +892,12 @@ class Voronoi1D(Voronoi):
         return statistics
 
     @staticmethod
-    def plot_ensemble_statistics(
+    def plot_depth_profiles_statistics(
         samples_voronoi_cell_extents: list,
         samples_param_values: list,
         interp_positions: np.ndarray,
         percentiles=(10, 90),
         ax=None,
-        **kwargs,
     ):
         """plot the mean, median, std and percentiles from the given samples
 
@@ -935,7 +919,7 @@ class Voronoi1D(Voronoi):
         matplotlib.axes.Axes
             the resulting plot that has the statistics on it
         """
-        statistics = Voronoi1D.get_ensemble_statistics(
+        statistics = Voronoi1D.get_depth_profiles_statistics(
             samples_voronoi_cell_extents,
             samples_param_values,
             interp_positions,
