@@ -258,8 +258,9 @@ class VanillaSampler(Sampler):
 
 class ParallelTempering(Sampler):
     r"""High-level class to be used to sample the posterior by means of 
-    reversible-jump Markov chain Monte Carlo accelerated with parallel tempering 
-    [1]_, [2]_.
+    reversible-jump Markov chain Monte Carlo accelerated with parallel tempering.
+
+    See references below for details on parallel tempering [1]_, [2]_.
     
     Parameters
     ----------
@@ -349,8 +350,9 @@ class ParallelTempering(Sampler):
 
 class SimulatedAnnealing(Sampler):
     r"""High-level class to be used to sample the posterior by means of 
-    reversible-jump Markov chain Monte Carlo accelerated with simulated annealing 
-    [1]_.
+    reversible-jump Markov chain Monte Carlo accelerated with simulated annealing.
+
+    See references below for details on simulated annealing [1]_.
     
     .. note::
         In our implementation, the temperature of each Markov chain is decreased

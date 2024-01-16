@@ -25,15 +25,16 @@ class Discretization(Parameter, ParameterSpace):
     n_dimensions : Number, optional
         number of dimensions. None (default) results in a trans-dimensional
         discretization, with the dimensionality of the parameter space allowed
-        to vary in the range ``n_dimensions_min``-``n_dimensions_max``
+        to vary in the range ``n_dimensions_min`` - ``n_dimensions_max``
     n_dimensions_min, n_dimensions_max : Number, optional
         minimum and maximum number of dimensions, by default 1 and 10. These
         parameters are ignored if ``n_dimensions`` is not None, i.e. if the
         discretization is not trans-dimensional
     n_dimensions_init_range : Number, optional
-        percentage of the range `n_dimensions_min``-``n_dimensions_max`` used to
+        percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if 
-        ``n_dimensions_min``=1, ``n_dimensions_max``=10, and ``n_dimensions_init_range``=0.5,
+        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and 
+        ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is
         
         .. code-block:: python
