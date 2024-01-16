@@ -15,20 +15,23 @@ y = fwd_jacobian @ M_TRUE
 y_noisy = y + np.random.normal(0, DATA_NOISE_STD, y.shape)
 
 # define parameters
-coefficients_param = bb.parameters.UniformParameter("coefficients", -50, 50, 3)
+m0 = bb.parameters.UniformParameter("m0", -100, 100, 5)
+m1 = bb.parameters.UniformParameter("m1", -50, 50, 5)
+m2 = bb.parameters.UniformParameter("m2", -20, 20, 3)
+m3 = bb.parameters.UniformParameter("m3", -10, 10, 2)
 
 # define parameterization
 param_space = bb.parameterization.ParameterSpace(
     name="my_param_space", 
-    n_dimensions=4, 
-    parameters=[coefficients_param], 
+    n_dimensions=1, 
+    parameters=[m0, m1, m2, m3], 
 )
 parameterization = bb.parameterization.Parameterization(param_space)
 
 # define forward function
 def my_fwd(state: bb.State) -> np.ndarray:
-    m = state["my_param_space"]["coefficients"]
-    return fwd_jacobian @ m
+    m = [state["my_param_space"][f"m{i}"] for i in range(N_DIMS)]
+    return np.squeeze(fwd_jacobian @ np.array(m))
 fwd_functions = [my_fwd]
 
 # define data target
@@ -52,10 +55,10 @@ inversion.run(
 
 # get results and plot
 results = inversion.get_results()
-coefficients_samples = results["coefficients"]
+coefficients_samples = np.squeeze(np.array([results[f"m{i}"] for i in range(N_DIMS)]))
 fig, ax = plt.subplots()
-all_y_pred = np.zeros((len(coefficients_samples), len(y)))
-for i, coefficients in enumerate(coefficients_samples):
+all_y_pred = np.zeros((coefficients_samples.shape[1], len(y)))
+for i, coefficients in enumerate(coefficients_samples.T):
     y_pred = fwd_jacobian @ coefficients
     all_y_pred[i,:] = y_pred
     if i == 0:
