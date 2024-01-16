@@ -3,16 +3,25 @@ import matplotlib.pyplot as plt
 import bayesbay as bb
 
 
-# constants
-M_TRUE = np.array([20, -10, -3, 1])
-N_DIMS = len(M_TRUE)
+# DIMENSIONS AND TRUE COEFFICIENTS
+N_DIMS = 4
+M0, M1, M2, M3 = 20, -10, -3, 1
+
+# DATA AND NOISE
+N_DATA = 15
+DATA_X = np.linspace(-5, 10, N_DATA)
 DATA_NOISE_STD = 20
 
 # generate synthetic data
-x = np.arange(-5, 10)
-fwd_jacobian = np.vander(x, N_DIMS, True)
-y = fwd_jacobian @ M_TRUE
+
+fwd_operator = np.vander(DATA_X, N_DIMS, True)
+y = fwd_operator @ [M0, M1, M2, M3]
 y_noisy = y + np.random.normal(0, DATA_NOISE_STD, y.shape)
+
+fig, ax = plt.subplots()
+ax.plot(DATA_X, y, 'k', label='Predicted data (true model)')
+ax.plot(DATA_X, y_noisy, 'ro', label='Noisy observations')
+
 
 # define parameters
 m0 = bb.parameters.UniformParameter("m0", -100, 100, 5)
