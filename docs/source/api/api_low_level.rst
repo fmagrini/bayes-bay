@@ -1,5 +1,5 @@
-Low level API
-=============
+Overview
+========
 
 Optionally, users can use BayesBay's low-level API for a highly customisable 
 experience. 
@@ -18,7 +18,3 @@ inference run with the low-level API:
 Again, we recommend :ref:`our tutorial page <quickstart>` to get started if you are
 new to BayesBay.
 
-.. toctree::
-    :maxdepth: 1
-
-    api_low_level_inference

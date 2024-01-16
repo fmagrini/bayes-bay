@@ -1,5 +1,5 @@
-Discretizations
-===============
+Discretization
+==============
 
 Discretizations are special parameter spaces that are also parameters. They have values
 that represent spatial discretizations, and hold a list of parameters that are 

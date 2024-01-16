@@ -1,12 +1,12 @@
-Standard API
-============
+Overview
+========
 
 .. automodule:: bayesbay.parameterization
 
 BayesBay's standard API includes full-fledged utilities to define a 
 trans-dimensional or fixed-dimensional McMC sampler and to run it.
 
-Typically, this invovles the following steps:
+Typically, this involves the following steps:
 
 #. Define your parameters (:doc:`api_standard_parameters`)
 #. Define your parameter space(s), which can be a discretization
@@ -24,14 +24,3 @@ Typically, this invovles the following steps:
 If you are new to BayesBay, we recommend :ref:`our tutorial page <quickstart>` to 
 get started.
 
-.. toctree::
-    :maxdepth: 1
-
-    api_standard_inference
-    api_standard_parameters
-    api_standard_parameterization
-    api_standard_discretizations
-    api_standard_states
-    api_standard_target
-    api_standard_samplers
-    api_standard_perturbations

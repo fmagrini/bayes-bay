@@ -41,7 +41,7 @@ experiments.
    api/api_standard_inference
    api/api_standard_parameters
    api/api_standard_parameterization
-   api/api_standard_discretizations
+   api/api_standard_discretization
    api/api_standard_states
    api/api_standard_target
    api/api_standard_samplers
