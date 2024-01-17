@@ -18,9 +18,13 @@ fwd_operator = np.vander(DATA_X, N_DIMS, True)
 y = fwd_operator @ [M0, M1, M2, M3]
 y_noisy = y + np.random.normal(0, DATA_NOISE_STD, y.shape)
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(dpi=200)
+ax.set_title('Synthetic data')
 ax.plot(DATA_X, y, 'k', label='Predicted data (true model)')
 ax.plot(DATA_X, y_noisy, 'ro', label='Noisy observations')
+ax.grid()
+ax.legend()
+plt.show()
 
 
 # define parameters
@@ -38,19 +42,19 @@ param_space = bb.parameterization.ParameterSpace(
 parameterization = bb.parameterization.Parameterization(param_space)
 
 # define forward function
-def my_fwd(state: bb.State) -> np.ndarray:
+def fwd_function(state: bb.State) -> np.ndarray:
     m = [state["my_param_space"][f"m{i}"] for i in range(N_DIMS)]
-    return np.squeeze(fwd_jacobian @ np.array(m))
-fwd_functions = [my_fwd]
+    return np.squeeze(fwd_operator @ np.array(m))
+
 
 # define data target
-targets = [bb.Target("my_data", y_noisy, 1/DATA_NOISE_STD**2)]
+target = bb.Target("my_data", y_noisy, 1/DATA_NOISE_STD**2)
 
 # run the sampling
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    targets=target, 
+    fwd_functions=fwd_function, 
     n_chains=3, 
     n_cpus=3, 
 )
