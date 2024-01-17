@@ -17,7 +17,7 @@ class LogLikelihood:
     ----------
     targets : bayesbay.Target
         a list of data targets
-    fwd_functions : Callable[[bayesbay.State], np.ndarray]
+    fwd_functions : List[Callable[[bayesbay.State], np.ndarray]]
         a list of forward functions corresponding to each data targets provided above.
         Each function takes in a model and produces a numpy array of data predictions.
     """
@@ -25,11 +25,16 @@ class LogLikelihood:
     def __init__(
         self,
         targets: List[Target],
-        fwd_functions: Callable[[State], np.ndarray],
+        fwd_functions: List[Callable[[State], np.ndarray]],
     ):
+        if not isinstance(fwd_functions, list):
+            fwd_functions = [fwd_functions]
+        if not isinstance(targets, list):
+            targets = [targets]
+        assert len(fwd_functions) == len(targets)
+
         self.targets = targets
         self.fwd_functions = [_preprocess_func(func) for func in fwd_functions]
-        assert len(self.targets) == len(self.fwd_functions)
         self._check_duplicate_target_names()
         self._init_perturbation_funcs()
 
@@ -45,31 +50,31 @@ class LogLikelihood:
 
     def log_likelihood_ratio(self, old_state: State, new_state: State) -> Number:
         r"""Returns the (possibly tempered) log of the likelihood ratio
-        
+
         .. math::
-            \left[ 
+            \left[
                 \frac{p\left(\mathbf{d}_{obs} \mid \mathbf{m'}\right)}{p\left(\mathbf{d}_{obs} \mid \mathbf{m}\right)}
-            \right]^{\frac{1}{T}} 
-            = 
-            \left[ 
+            \right]^{\frac{1}{T}}
+            =
+            \left[
             \frac{\lvert \mathbf{C}_e \rvert}{\lvert \mathbf{C}^{\prime}_e \rvert}
             \exp\left(- \frac{\Phi(\mathbf{m'}) - \Phi(\mathbf{m})}{2}\right)
             \right]^{\frac{1}{T}},
 
-            
-        where :math:`\mathbf{C}_e` denotes the data covariance matrix, 
+
+        where :math:`\mathbf{C}_e` denotes the data covariance matrix,
         :math:`\Phi(\mathbf{m})` the data misfit associated with the model
-        :math:`\mathbf{m}`, :math:`T` the chain temperature, and the prime 
+        :math:`\mathbf{m}`, :math:`T` the chain temperature, and the prime
         superscript indicates that the model has been perturbed.
-            
-        
+
+
         Parameters
         ----------
         old_state : bayesbay.State
             the state of the Bayesian inference prior to the model perturbation
         new_state : bayesbay.State
             the state of the Bayesian inference after the model perturbation
-            
+
         Returns
         -------
         Number

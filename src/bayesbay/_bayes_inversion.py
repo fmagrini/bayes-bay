@@ -21,19 +21,19 @@ class BaseBayesianInversion:
     initialization of walkers. At each iteration of the inference process,
     the current model :math:`\bf m` is perturbed to produce :math:`\bf m'`, and
     the new model is accepted with probability
-    
+
     .. math::
-        
-        \alpha({\bf m' \mid m}) = \mbox{min} \Bigg[1, 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)}}_{\text{Likelihood ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+
+        \alpha({\bf m' \mid m}) = \mbox{min} \Bigg[1,
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{p\left({\bf d}_{obs} \mid {\bf m'}\right)}{p\left({\bf d}_{obs} \mid {\bf m}\right)}}_{\text{Likelihood ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
         \Bigg],
-                        
-    where :math:`p({\bf d}_{obs})` denotes the observed data and 
-    :math:`\mathbf{J}` the Jacobian of the transformation.                                                                                                                                                                                                                                                                                                                                                   
-    
+
+    where :math:`p({\bf d}_{obs})` denotes the observed data and
+    :math:`\mathbf{J}` the Jacobian of the transformation.
+
     Parameters
     ----------
     walkers_starting_models: List[Any]
@@ -42,26 +42,26 @@ class BaseBayesianInversion:
         functions and probability functions. The length of this list must be equal to
         the number of chains, i.e. ``n_chains``
     perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]]
-        a list of perturbation functions. Each perturbation function should take 
-        in a model :math:`\mathbf{m}` (any type is allowed, as long as it is 
-        consistent with ``walkers_starting_models`` and the below functions) and 
-        perturb it to produce the new model :math:`\bf m'`. Each perturbation function 
+        a list of perturbation functions. Each perturbation function should take
+        in a model :math:`\mathbf{m}` (any type is allowed, as long as it is
+        consistent with ``walkers_starting_models`` and the below functions) and
+        perturb it to produce the new model :math:`\bf m'`. Each perturbation function
         should return :math:`\bf m'` along with :math:`\log(
         \frac{p({\bf m'})}{p({\bf m})}
-        \frac{q\left({\bf m} 
+        \frac{q\left({\bf m}
         \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
-        \lvert \mathbf{J} \rvert)`, which is used in the calculation of 
+        \lvert \mathbf{J} \rvert)`, which is used in the calculation of
         the acceptance probability.
     log_likelihood_func: Callable[[Any], Number], optional
-        the log likelihood function :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`. 
-        It takes in a model :math:`\mathbf{m}` (any type is allowed, as long as it is 
-        consistent with the other arguments of this class) and returns the log 
-        of the likelihood function. This function is only used when ``log_like_ratio_func`` 
+        the log likelihood function :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`.
+        It takes in a model :math:`\mathbf{m}` (any type is allowed, as long as it is
+        consistent with the other arguments of this class) and returns the log
+        of the likelihood function. This function is only used when ``log_like_ratio_func``
         is None. Default is None
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid \mathbf{m'})}
         {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and proposed models,
-        :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should be consistent 
+        :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should be consistent
         with the other arguments of this class, and returns a scalar corresponding to
         the log likelihood ratio. This is utilised in the calculation of the
         acceptance probability. If None, ``log_likelihood_func`` gets used instead. Default is None
@@ -126,7 +126,7 @@ class BaseBayesianInversion:
         ----------
         sampler : bayesbay.samplers.Sampler, optional
             a sampler instance describing how chains intereact or modify their
-            properties during sampling. This could be a sampler from the 
+            properties during sampling. This could be a sampler from the
             module :mod:`bayesbay.samplers` such as
             :class:`bayesbay.samplers.VanillaSampler` (default),
             :class:`bayesbay.samplers.ParallelTempering`, or
@@ -231,13 +231,16 @@ class BayesianInversion(BaseBayesianInversion):
         self,
         parameterization: Parameterization,
         targets: List[Target],
-        fwd_functions: Callable[[State], np.ndarray],
+        fwd_functions: List[Callable[[State], np.ndarray]],
         n_chains: int = 10,
         n_cpus: int = 10,
     ):
-        self.parameterization = parameterization
-        self.targets = targets
+        self.targets = targets if isinstance(targets, list) else [targets]
+        if not isinstance(fwd_functions, list):
+            fwd_functions = [fwd_functions]
         self.fwd_functions = [_preprocess_func(func) for func in fwd_functions]
+
+        self.parameterization = parameterization
         self.n_chains = n_chains
         self.n_cpus = n_cpus
         self._chains = [
