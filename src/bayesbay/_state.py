@@ -7,33 +7,35 @@ import numpy as np
 
 _DataNoiseState = namedtuple("DataNoiseState", ["std", "correlation"])
 
+
 class DataNoiseState(_DataNoiseState):
     """Data structure that stores the state of the data noise parameters during
     the inference.
     """
+
     def copy(self) -> "DataNoiseState":
         """Returns a deep-copy of the current DataNoiseState
-        
+
         Returns
         -------
         DataNoiseState
             the clone of self
         """
         return self._replace()
-    
+
     def todict(self, name: str) -> dict:
         """Returns a dictionary containing the noise properties
-        
+
         Parameters
         ----------
         name : str
             identifier for the ``DataNoiseState`` instance
-            
+
         Returns
         -------
         dict
             dictionary object with keys
-            
+
             - :attr:`name`.std
             - :attr:`name`.correlation (only returned if set as a free parameter,
               see :class:`Target`)
@@ -53,9 +55,9 @@ class ParameterSpaceState:
     n_dimensions : int
         number of dimensions characterizing the parameter space
     param_values : Dict[str, Union[ParameterSpaceState, DataNoiseState]]
-        dictionary containing parameter values, e.g. 
-        ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs": 
-        np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01, 
+        dictionary containing parameter values, e.g.
+        ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs":
+        np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01,
         correlation=None)}``
 
     Raises
@@ -63,9 +65,10 @@ class ParameterSpaceState:
     TypeError
         when ``param_values`` is not a dict
     """
+
     n_dimensions: int
     param_values: Dict[str, np.ndarray] = field(default_factory=dict)
-    
+
     def __post_init__(self):
         if not isinstance(self.n_dimensions, int):
             raise TypeError("n_dimensions should be an int")
@@ -81,10 +84,8 @@ class ParameterSpaceState:
 
     def __getitem__(self, name: str) -> np.ndarray:
         return self.get_param_values(name)
-    
-    def set_param_values(
-        self, param_name: str, values: np.ndarray
-    ):
+
+    def set_param_values(self, param_name: str, values: np.ndarray):
         """Changes the numerical value(s) of a parameter
 
         Parameters
@@ -96,9 +97,7 @@ class ParameterSpaceState:
         """
         if isinstance(param_name, str):
             if not isinstance(values, np.ndarray):
-                raise TypeError(
-                    "parameter values should be a numpy ndarray instance"
-                )
+                raise TypeError("parameter values should be a numpy ndarray instance")
             self.param_values[param_name] = values
             setattr(self, param_name, values)
         else:
@@ -122,10 +121,10 @@ class ParameterSpaceState:
             return self.param_values.get(param_name, None)
         else:
             raise ValueError("`param_name` should be a string")
-    
+
     def copy(self) -> "ParameterSpaceState":
         """Returns a clone of self
-        
+
         Returns
         -------
         ParameterSpaceState
@@ -134,21 +133,21 @@ class ParameterSpaceState:
         for name, param_vals in self.param_values.items():
             new_param_values[name] = param_vals.copy()
         return ParameterSpaceState(self.n_dimensions, new_param_values)
-    
+
     def todict(self, name: str) -> dict:
-        """Returns a dictionary containing the numerical values defining the 
+        """Returns a dictionary containing the numerical values defining the
         parameter space
-        
+
         Parameters
         ----------
         name : str
             identifier for the ``ParameterSpaceState`` instance
-            
+
         Returns
         -------
         dict
             dictionary object with keys
-            
+
             - :attr:`name`.std
             - :attr:`name`.correlation (only returned if set as a free parameter,
               see :class:`Target`)
@@ -169,9 +168,9 @@ class State:
     Parameters
     ----------
     param_values : Dict[str, Union[ParameterSpaceState, DataNoiseState]]
-        dictionary containing parameter values, e.g. 
-        ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs": 
-        np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01, 
+        dictionary containing parameter values, e.g.
+        ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs":
+        np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01,
         correlation=None)}``
     temperature : float
         the temperature of the Markov chain associated with this state
@@ -186,8 +185,10 @@ class State:
     TypeError
         when ``param_values`` is not a dict
     """
-    param_values: Dict[str, Union[ParameterSpaceState, DataNoiseState]] = \
-        field(default_factory=dict)
+
+    param_values: Dict[str, Union[ParameterSpaceState, DataNoiseState]] = field(
+        default_factory=dict
+    )
     temperature: float = 1
     cache: Dict[str, Any] = field(default_factory=dict)
     extra_storage: Dict[str, Any] = field(default_factory=dict)
@@ -199,7 +200,7 @@ class State:
             raise TypeError("param_values should be a dict")
         for name, values in self.param_values.items():
             self.set_param_values(name, values)
-            
+
     def __getitem__(self, name: str) -> Union[ParameterSpaceState, DataNoiseState]:
         return self.get_param_values(name)
 
@@ -226,7 +227,9 @@ class State:
         else:
             raise ValueError("`param_name` should be a string")
 
-    def get_param_values(self, param_name: str) -> Union[ParameterSpaceState, DataNoiseState]:
+    def get_param_values(
+        self, param_name: str
+    ) -> Union[ParameterSpaceState, DataNoiseState]:
         """Get the value(s) of a parameter
 
         Parameters
@@ -309,7 +312,7 @@ class State:
 
     def copy(self, keep_dpred: bool = False) -> "State":
         """Creates a clone of the current State itself
-        
+
         The following will be (deep-)copied over:
 
         - :attr:`param_values`
@@ -319,7 +322,7 @@ class State:
 
         - :attr:`cache`
         - :attr:`extra_storage`
-        
+
         If ``keep_dpred`` is ``True``, then the ``dpred`` in ``cache`` will be referred
         to in the new instance. Note that this is not a deep copy, since we assume no
         changes will be performed on predicted data for a certain state.

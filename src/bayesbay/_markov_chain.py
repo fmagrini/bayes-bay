@@ -27,7 +27,7 @@ class BaseMarkovChain:
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
     log_like_ratio_func: Callable[[Any, Any], Number], optional
-        function that calculates that the log likelihood ratio 
+        function that calculates that the log likelihood ratio
         :math:`\frac{p\left({{\bf d}_{obs} \mid  {\bf m'}}\right)}{p\left({{\bf d}_{obs} \mid  {\bf m}}\right)}`.
         It takes in two models (of consistent type as other arguments of this class)
         and returns a scalar corresponding to the log likelihood ratio. This is utilised in the
@@ -44,7 +44,7 @@ class BaseMarkovChain:
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         temperature: float = 1,
-        save_dpred: bool = True, 
+        save_dpred: bool = True,
     ):
         self.id = id
         self.current_model = starting_model
@@ -96,7 +96,9 @@ class BaseMarkovChain:
             for k, v in self.current_model.items():
                 self.saved_models[k].append(v)
             if self.save_dpred and "dpred" in self.current_model.cache:
-                self.saved_models["dpred"].append(self.current_model.load_cache("dpred"))
+                self.saved_models["dpred"].append(
+                    self.current_model.load_cache("dpred")
+                )
         else:
             self.saved_models.append(self.current_model)
 
@@ -135,7 +137,7 @@ class BaseMarkovChain:
 
     def _log_likelihood_ratio(self, new_model):
         return self.log_like_ratio_func(self.current_model, new_model)
-    
+
     def _next_iteration(self, save_model):
         _last_exception = None
         for i in range(500):
@@ -143,7 +145,7 @@ class BaseMarkovChain:
             i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
             perturb_func = self.perturbation_funcs[i_perturb]
 
-            # perturb and get the partial acceptance probability excluding log 
+            # perturb and get the partial acceptance probability excluding log
             # likelihood ratio
             try:
                 new_model, log_prob_ratio = perturb_func(self.current_model)
@@ -257,7 +259,7 @@ class MarkovChain(BaseMarkovChain):
         targets: List[Target],
         fwd_functions: Callable[[State], numpy.ndarray],
         temperature: float = 1,
-        saved_dpred: bool = True, 
+        saved_dpred: bool = True,
     ):
         self.id = id
         self.parameterization = parameterization
@@ -273,8 +275,7 @@ class MarkovChain(BaseMarkovChain):
         self._init_saved_models()
 
     def initialize(self):
-        """Initialize the parameterization by defining a starting model.
-        """
+        """Initialize the parameterization by defining a starting model."""
         self.current_model = self.parameterization.initialize()
         for target in self.log_like_ratio_func.targets:
             target.initialize(self.current_model)

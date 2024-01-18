@@ -103,7 +103,7 @@ class BaseBayesianInversion:
                 self.walkers_starting_models[i],
                 self.perturbation_funcs,
                 self.log_like_ratio_func,
-                self.save_dpred, 
+                self.save_dpred,
             )
             for i in range(n_chains)
         ]
@@ -237,7 +237,7 @@ class BayesianInversion(BaseBayesianInversion):
         fwd_functions: List[Callable[[State], np.ndarray]],
         n_chains: int = 10,
         n_cpus: int = 10,
-        save_dpred: bool = True, 
+        save_dpred: bool = True,
     ):
         self.targets = targets if isinstance(targets, list) else [targets]
         if not isinstance(fwd_functions, list):
@@ -254,7 +254,7 @@ class BayesianInversion(BaseBayesianInversion):
                 self.parameterization,
                 self.targets,
                 self.fwd_functions,
-                self.save_dpred, 
+                self.save_dpred,
             )
             for i in range(n_chains)
         ]
