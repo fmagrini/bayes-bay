@@ -44,6 +44,7 @@ class BaseMarkovChain:
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         temperature: float = 1,
+        save_dpred: bool = True, 
     ):
         self.id = id
         self.current_model = starting_model
@@ -51,6 +52,7 @@ class BaseMarkovChain:
         self.perturbation_types = [func.__name__ for func in perturbation_funcs]
         self._temperature = temperature
         self.log_like_ratio_func = log_like_ratio_func
+        self.save_dpred = save_dpred
         self._init_statistics()
         self._init_saved_models()
 
@@ -93,6 +95,8 @@ class BaseMarkovChain:
         if isinstance(self.current_model, (State, dict)):
             for k, v in self.current_model.items():
                 self.saved_models[k].append(v)
+            if self.save_dpred and "dpred" in self.current_model.cache:
+                self.saved_models["dpred"].append(self.current_model.load_cache("dpred"))
         else:
             self.saved_models.append(self.current_model)
 
@@ -253,6 +257,7 @@ class MarkovChain(BaseMarkovChain):
         targets: List[Target],
         fwd_functions: Callable[[State], numpy.ndarray],
         temperature: float = 1,
+        saved_dpred: bool = True, 
     ):
         self.id = id
         self.parameterization = parameterization
@@ -261,6 +266,7 @@ class MarkovChain(BaseMarkovChain):
             fwd_functions=fwd_functions,
         )
         self._temperature = temperature
+        self.save_dpred = saved_dpred
         self.initialize()
         self._init_perturbation_funcs()
         self._init_statistics()

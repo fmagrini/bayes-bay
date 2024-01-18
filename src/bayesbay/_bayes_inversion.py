@@ -1,6 +1,5 @@
 from typing import List, Callable, Tuple, Any, Dict, Union
 from numbers import Number
-from copy import deepcopy
 from collections import defaultdict
 import numpy as np
 
@@ -9,7 +8,7 @@ from .samplers import VanillaSampler, Sampler
 from .parameterization import Parameterization
 from ._target import Target
 from ._state import State
-from ._utils import _preprocess_func, _FunctionWrapper, _LogLikeRatioFromFunc
+from ._utils import _preprocess_func, _LogLikeRatioFromFunc
 
 
 class BaseBayesianInversion:
@@ -80,6 +79,7 @@ class BaseBayesianInversion:
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         n_chains: int = 10,
         n_cpus: int = 10,
+        save_dpred: bool = True,
     ):
         self.walkers_starting_models = walkers_starting_models
         self.perturbation_funcs = [
@@ -96,12 +96,14 @@ class BaseBayesianInversion:
             self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus
+        self.save_dpred = save_dpred
         self._chains = [
             BaseMarkovChain(
                 i,
                 self.walkers_starting_models[i],
                 self.perturbation_funcs,
                 self.log_like_ratio_func,
+                self.save_dpred, 
             )
             for i in range(n_chains)
         ]
@@ -185,6 +187,7 @@ class BaseBayesianInversion:
             results_model = defaultdict(list)
             for chain in self.chains:
                 for key, saved_values in chain.saved_models.items():
+                    # TODO append n_dimensions only when the parameter space is trans-d
                     if keys is None or key in keys:
                         if concatenate_chains and isinstance(saved_values, list):
                             results_model[key].extend(saved_values)
@@ -234,6 +237,7 @@ class BayesianInversion(BaseBayesianInversion):
         fwd_functions: List[Callable[[State], np.ndarray]],
         n_chains: int = 10,
         n_cpus: int = 10,
+        save_dpred: bool = True, 
     ):
         self.targets = targets if isinstance(targets, list) else [targets]
         if not isinstance(fwd_functions, list):
@@ -243,12 +247,14 @@ class BayesianInversion(BaseBayesianInversion):
         self.parameterization = parameterization
         self.n_chains = n_chains
         self.n_cpus = n_cpus
+        self.save_dpred = save_dpred
         self._chains = [
             MarkovChain(
                 i,
                 self.parameterization,
                 self.targets,
                 self.fwd_functions,
+                self.save_dpred, 
             )
             for i in range(n_chains)
         ]

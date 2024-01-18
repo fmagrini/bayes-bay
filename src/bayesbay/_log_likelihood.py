@@ -104,10 +104,14 @@ class LogLikelihood:
         misfit = 0
         log_det = 0
         for target, fwd_func in zip(self.targets, self.fwd_functions):
-            try:
-                dpred = fwd_func(state)
-            except Exception as e:
-                raise ForwardException(e)
+            if state.has_cache("dpred"):
+                dpred = state.load_cache("dpred")
+            else:
+                try:
+                    dpred = fwd_func(state)
+                except Exception as e:
+                    raise ForwardException(e)
+                state.store_cache("dpred", dpred)
             residual = dpred - target.dobs
             misfit += residual @ target.inverse_covariance_times_vector(state, residual)
             if target.is_hierarchical:

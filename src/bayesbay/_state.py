@@ -307,9 +307,10 @@ class State:
         """
         return self._vars().items()
 
-    def copy(self) -> "State":
-        """Creates a clone of the current State itself, in which the following will be
-        (deep-)copied over:
+    def copy(self, keep_dpred: bool = False) -> "State":
+        """Creates a clone of the current State itself
+        
+        The following will be (deep-)copied over:
 
         - :attr:`param_values`
         - :attr:`temperature`
@@ -318,6 +319,15 @@ class State:
 
         - :attr:`cache`
         - :attr:`extra_storage`
+        
+        If ``keep_dpred`` is ``True``, then the ``dpred`` in ``cache`` will be referred
+        to in the new instance. Note that this is not a deep copy, since we assume no
+        changes will be performed on predicted data for a certain state.
+
+        Parameters
+        ----------
+        keep_dpred : bool, optional
+            whether to copy over the predicted data (stored in cache)
 
         Returns
         -------
@@ -327,4 +337,7 @@ class State:
         _param_values = dict()
         for k, v in self.param_values.items():
             _param_values[k] = v.copy()
-        return State(param_values=_param_values, temperature=self.temperature)
+        _state_args = {"param_values": _param_values, "temperature": self.temperature}
+        if keep_dpred:
+            _state_args["cache"] = {k: v for k, v in self.cache.items() if k == "dpred"}
+        return State(**_state_args)

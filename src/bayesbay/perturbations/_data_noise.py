@@ -53,7 +53,7 @@ class NoisePerturbation(Perturbation):
             old_data_noise_state = state[target.name]
             new_data_noise_state = self._perturb_target(target, old_data_noise_state)
             new_data_noise_all[target.name] = new_data_noise_state
-        new_state = state.copy()
+        new_state = state.copy(keep_dpred=True)
         new_state.param_values.update(new_data_noise_all)
         return new_state, 0
     
