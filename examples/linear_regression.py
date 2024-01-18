@@ -13,7 +13,6 @@ DATA_X = np.linspace(-5, 10, N_DATA)
 DATA_NOISE_STD = 20
 
 # generate synthetic data
-
 fwd_operator = np.vander(DATA_X, N_DIMS, True)
 y = fwd_operator @ [M0, M1, M2, M3]
 y_noisy = y + np.random.normal(0, DATA_NOISE_STD, y.shape)
@@ -25,7 +24,6 @@ ax.plot(DATA_X, y_noisy, 'ro', label='Noisy observations')
 ax.grid()
 ax.legend()
 plt.show()
-
 
 # define parameters
 m0 = bb.parameters.UniformParameter("m0", -100, 100, 5)
@@ -44,8 +42,7 @@ parameterization = bb.parameterization.Parameterization(param_space)
 # define forward function
 def fwd_function(state: bb.State) -> np.ndarray:
     m = [state["my_param_space"][f"m{i}"] for i in range(N_DIMS)]
-    return np.squeeze(fwd_operator @ np.array(m))
-
+    return np.squeeze(fwd_operator @ m)
 
 # define data target
 target = bb.Target("my_data", y_noisy, 1/DATA_NOISE_STD**2)
@@ -72,14 +69,14 @@ coefficients_samples = np.squeeze(np.array([results[f"m{i}"] for i in range(N_DI
 fig, ax = plt.subplots()
 all_y_pred = np.zeros((coefficients_samples.shape[1], len(y)))
 for i, coefficients in enumerate(coefficients_samples.T):
-    y_pred = fwd_jacobian @ coefficients
+    y_pred = fwd_operator @ coefficients
     all_y_pred[i,:] = y_pred
     if i == 0:
-        ax.plot(x, y_pred, c="gray", lw=0.05, label="Predicted data from samples")
+        ax.plot(DATA_X, y_pred, c="gray", lw=0.05, label="Predicted data from samples")
     else:
-        ax.plot(x, y_pred, c="gray", lw=0.05)
-ax.plot(x, y, c="orange", label="Noise-free data from true model")
-ax.plot(x, np.median(all_y_pred, axis=0), c="blue", label="Median predicted sample")
-ax.scatter(x, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
+        ax.plot(DATA_X, y_pred, c="gray", lw=0.05)
+ax.plot(DATA_X, y, c="orange", label="Noise-free data from true model")
+ax.plot(DATA_X, np.median(all_y_pred, axis=0), c="blue", label="Median predicted sample")
+ax.scatter(DATA_X, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
 ax.legend()
 fig.savefig("linear_regression_samples_pred")

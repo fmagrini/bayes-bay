@@ -6,6 +6,7 @@ __pycache__/
 *.cpp
 *.c
 *.html
+.ipynb_checkpoints/
 
 # Setuptools/distutils distribution folder.
 dist/
