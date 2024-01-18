@@ -112,4 +112,11 @@ class LogLikelihood:
             misfit += residual @ target.inverse_covariance_times_vector(state, residual)
             if target.is_hierarchical:
                 log_det += target.log_determinant_covariance(state)
+        if not isinstance(misfit, Number):
+            raise TypeError(
+                f"misfit is expected to be of a Number type, but is {type(misfit)} "
+                "instead. This might be due to predicted data not being 1D. Try using "
+                "numpy.squeeze() function on predicted data before returning it from "
+                "your forward function"
+            )
         return misfit, log_det
