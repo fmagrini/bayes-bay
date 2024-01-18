@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import bayesbay as bb
+np.random.seed(30)
 
 
 # DIMENSIONS AND TRUE COEFFICIENTS
@@ -26,10 +27,11 @@ ax.legend()
 plt.show()
 
 # define parameters
-m0 = bb.parameters.UniformParameter("m0", -100, 100, 5)
-m1 = bb.parameters.UniformParameter("m1", -50, 50, 5)
-m2 = bb.parameters.UniformParameter("m2", -20, 20, 3)
-m3 = bb.parameters.UniformParameter("m3", -10, 10, 2)
+# m0 = bb.parameters.UniformParameter(name="m0", vmin=0, vmax=40, perturb_std=2)
+m0 = bb.parameters.GaussianParameter(name="m0", mean=20, std=1, perturb_std=0.5)
+m1 = bb.parameters.UniformParameter(name="m1", vmin=-13, vmax=-7, perturb_std=0.4)
+m2 = bb.parameters.UniformParameter(name="m2", vmin=-10, vmax=4, perturb_std=0.5)
+m3 = bb.parameters.GaussianParameter(name="m3", mean=1, std=0.1, perturb_std=0.1)
 
 # define parameterization
 param_space = bb.parameterization.ParameterSpace(
@@ -52,15 +54,15 @@ inversion = bb.BayesianInversion(
     parameterization=parameterization, 
     targets=target, 
     fwd_functions=fwd_function, 
-    n_chains=3, 
-    n_cpus=3, 
+    n_chains=10, 
+    n_cpus=10, 
 )
 inversion.run(
     sampler=None, 
     n_iterations=100_000, 
     burnin_iterations=10_000, 
     save_every=500, 
-    print_every=500, 
+    print_every=5000, 
 )
 
 # get results and plot
@@ -79,4 +81,30 @@ ax.plot(DATA_X, y, c="orange", label="Noise-free data from true model")
 ax.plot(DATA_X, np.median(all_y_pred, axis=0), c="blue", label="Median predicted sample")
 ax.scatter(DATA_X, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
 ax.legend()
-fig.savefig("linear_regression_samples_pred")
+# fig.savefig("linear_regression_samples_pred")
+
+
+
+import arviz as az
+
+results.pop('my_param_space.n_dimensions')
+inference_data = az.from_dict(results)
+
+fig, axes = plt.subplots(4, 4, figsize=(12,8))
+az.plot_pair(
+    results,
+    marginals=True,
+    var_names=['m0', 'm1', 'm2', 'm3'],
+    reference_values={'m0': M0, 'm1': M1, 'm2': M2, 'm3': M3},
+    kind="kde",
+    kde_kwargs={
+        "hdi_probs": [0.3, 0.6, 0.9],  # Plot 30%, 60% and 90% HDI contours
+        "contourf_kwargs": {"cmap": "Blues"},
+        },
+    reference_values_kwargs={"color": "yellow",
+                             "ms": 15},
+    ax=axes
+    )
+
+
+
