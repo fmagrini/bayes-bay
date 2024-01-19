@@ -90,8 +90,8 @@ import arviz as az
 results.pop('my_param_space.n_dimensions')
 inference_data = az.from_dict(results)
 
-fig, axes = plt.subplots(4, 4, figsize=(12,8))
-az.plot_pair(
+fig, axes = plt.subplots(4, 4, figsize=(12,12))
+axes = az.plot_pair(
     results,
     marginals=True,
     var_names=['m0', 'm1', 'm2', 'm3'],
@@ -102,9 +102,7 @@ az.plot_pair(
         "contourf_kwargs": {"cmap": "Blues"},
         },
     reference_values_kwargs={"color": "yellow",
-                             "ms": 15},
+                             "ms": 15}
     ax=axes
     )
-
-
 
