@@ -70,19 +70,14 @@ results = inversion.get_results()
 coefficients_samples = np.squeeze(np.array([results[f"m{i}"] for i in range(N_DIMS)]))
 
 fig, ax = plt.subplots()
-all_y_pred = results["dpred"]
-for i, y_pred in enumerate(all_y_pred):
-    if i == 0:
-        ax.plot(DATA_X, y_pred, c='gray', lw=0.3, alpha=0.3, label="Inferred data")
-    else:
-        ax.plot(DATA_X, y_pred, c='gray', lw=0.3, alpha=0.3)
+y_pred = np.array(results["dpred"])
+ax.plot(DATA_X, y_pred[0], c='gray', lw=0.3, alpha=0.3, label="Inferred data")
+ax.plot(DATA_X, y_pred[1:].T, c='gray', lw=0.3, alpha=0.3)
 ax.plot(DATA_X, y, c='orange', label='Predicted data (true model)')
-ax.plot(DATA_X, np.median(all_y_pred, axis=0), c="blue", label='Median inferred samples')
+ax.plot(DATA_X, np.median(y_pred, axis=0), c="blue", label='Median inferred samples')
 ax.scatter(DATA_X, y_noisy, c='r', label='Noisy observations', zorder=3)
 ax.legend()
 plt.show()
-
-
 
 import arviz as az
 
@@ -102,4 +97,5 @@ _ = az.plot_pair(
     ax=axes,
     textsize=10
     )
+plt.tight_layout()
 
