@@ -30,8 +30,8 @@ experiments.
    :maxdepth: 1
    :caption: Tutorials
 
-   tutorials/0_quickstart
-   tutorials/1_hierarchical
+   tutorials/0_linregr
+   tutorials/1_hierarchical_linregr
 
 .. toctree::
    :maxdepth: 1
