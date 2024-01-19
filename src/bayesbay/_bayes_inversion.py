@@ -99,11 +99,11 @@ class BaseBayesianInversion:
         self.save_dpred = save_dpred
         self._chains = [
             BaseMarkovChain(
-                i,
-                self.walkers_starting_models[i],
-                self.perturbation_funcs,
-                self.log_like_ratio_func,
-                self.save_dpred,
+                id=i,
+                starting_model=self.walkers_starting_models[i],
+                perturbation_funcs=self.perturbation_funcs,
+                log_like_ratio_func=self.log_like_ratio_func,
+                save_dpred=self.save_dpred,
             )
             for i in range(n_chains)
         ]
@@ -187,7 +187,6 @@ class BaseBayesianInversion:
             results_model = defaultdict(list)
             for chain in self.chains:
                 for key, saved_values in chain.saved_models.items():
-                    # TODO append n_dimensions only when the parameter space is trans-d
                     if keys is None or key in keys:
                         if concatenate_chains and isinstance(saved_values, list):
                             results_model[key].extend(saved_values)
@@ -250,11 +249,11 @@ class BayesianInversion(BaseBayesianInversion):
         self.save_dpred = save_dpred
         self._chains = [
             MarkovChain(
-                i,
-                self.parameterization,
-                self.targets,
-                self.fwd_functions,
-                self.save_dpred,
+                id=i,
+                parameterization=self.parameterization,
+                targets=self.targets,
+                fwd_functions=self.fwd_functions,
+                saved_dpred=self.save_dpred,
             )
             for i in range(n_chains)
         ]

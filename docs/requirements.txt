@@ -6,4 +6,5 @@ sphinx-copybutton
 sphinxcontrib-mermaid
 myst-nb
 cython
+arviz
 bayesbay

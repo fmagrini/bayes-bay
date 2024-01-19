@@ -94,7 +94,13 @@ class BaseMarkovChain:
     def _save_model(self):
         if isinstance(self.current_model, (State, dict)):
             for k, v in self.current_model.items():
-                self.saved_models[k].append(v)
+                if (
+                    "n_dimensions" not in k
+                    or self.parameterization.parameter_spaces[
+                        k[: -len(".n_dimensions")]
+                    ].trans_d
+                ):
+                    self.saved_models[k].append(v)
             if self.save_dpred and "dpred" in self.current_model.cache:
                 self.saved_models["dpred"].append(
                     self.current_model.load_cache("dpred")

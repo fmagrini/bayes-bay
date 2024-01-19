@@ -23,12 +23,13 @@ extensions = [
     "sphinx_togglebutton",
     "sphinx_copybutton",
     "myst_nb", 
-    "sphinx.ext.napoleon",
     "sphinxcontrib.mermaid", 
 ]
 
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = [
+    "tutorials/jupyter_cache/*"
+]
 
 
 # settings for the sphinx-copybutton extension
@@ -37,6 +38,7 @@ copybutton_prompt_text = ">>> "
 autodoc_typehints = 'none'
 
 nb_execution_mode = "cache"
+nb_execution_cache_path = "source/tutorials/jupyter_cache"
 
 myst_enable_extensions = [
     "amsmath",
