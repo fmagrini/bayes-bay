@@ -65,44 +65,41 @@ inversion.run(
     print_every=5000, 
 )
 
-# get results and plot
 results = inversion.get_results()
+
 coefficients_samples = np.squeeze(np.array([results[f"m{i}"] for i in range(N_DIMS)]))
+
 fig, ax = plt.subplots()
-all_y_pred = np.zeros((coefficients_samples.shape[1], len(y)))
-for i, coefficients in enumerate(coefficients_samples.T):
-    y_pred = fwd_operator @ coefficients
-    all_y_pred[i,:] = y_pred
+all_y_pred = results["dpred"]
+for i, y_pred in enumerate(all_y_pred):
     if i == 0:
-        ax.plot(DATA_X, y_pred, c="gray", lw=0.05, label="Predicted data from samples")
+        ax.plot(DATA_X, y_pred, c='gray', lw=0.3, alpha=0.3, label="Inferred data")
     else:
-        ax.plot(DATA_X, y_pred, c="gray", lw=0.05)
-ax.plot(DATA_X, y, c="orange", label="Noise-free data from true model")
-ax.plot(DATA_X, np.median(all_y_pred, axis=0), c="blue", label="Median predicted sample")
-ax.scatter(DATA_X, y_noisy, c="purple", label="Noisy data used for inference", zorder=3)
+        ax.plot(DATA_X, y_pred, c='gray', lw=0.3, alpha=0.3)
+ax.plot(DATA_X, y, c='orange', label='Predicted data (true model)')
+ax.plot(DATA_X, np.median(all_y_pred, axis=0), c="blue", label='Median inferred samples')
+ax.scatter(DATA_X, y_noisy, c='r', label='Noisy observations', zorder=3)
 ax.legend()
-# fig.savefig("linear_regression_samples_pred")
+plt.show()
 
 
 
 import arviz as az
 
-results.pop('my_param_space.n_dimensions')
-inference_data = az.from_dict(results)
-
-fig, axes = plt.subplots(4, 4, figsize=(12,12))
-axes = az.plot_pair(
-    results,
+fig, axes = plt.subplots(4, 4, figsize=(10,8))
+results_coefficients = {k: v for k, v in results.items() if k != "dpred"}
+_ = az.plot_pair(
+    results_coefficients,
     marginals=True,
-    var_names=['m0', 'm1', 'm2', 'm3'],
     reference_values={'m0': M0, 'm1': M1, 'm2': M2, 'm3': M3},
-    kind="kde",
+    reference_values_kwargs={'color': 'yellow',
+                             'ms': 10},
+    kind='kde',
     kde_kwargs={
-        "hdi_probs": [0.3, 0.6, 0.9],  # Plot 30%, 60% and 90% HDI contours
-        "contourf_kwargs": {"cmap": "Blues"},
+        'hdi_probs': [0.3, 0.6, 0.9],  # Plot 30%, 60% and 90% HDI contours
+        'contourf_kwargs': {'cmap': 'Blues'},
         },
-    reference_values_kwargs={"color": "yellow",
-                             "ms": 15}
-    ax=axes
+    ax=axes,
+    textsize=10
     )
 
