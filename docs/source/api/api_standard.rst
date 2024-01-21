@@ -21,6 +21,6 @@ Typically, this involves the following steps:
    end of each iteration or each batch of iterations
 #. Run the inversion (:meth:`bayesbay.BayesianInversion.run`)
 
-If you are new to BayesBay, we recommend :ref:`our tutorial page <quickstart>` to 
+If you are new to BayesBay, we recommend :ref:`our tutorial page <simple_linregr>` to 
 get started.
 

@@ -15,6 +15,6 @@ inference run with the low-level API:
 #. Pass the above to the inference runner (:class:`bayesbay.BaseBayesianInversion`)
 #. Run the inversion (:meth:`bayesbay.BayesianInversion.run`)
 
-Again, we recommend :ref:`our tutorial page <quickstart>` to get started if you are
+Again, we recommend :ref:`our tutorial page <simple_linregr>` to get started if you are
 new to BayesBay.
 
