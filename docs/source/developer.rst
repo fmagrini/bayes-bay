@@ -33,3 +33,18 @@ Local setup
         $ python -m pip install -e .
 
 3. Look at ``noxfile.py`` for details on building, testing, formatting and linting.
+
+4. Pre commit is also recommended, so that formatting and notebook executation in the
+   documentation will be done automatically after you make a commit. 
+   Set it up by creating a new file ``.git/hooks/pre-commit`` as following:
+
+   .. code-block:: console
+
+     #!/bin/sh
+
+     black src/bayesbay
+
+     if git diff --cached --name-status | grep -q 'docs/source/tutorials/*.ipynb'; then
+          cd docs
+          make html
+     fi
