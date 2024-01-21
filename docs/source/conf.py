@@ -37,8 +37,7 @@ copybutton_prompt_text = ">>> "
 
 autodoc_typehints = 'none'
 
-nb_execution_mode = "cache"
-nb_execution_cache_path = "source/tutorials/jupyter_cache"
+nb_execution_mode = "off"
 
 myst_enable_extensions = [
     "amsmath",
