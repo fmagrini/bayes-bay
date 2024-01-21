@@ -25,18 +25,11 @@ N_CHAINS = 2
 
 
 def _calc_thickness(sites: np.ndarray):
-    depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
-    return thickness
+    return bb.discretization.Voronoi1D.compute_cell_extents(np.array(sites, dtype=float))
 
-def _get_thickness(model: bb.State):
-    sites = model["voronoi"]["discretization"]
-    if model.has_cache("thickness"):
-        thickness = model.load_cache("thickness")
-    else:
-        thickness = _calc_thickness(sites)
-        model.store_cache("thickness", thickness)
-    return thickness
+def _get_thickness(state: bb.State):
+    sites = state["voronoi"]["discretization"]
+    return _calc_thickness(sites)
 
 def forward_sw(model, periods, wave="rayleigh", mode=1):
     vs = model["voronoi"]["vs"]
@@ -160,7 +153,7 @@ bb.discretization.Voronoi1D.plot_depth_profiles_statistics(
 
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
-bb.discretization.Voronoi1D.plot_2d_histogram(
+bb.discretization.Voronoi1D.plot_depth_profiles_density(
     all_thicknesses, saved_models["vs"], ax=axes[0]
 )
 bb.discretization.Voronoi1D.plot_interface_hist(
