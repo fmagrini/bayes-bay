@@ -83,7 +83,6 @@ class BaseMarkovChain:
 
     def _init_statistics(self):
         self._statistics = {
-            "current_misfit": float("inf"),
             "n_explored_models": defaultdict(int),
             "n_accepted_models": defaultdict(int),
             "n_explored_models_total": 0,
@@ -141,7 +140,6 @@ class BaseMarkovChain:
                 "\t%s: %d/%d (%.2f%%)"
                 % (perturb_type, _accepted, _explored, acceptance_rate)
             )
-        # print("NUMBER OF FWD FAILURES: %d" % self.statistics["n_fwd_failures_total"])
 
     def _log_likelihood_ratio(self, new_model):
         return self.log_like_ratio_func(self.current_model, new_model)
@@ -234,6 +232,20 @@ class BaseMarkovChain:
                 self._print_statistics()
 
         return self
+
+    def _repr_args(self) -> dict:
+        return {
+            "id": self.id, 
+            "temperature": self.temperature, 
+            "n_explored_models_total": self.statistics["n_explored_models_total"], 
+            "n_accepted_models_total": self.statistics["n_accepted_models_total"], 
+        }
+    
+    def __repr__(self) -> str:
+        string = f"{self.__class__.__name__}("
+        for k, v in self._repr_args().items():
+            string += f"{k}={v}, "
+        return f"{string[:-2]})"
 
 
 class MarkovChain(BaseMarkovChain):

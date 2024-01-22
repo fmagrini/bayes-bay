@@ -107,6 +107,16 @@ class BaseBayesianInversion:
             )
             for i in range(n_chains)
         ]
+        
+        self._repr_args = {
+            "walkers_starting_models": self.walkers_starting_models, 
+            "perturbation_funcs": self.perturbation_funcs, 
+            "log_likelihood_func": self.log_likelihood_func, 
+            "n_chains": self.n_chains, 
+            "n_cpus": self.n_cpus, 
+            "save_dpred": self.save_dpred, 
+            "chains": self.chains, 
+        }
 
     @property
     def chains(self) -> List[BaseMarkovChain]:
@@ -200,7 +210,25 @@ class BaseBayesianInversion:
                 else:
                     results_model.append(chain.saved_models)
         return results_model
-
+    
+    def __repr__(self) -> str:
+        string = f"{self.__class__.__name__}("
+        for k, v in self._repr_args.items():
+            if hasattr(v, '__class__') and v.__class__.__repr__ is object.__repr__:
+                repr_v = v.__class__.__name__
+            elif k == "walkers_starting_models":
+                repr_v = f"[{len(v)} arrays with shapes {', '.join(str(arr.shape) for arr in v)}]"
+            elif k == "perturbation_funcs" or k == "fwd_functions":
+                repr_v = f"[{len(v)} functions]"
+            elif k == "targets":
+                repr_v = f"[{len(v)} Target objects]"
+            elif k == "chains" and len(v) > 3: 
+                repr_v = f"{str(v[:3])[:-1]}, ...{len(v)} chains in total...]"
+            else:
+                repr_v = repr(v)
+            string += f"{k}={repr_v}, "
+        return f"{string[:-2]})"
+    
 
 class BayesianInversion(BaseBayesianInversion):
     """A high-level class for performing Bayesian inversion using Markov Chain Monte
@@ -257,3 +285,13 @@ class BayesianInversion(BaseBayesianInversion):
             )
             for i in range(n_chains)
         ]
+        
+        self._repr_args = {
+            "parameterization": self.parameterization, 
+            "targets": self.targets, 
+            "fwd_functions": self.fwd_functions, 
+            "n_chains": self.n_chains, 
+            "n_cpus": self.n_cpus, 
+            "save_dpred": self.save_dpred, 
+            "chains": self.chains, 
+        }

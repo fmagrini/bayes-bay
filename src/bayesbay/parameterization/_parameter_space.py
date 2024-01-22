@@ -59,6 +59,7 @@ class ParameterSpace:
             for param in parameters:
                 self._parameters[param.name] = param
         self._init_perturbation_funcs()
+        self._init_repr_args()
     
     @property
     def name(self) -> str:
@@ -250,22 +251,20 @@ class ParameterSpace:
             self._perturbation_funcs.append(BirthPerturbation(self))
             self._perturbation_funcs.append(DeathPerturbation(self))
 
-    def _repr_dict(self) -> dict:
-        attr_to_show = {"name": self.name, "parameters": self.parameters.keys()}
+    def _init_repr_args(self):
+        self._repr_args = {
+            "name": self.name, "parameters": list(self.parameters.values())
+        }
         if self.trans_d:
-            attr_to_show["n_dimensions_min"] = self._n_dimensions_min
-            attr_to_show["n_dimensions_max"] = self._n_dimensions_max
-            attr_to_show["n_dimensions_init_range"] = self._n_dimensions_init_range
+            self._repr_args["n_dimensions_min"] = self._n_dimensions_min
+            self._repr_args["n_dimensions_max"] = self._n_dimensions_max
+            self._repr_args["n_dimensions_init_range"] = self._n_dimensions_init_range
         else:
-            attr_to_show["n_dimensions"] = self._n_dimensions
-        return attr_to_show
+            self._repr_args["n_dimensions"] = self._n_dimensions
 
     def __repr__(self) -> str:
-        attr_to_show = self._repr_dict()
-        string = "%s(" % attr_to_show["name"]
+        attr_to_show = self._repr_args
+        string = f"{attr_to_show['name']}("
         for k, v in attr_to_show.items():
-            if k == "name":
-                continue
-            string += "%s=%s, " % (k, v)
-        string = string[:-2]
-        return string + ")"
+            string += f"{k}={v}, " if k != "name" else ""
+        return f"{string[:-2]})"

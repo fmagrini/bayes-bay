@@ -63,3 +63,9 @@ class Parameterization:
         parameterization
         """
         return self._perturbation_funcs
+    
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(parameter_spaces="
+            f"{list(self.parameter_spaces.values())})"
+        )
