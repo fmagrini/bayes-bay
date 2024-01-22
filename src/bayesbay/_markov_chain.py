@@ -104,7 +104,7 @@ class BaseMarkovChain:
                     self.saved_models[k].append(v)
             if self.save_dpred and "dpred" in self.current_model.cache:
                 self.saved_models["dpred"].append(
-                    self.current_model.load_cache("dpred")
+                    self.current_model.load_from_cache("dpred")
                 )
         else:
             self.saved_models.append(self.current_model)

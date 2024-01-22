@@ -247,7 +247,7 @@ class State:
         else:
             raise ValueError("`param_name` should be a string")
 
-    def has_cache(self, name: str) -> bool:
+    def saved_in_cache(self, name: str) -> bool:
         """Indicates whether there is cache value stored for the given ``name``
 
         Parameters
@@ -262,7 +262,7 @@ class State:
         """
         return name in self.cache
 
-    def load_cache(self, name: str) -> Any:
+    def load_from_cache(self, name: str) -> Any:
         """Load the cached value for the given ``name``
 
         Parameters
@@ -277,7 +277,7 @@ class State:
         """
         return self.cache[name]
 
-    def store_cache(self, name: str, value: Any):
+    def save_to_cache(self, name: str, value: Any):
         """Store the given value to cache
 
         Parameters
@@ -288,6 +288,49 @@ class State:
             the cache value to store
         """
         self.cache[name] = value
+    
+    def saved_in_extra_storage(self, name: str) -> bool:
+        """Indicates whether there is an extra_storage value stored for the given 
+        ``name``
+
+        Parameters
+        ----------
+        name : str
+            the extra_storage name to look up
+
+        Returns
+        -------
+        bool
+            whether there is extra_storage stored for the given ``name``
+        """
+        return name in self.extra_storage
+
+    def load_from_extra_storage(self, name: str) -> Any:
+        """Load the extra_storage value for the given ``name``
+
+        Parameters
+        ----------
+        name : str
+            the extra_storage name to look up
+
+        Returns
+        -------
+        Any
+            the extra_storage stored for the given ``name``
+        """
+        return self.extra_storage[name]
+
+    def save_to_extra_storage(self, name: str, value: Any):
+        """Store the given value to extra_storage
+
+        Parameters
+        ----------
+        name : str
+            the extra_storage name to store
+        value : Any
+            the extra_storage value to store
+        """
+        self.extra_storage[name] = value
 
     def _vars(self):
         all_vars = dict()

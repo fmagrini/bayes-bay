@@ -9,7 +9,7 @@ include the following, depending on what are being inverted in the current probl
 - Values of parameters
 - Values of noise standard deviation (and correlation)
 - (optional) Cached computing results, if the user chooses to attach them to a certain 
-  model via :meth:`bayesbay.State.store_cache`
+  model via :meth:`bayesbay.State.save_to_cache`
 
 .. autosummary::
     :toctree: generated/

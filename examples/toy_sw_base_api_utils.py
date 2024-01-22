@@ -28,11 +28,11 @@ def _calc_thickness(sites: np.ndarray):
 
 def _get_thickness(state: bb.State):
     sites = state["voronoi"]["discretization"]
-    if state.has_cache("thickness"):
-        thickness = state.load_cache("thickness")
+    if state.saved_in_cache("thickness"):
+        thickness = state.load_from_cache("thickness")
     else:
         thickness = _calc_thickness(sites)
-        state.store_cache("thickness", thickness)
+        state.save_to_cache("thickness", thickness)
     return thickness
 
 def forward_sw(state, periods, wave="rayleigh", mode=1):
