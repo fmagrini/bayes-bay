@@ -16,7 +16,7 @@ LAYERS_MIN = 3
 LAYERS_MAX = 15
 LAYERS_INIT_RANGE = 0.3
 VS_PERTURB_STD = 0.15
-VS_UNIFORM_MIN = 2.7
+VS_UNIFORM_MIN = 2
 VS_UNIFORM_MAX = 5
 VORONOI_PERTURB_STD = 8
 VORONOI_POS_MIN = 0
@@ -28,8 +28,9 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
     k = int(len(model) / 2)
     sites = model[:k]
     vs = model[k:]
-    depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
+    thickness = bb.discretization.Voronoi1D.compute_cell_extents(
+        np.array(sites, dtype=float)
+    )
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
@@ -193,8 +194,8 @@ inversion = bb.BaseBayesianInversion(
     n_cpus=N_CHAINS,
 )
 inversion.run(
-    n_iterations=5_000,
-    burnin_iterations=2_000,
+    n_iterations=50_000,
+    burnin_iterations=20_000,
     save_every=100,
     print_every=500,
 )
@@ -203,8 +204,9 @@ inversion.run(
 def _calc_thickness(model: np.ndarray):
     k = len(model) // 2
     sites = model[:k]
-    depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
+    thickness = bb.discretization.Voronoi1D.compute_cell_extents(
+        np.array(sites, dtype=float)
+    )
     return thickness
 
 def _get_vs(model: np.ndarray):

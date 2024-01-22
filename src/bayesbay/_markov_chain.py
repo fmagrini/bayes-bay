@@ -96,9 +96,11 @@ class BaseMarkovChain:
             for k, v in self.current_model.items():
                 if (
                     "n_dimensions" not in k
-                    or self.parameterization.parameter_spaces[
+                    or (
+                        hasattr(self, "parameterization") and
+                        self.parameterization.parameter_spaces[
                         k[: -len(".n_dimensions")]
-                    ].trans_d
+                    ].trans_d)
                 ):
                     self.saved_models[k].append(v)
             if self.save_dpred and "dpred" in self.current_model.cache:
