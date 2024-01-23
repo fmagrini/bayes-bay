@@ -144,7 +144,7 @@ class BaseMarkovChain:
     def _log_likelihood_ratio(self, new_model):
         return self.log_like_ratio_func(self.current_model, new_model)
 
-    def _next_iteration(self, save_model):
+    def _next_iteration(self):
         _last_exception = None
         for i in range(500):
             # choose one perturbation function and type
@@ -176,7 +176,7 @@ class BaseMarkovChain:
 
             # save statistics and current model
             self._save_statistics(i_perturb, accepted)
-            if save_model and self.temperature == 1:
+            if self.save_current_iteration and self.temperature == 1:
                 self._save_model()
             return
         raise RuntimeError(
@@ -191,8 +191,8 @@ class BaseMarkovChain:
         save_every: int = 100,
         verbose: bool = True,
         print_every: int = 100,
-        on_begin_iteration: Callable[["BaseMarkovChain"], None] = None,
-        on_end_iteration: Callable[["BaseMarkovChain"], None] = None,
+        begin_iteration: Callable[["BaseMarkovChain"], None] = None,
+        end_iteration: Callable[["BaseMarkovChain"], None] = None,
     ):
         """advance the chain for a given number of iterations
 
@@ -209,9 +209,9 @@ class BaseMarkovChain:
         print_every : int, optional
             the frequency with which we print the progress and information during the
             sampling, by default 100 iterations
-        on_begin_iteration : Callable[["BaseMarkovChain"], None], optional
+        begin_iteration : Callable[["BaseMarkovChain"], None], optional
             customized function that's to be run at before an iteration
-        on_end_iteration : Callable[["BaseMarkovChain"], None], optional
+        end_iteration : Callable[["BaseMarkovChain"], None], optional
             customized function that's to be run at after an iteration
 
         Returns
@@ -221,13 +221,13 @@ class BaseMarkovChain:
         """
         for i in range(1, n_iterations + 1):
             if i <= burnin_iterations:
-                save_model = False
+                self.save_current_iteration = False
             else:
-                save_model = not (i - burnin_iterations) % save_every
+                self.save_current_iteration = not (i - burnin_iterations) % save_every
 
-            on_begin_iteration(self)
-            self._next_iteration(save_model)
-            on_end_iteration(self)
+            begin_iteration(self)
+            self._next_iteration()
+            end_iteration(self)
             if verbose and not i % print_every:
                 self._print_statistics()
 
