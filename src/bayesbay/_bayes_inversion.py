@@ -230,8 +230,14 @@ class BaseBayesianInversion:
         return f"{string[:-2]})"
     
     def __str__(self) -> str:
+        repr_args_copy = self._repr_args.copy() 
+        _n_chains = ""
+        if 'chains' in repr_args_copy and len(repr_args_copy['chains']) > 3:
+            _n_chains = f"...{len(repr_args_copy['chains'])} chains in total..."
+            repr_args_copy['chains'] = repr_args_copy['chains'][:3] + [_n_chains]
         string = f"{self.__class__.__name__}("
-        string += pformat(self._repr_args)[1:-1] + ")"
+        string += pformat(repr_args_copy)[1:-1] + ")"
+        string = string.replace(repr(_n_chains), _n_chains)     # remove the quotes
         return string
     
 
