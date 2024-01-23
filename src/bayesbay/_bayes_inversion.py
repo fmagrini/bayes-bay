@@ -1,6 +1,7 @@
 from typing import List, Callable, Tuple, Any, Dict, Union
 from numbers import Number
 from collections import defaultdict
+from pprint import pformat
 import numpy as np
 
 from ._markov_chain import MarkovChain, BaseMarkovChain
@@ -108,15 +109,7 @@ class BaseBayesianInversion:
             for i in range(n_chains)
         ]
         
-        self._repr_args = {
-            "walkers_starting_models": self.walkers_starting_models, 
-            "perturbation_funcs": self.perturbation_funcs, 
-            "log_likelihood_func": self.log_likelihood_func, 
-            "n_chains": self.n_chains, 
-            "n_cpus": self.n_cpus, 
-            "save_dpred": self.save_dpred, 
-            "chains": self.chains, 
-        }
+        self._init_repr_args()
 
     @property
     def chains(self) -> List[BaseMarkovChain]:
@@ -211,6 +204,17 @@ class BaseBayesianInversion:
                     results_model.append(chain.saved_models)
         return results_model
     
+    def _init_repr_args(self):
+        self._repr_args = {
+            "walkers_starting_models": self.walkers_starting_models, 
+            "perturbation_funcs": self.perturbation_funcs, 
+            "log_likelihood_func": self.log_likelihood_func, 
+            "n_chains": self.n_chains, 
+            "n_cpus": self.n_cpus, 
+            "save_dpred": self.save_dpred, 
+            "chains": self.chains, 
+        }
+    
     def __repr__(self) -> str:
         string = f"{self.__class__.__name__}("
         for k, v in self._repr_args.items():
@@ -218,16 +222,17 @@ class BaseBayesianInversion:
                 repr_v = v.__class__.__name__
             elif k == "walkers_starting_models":
                 repr_v = f"[{len(v)} arrays with shapes {', '.join(str(arr.shape) for arr in v)}]"
-            elif k == "perturbation_funcs" or k == "fwd_functions":
-                repr_v = f"[{len(v)} functions]"
-            elif k == "targets":
-                repr_v = f"[{len(v)} Target objects]"
             elif k == "chains" and len(v) > 3: 
                 repr_v = f"{str(v[:3])[:-1]}, ...{len(v)} chains in total...]"
             else:
                 repr_v = repr(v)
             string += f"{k}={repr_v}, "
         return f"{string[:-2]})"
+    
+    def __str__(self) -> str:
+        string = f"{self.__class__.__name__}("
+        string += pformat(self._repr_args)[1:-1] + ")"
+        return string
     
 
 class BayesianInversion(BaseBayesianInversion):
@@ -286,8 +291,10 @@ class BayesianInversion(BaseBayesianInversion):
             for i in range(n_chains)
         ]
         
+        self._init_repr_args()
+        
+    def _init_repr_args(self) -> dict:
         self._repr_args = {
-            "parameterization": self.parameterization, 
             "targets": self.targets, 
             "fwd_functions": self.fwd_functions, 
             "n_chains": self.n_chains, 
@@ -295,3 +302,12 @@ class BayesianInversion(BaseBayesianInversion):
             "save_dpred": self.save_dpred, 
             "chains": self.chains, 
         }
+        _parameterization = dict()
+        for ps_name, ps in self.parameterization.parameter_spaces.items():
+            _parameterization[ps_name] = {
+                k: v for k, v in ps._repr_args.items() \
+                    if k not in {"parameters", "name"}
+            }
+            _parameterization[ps_name]["parameters"] = list(ps.parameters.values())
+        self._repr_args["parameterization"] = _parameterization
+        

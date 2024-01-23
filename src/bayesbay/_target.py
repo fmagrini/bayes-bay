@@ -166,3 +166,6 @@ class Target:
         n = self.dobs.size
         log_det = (2 * n) * math.log(std) + (n - 1) * math.log(1 - r**2)
         return log_det
+
+    def __repr__(self) -> str:
+        return self.name
