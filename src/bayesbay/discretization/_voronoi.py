@@ -805,7 +805,7 @@ class Voronoi1D(Voronoi):
         for thicknesses, values in zip(
             samples_voronoi_cell_extents, samples_param_values
         ):
-            thicknesses = np.insert(thicknesses[:-1], -1, 20)
+            thicknesses = np.insert(thicknesses[:-1], -1, max(thicknesses))
             y = np.insert(np.cumsum(thicknesses), 0, 0)
             x = np.insert(values, 0, values[0])
             ax.step(x, y, where="post", **sample_style)
