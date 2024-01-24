@@ -32,6 +32,7 @@ experiments.
 
    tutorials/0_linregr
    tutorials/1_hierarchical_linregr
+   tutorials/2_gaussian_mixture
 
 .. toctree::
    :maxdepth: 1
