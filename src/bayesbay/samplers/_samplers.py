@@ -54,7 +54,7 @@ class Sampler(ABC):
         chain : bayesbay.BaseMarkovChain
             Markov chain used to sample the posterior
         """
-        self.on_iteration_end(chain)
+        self.on_end_iteration(chain)
         for func in self._extra_on_end_iteration:
             func(self, chain)
 
@@ -204,8 +204,8 @@ class Sampler(ABC):
             save_every=save_every,
             verbose=verbose,
             print_every=print_every,
-            on_begin_iteration=self.on_begin_iteration,
-            on_end_iteration=self.on_end_iteration,
+            begin_iteration=self.begin_iteration,
+            end_iteration=self.end_iteration,
         )
         if n_cpus > 1:
             pool = multiprocessing.Pool(n_cpus)

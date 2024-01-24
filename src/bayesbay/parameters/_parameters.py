@@ -30,7 +30,7 @@ class Parameter(ABC):
         else:
             self.position = None
         assert "perturb_std" in kwargs
-        self.init_params = kwargs
+        self._repr_args = kwargs
         
     @property
     def name(self) -> str:
@@ -239,13 +239,10 @@ class Parameter(ABC):
         )
 
     def __repr__(self) -> str:
-        string = "%s(" % self.init_params["name"]
-        for k, v in self.init_params.items():
-            if k == "name":
-                continue
-            string += "%s=%s, " % (k, v)
-        string = string[:-2]
-        return string + ")"
+        string = f"{self._repr_args['name']}("
+        for k, v in self._repr_args.items():
+            string += f"{k}={v}, " if k != "name=" else ""
+        return f"{string[:-2]})"
 
 
 class UniformParameter(Parameter):

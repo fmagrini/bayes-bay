@@ -1,4 +1,5 @@
 from typing import List, Union
+from pprint import pformat
 
 from ._parameter_space import ParameterSpace
 from ..perturbations import Perturbation
@@ -63,3 +64,15 @@ class Parameterization:
         parameterization
         """
         return self._perturbation_funcs
+    
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(parameter_spaces="
+            f"{list(self.parameter_spaces.values())})"
+        )
+    
+    def __str__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"{pformat(list(self.parameter_spaces.values()))})"
+        )

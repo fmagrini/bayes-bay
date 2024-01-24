@@ -83,7 +83,6 @@ class BaseMarkovChain:
 
     def _init_statistics(self):
         self._statistics = {
-            "current_misfit": float("inf"),
             "n_explored_models": defaultdict(int),
             "n_accepted_models": defaultdict(int),
             "n_explored_models_total": 0,
@@ -96,14 +95,16 @@ class BaseMarkovChain:
             for k, v in self.current_model.items():
                 if (
                     "n_dimensions" not in k
-                    or self.parameterization.parameter_spaces[
+                    or (
+                        hasattr(self, "parameterization") and
+                        self.parameterization.parameter_spaces[
                         k[: -len(".n_dimensions")]
-                    ].trans_d
+                    ].trans_d)
                 ):
                     self.saved_models[k].append(v)
             if self.save_dpred and "dpred" in self.current_model.cache:
                 self.saved_models["dpred"].append(
-                    self.current_model.load_cache("dpred")
+                    self.current_model.load_from_cache("dpred")
                 )
         else:
             self.saved_models.append(self.current_model)
@@ -139,12 +140,11 @@ class BaseMarkovChain:
                 "\t%s: %d/%d (%.2f%%)"
                 % (perturb_type, _accepted, _explored, acceptance_rate)
             )
-        # print("NUMBER OF FWD FAILURES: %d" % self.statistics["n_fwd_failures_total"])
 
     def _log_likelihood_ratio(self, new_model):
         return self.log_like_ratio_func(self.current_model, new_model)
 
-    def _next_iteration(self, save_model):
+    def _next_iteration(self):
         _last_exception = None
         for i in range(500):
             # choose one perturbation function and type
@@ -176,7 +176,7 @@ class BaseMarkovChain:
 
             # save statistics and current model
             self._save_statistics(i_perturb, accepted)
-            if save_model and self.temperature == 1:
+            if self.save_current_iteration and self.temperature == 1:
                 self._save_model()
             return
         raise RuntimeError(
@@ -191,8 +191,8 @@ class BaseMarkovChain:
         save_every: int = 100,
         verbose: bool = True,
         print_every: int = 100,
-        on_begin_iteration: Callable[["BaseMarkovChain"], None] = None,
-        on_end_iteration: Callable[["BaseMarkovChain"], None] = None,
+        begin_iteration: Callable[["BaseMarkovChain"], None] = None,
+        end_iteration: Callable[["BaseMarkovChain"], None] = None,
     ):
         """advance the chain for a given number of iterations
 
@@ -209,9 +209,9 @@ class BaseMarkovChain:
         print_every : int, optional
             the frequency with which we print the progress and information during the
             sampling, by default 100 iterations
-        on_begin_iteration : Callable[["BaseMarkovChain"], None], optional
+        begin_iteration : Callable[["BaseMarkovChain"], None], optional
             customized function that's to be run at before an iteration
-        on_end_iteration : Callable[["BaseMarkovChain"], None], optional
+        end_iteration : Callable[["BaseMarkovChain"], None], optional
             customized function that's to be run at after an iteration
 
         Returns
@@ -221,17 +221,31 @@ class BaseMarkovChain:
         """
         for i in range(1, n_iterations + 1):
             if i <= burnin_iterations:
-                save_model = False
+                self.save_current_iteration = False
             else:
-                save_model = not (i - burnin_iterations) % save_every
+                self.save_current_iteration = not (i - burnin_iterations) % save_every
 
-            on_begin_iteration(self)
-            self._next_iteration(save_model)
-            on_end_iteration(self)
+            begin_iteration(self)
+            self._next_iteration()
+            end_iteration(self)
             if verbose and not i % print_every:
                 self._print_statistics()
 
         return self
+
+    def _repr_args(self) -> dict:
+        return {
+            "id": self.id, 
+            "temperature": self.temperature, 
+            "n_explored_models_total": self.statistics["n_explored_models_total"], 
+            "n_accepted_models_total": self.statistics["n_accepted_models_total"], 
+        }
+    
+    def __repr__(self) -> str:
+        string = f"{self.__class__.__name__}("
+        for k, v in self._repr_args().items():
+            string += f"{k}={v}, "
+        return f"{string[:-2]})"
 
 
 class MarkovChain(BaseMarkovChain):

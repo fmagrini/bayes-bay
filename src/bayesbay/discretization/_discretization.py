@@ -78,7 +78,7 @@ class Discretization(Parameter, ParameterSpace):
         self.spatial_dimensions = spatial_dimensions
         self.perturb_std = perturb_std
         self.birth_from = birth_from
-        self._additional_kwargs = kwargs
+        self._update_repr_args(kwargs)
     
     @abstractmethod
     def initialize(self, *args) -> ParameterSpaceState:
@@ -206,14 +206,12 @@ class Discretization(Parameter, ParameterSpace):
         """
         return self.perturb_std
 
-    def _repr_dict(self) -> dict:      # to be called by ParameterSpace.__repr__
-        attr_to_show = ParameterSpace._repr_dict(self)
-        attr_to_show["spatial_dimensions"] = self.spatial_dimensions
-        attr_to_show["perturb_std"] = self.perturb_std
+    def _update_repr_args(self, kwargs):
+        self._repr_args["spatial_dimensions"] = self.spatial_dimensions
+        self._repr_args["perturb_std"] = self.perturb_std
         if self.trans_d:
-            attr_to_show["birth_from"] = self.birth_from
-        attr_to_show.update(self._additional_kwargs)
-        return attr_to_show
-    
+            self._repr_args["birth_from"] = self.birth_from
+        self._repr_args.update(kwargs)
+
     def __repr__(self) -> str:
         return ParameterSpace.__repr__(self)

@@ -16,6 +16,11 @@ def _preprocess_func(func):
                 kwargs = func[2]
         elif isinstance(func[1], dict):
             kwargs = func[1]
+        else:
+            raise TypeError(
+                "additional arguments should be a list (i.e. args) or a dict (i.e. "
+                f"kwargs), but got {func[1]} for the function instead"
+            )
     elif isinstance(func, (tuple, list)):
         f = func[0]
     else:
@@ -40,6 +45,9 @@ class _FunctionWrapper:
     @property
     def __name__(self) -> str:
         return self.f.__name__
+    
+    def __repr__(self) -> str:
+        return self.__name__
 
 
 class _LogLikeRatioFromFunc:
@@ -59,3 +67,6 @@ class _LogLikeRatioFromFunc:
     @property
     def __name__(self) -> str:
         return self.f.__name__
+    
+    def __repr__(self) -> str:
+        return self.__name__

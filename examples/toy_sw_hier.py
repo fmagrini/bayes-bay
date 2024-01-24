@@ -28,22 +28,20 @@ N_CHAINS = 2
 
 
 def _calc_thickness(sites: np.ndarray):
-    depths = (sites[:-1] + sites[1:]) / 2
-    thickness = np.hstack((depths[0], depths[1:] - depths[:-1], 0))
-    return thickness
+    return bb.discretization.Voronoi1D.compute_cell_extents(np.array(sites, dtype=float))
 
-def _get_thickness(model: bb.State):
-    sites = model["voronoi"]["discretization"]
-    if model.has_cache("thickness"):
-        thickness = model.load_cache("thickness")
+def _get_thickness(state: bb.State):
+    sites = state["voronoi"]["discretization"]
+    if state.saved_in_cache("thickness"):
+        thickness = state.load_from_cache("thickness")
     else:
         thickness = _calc_thickness(sites)
-        model.store_cache("thickness", thickness)
+        state.save_to_cache("thickness", thickness)
     return thickness
 
-def forward_sw(model, periods, wave="rayleigh", mode=1):
-    vs = model["voronoi"]["vs"]
-    thickness = _get_thickness(model)
+def forward_sw(state, periods, wave="rayleigh", mode=1):
+    vs = state["voronoi"]["vs"]
+    thickness = _get_thickness(state)
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
@@ -61,7 +59,7 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
 true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
-true_model = bb.State(
+true_state = bb.State(
     {
         "voronoi": bb.ParameterSpaceState(
             len(true_vs), 
@@ -71,7 +69,7 @@ true_model = bb.State(
 )
 
 periods1 = np.linspace(4, 80, 20)
-rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
+rayleigh1 = forward_sw(true_state, periods1, "rayleigh", 1)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
 
 
