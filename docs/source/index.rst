@@ -13,7 +13,7 @@ Key features
 
 - **Flexible Parameterizations**: The free parameters in the inverse problem can be defined by uniform, Gaussian, or custom prior probabilities. In the case of spatially discretized problems, these may or may not be dependent on position.
 - **Trans-dimensional**: The dimensionality of the inverse problem can be treated as unknown, i.e., as a free parameter to be inferred from the observations.
-- *Hierarchical*: When unknown, data errors can be treated as free hyper-parameters. Ideal for data fusion, this approach allows the data itself to drive the characteristics of the noise properties and avoids arbitrary weights for different observables in the evaluation of the likelihood.
+- **Hierarchical**: When unknown, data errors can be treated as free hyper-parameters. Ideal for data fusion, this approach allows the data itself to drive the characteristics of the noise properties and avoids arbitrary weights for different observables in the evaluation of the likelihood.
 - **Multi-Processing Capabilities**: Multiple Markov chains can be efficiently distributed across different CPUs for parallel execution.
 - **Flexible Sampling Criteria**: Besides providing ready-to-use functionalities such as parallel tempering or simulated annealing to sample complex posterior probabilities, the low-level features of BayesBay enable the definition of arbitrary sampling criteria.
 - **Discretization Support**: Particularly relevant to geoscientific inverse problems, BayesBay currently supports (trans-dimensional) spatial discretization through 1-D Voronoi tessellation. Development of 2-D and 3-D tessellations is actively underway.
