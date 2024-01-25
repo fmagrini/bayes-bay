@@ -1,0 +1,6 @@
+.admonition.note ul li {
+    list-style-type: none; /* Removes bullets */
+    margin-left: 0; /* Adjusts indentation */
+    margin-bottom: 10px !important; /* Adjust space between items, 'important' for precedence */
+}
+

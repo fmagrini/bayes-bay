@@ -5,6 +5,20 @@
 
 import datetime
 import bayesbay as bb
+from docutils import nodes
+from docutils.parsers.rst import roles
+
+
+def underline_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+    """Enable underlined text"""
+    return [nodes.emphasis(rawtext, text, classes=['underline'])], []
+
+def bold_underline_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+    """Enable bold-underlined text"""
+    return [nodes.emphasis(rawtext, text, classes=['bold-underline'])], []
+
+roles.register_local_role('underline', underline_role)
+roles.register_local_role('bold-underline', bold_underline_role)
 
 
 # -- Project information -----------------------------------------------------
@@ -55,7 +69,7 @@ html_title = f'{project} <span class="project-version">{version}</span>'
 html_short_title = project
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ["_static"]
-html_css_files = ["style.css"]
+html_css_files = ["style.css", "custom.css"]
 html_context = {
     "display_github": True, # Integrate GitHub
     "github_user": "fmagrini", # Username

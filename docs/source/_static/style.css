@@ -78,3 +78,13 @@ table.autosummary p {
 table.autosummary span {
     font-size: 1rem;
 }
+
+.underline {
+    text-decoration: underline;
+}
+
+.bold-underline {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
