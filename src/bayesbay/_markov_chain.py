@@ -74,6 +74,10 @@ class BaseMarkovChain:
     @property
     def statistics(self):
         return self._statistics
+    
+    @property
+    def ith_iteration(self):
+        return self.statistics["n_explored_models_total"]
 
     def _init_saved_models(self):
         if isinstance(self.current_model, (State, dict)):
@@ -176,7 +180,7 @@ class BaseMarkovChain:
 
             # save statistics and current model
             self._save_statistics(i_perturb, accepted)
-            if self.save_current_iteration and self.temperature == 1:
+            if self.save_current_iteration and self.temperature == 1.0:
                 self._save_model()
             return
         raise RuntimeError(
@@ -219,7 +223,8 @@ class BaseMarkovChain:
         BaseMarkovChain
             the chain itself is returned
         """
-        for i in range(1, n_iterations + 1):
+        for _ in range(n_iterations):
+            i = self.ith_iteration + 1
             if i <= burnin_iterations:
                 self.save_current_iteration = False
             else:
