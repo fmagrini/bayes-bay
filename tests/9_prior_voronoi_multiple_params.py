@@ -27,7 +27,7 @@ parameterization = bb.parameterization.Parameterization(
         perturb_std=10, 
         n_dimensions=None, 
         n_dimensions_min=1, 
-        n_dimensions_max=10, 
+        n_dimensions_max=20, 
         parameters=[
             uniform_param, 
             gaussian_param, 
@@ -50,10 +50,10 @@ inversion = bb.BayesianInversion(
 )
 inversion.run(
     sampler=None, 
-    n_iterations=500_000, 
+    n_iterations=1_000_000, 
     burnin_iterations=0, 
     save_every=200, 
-    print_every=200, 
+    print_every=2000, 
 )
 
 # get results and plot
@@ -69,4 +69,4 @@ axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")
 axes[2].hist(np.concatenate(uniform_param), bins=20, ec="w")
 axes[3].hist(np.concatenate(gaussian_param), bins=20, ec="w")
 axes[4].hist(np.concatenate(custom_param), bins=20, ec="w")
-fig.savefig("9_prior_voronoi_multiple_params")
+# fig.savefig("9_prior_voronoi_multiple_params")
