@@ -768,6 +768,7 @@ class Voronoi1D(Voronoi):
         samples_voronoi_cell_extents: list,
         samples_param_values: list,
         ax=None,
+        max_depth=None,
         **kwargs,
     ):
         """plot multiple 1D Earth models based on sampled parameters.
@@ -805,10 +806,17 @@ class Voronoi1D(Voronoi):
         for thicknesses, values in zip(
             samples_voronoi_cell_extents, samples_param_values
         ):
-            thicknesses = np.insert(thicknesses[:-1], -1, max(thicknesses))
-            y = np.insert(np.cumsum(thicknesses), 0, 0)
+            depths = np.cumsum(thicknesses[:-1])
+            if max_depth is not None:
+                assert max_depth > depths[-1], ("`max_depth` should be greater"
+                                                " than the sum of Voronoi site"
+                                                f" cell extents (here, {depths[-1]})")
+                final_depth = max_depth
+            else:
+                final_depth = depths[-1] + max(thicknesses)
+            depths = np.append(depths, final_depth)      
             x = np.insert(values, 0, values[0])
-            ax.step(x, y, where="post", **sample_style)
+            ax.step(x, depths, where="post", **sample_style)
 
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
