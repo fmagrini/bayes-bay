@@ -208,7 +208,7 @@ class BaseBayesianInversion:
         self._repr_args = {
             "walkers_starting_models": self.walkers_starting_models, 
             "perturbation_funcs": self.perturbation_funcs, 
-            "log_likelihood_func": self.log_likelihood_func, 
+            "log_like_ratio_func": self.log_like_ratio_func, 
             "n_chains": self.n_chains, 
             "n_cpus": self.n_cpus, 
             "save_dpred": self.save_dpred, 
