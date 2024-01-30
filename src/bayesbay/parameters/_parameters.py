@@ -35,16 +35,13 @@ class Parameter(ABC):
     @property
     def name(self) -> str:
         return self._name
-
+    
     @abstractmethod
-    def initialize(
-        self, position: Union[np.ndarray, Number] = None
-    ) -> Union[np.ndarray, Number]:
-        r"""initializes the values of this (possibly position-dependent) 
-        parameter
-
-        Parameters
-        ----------
+    def sample(self, position: Number = None) -> Number:
+        r"""sample a new value from the prior
+        
+        Paramters
+        ---------
         position : Union[np.ndarray, Number], optional
             the position (in the discretization domain) associated with the value, 
             None by default
@@ -52,6 +49,24 @@ class Parameter(ABC):
         Returns
         -------
         Union[np.ndarray, Number]
+            a value corresponding to the given position
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def initialize(self, positions: np.ndarray = None) -> np.ndarray:
+        r"""initializes the values of this (possibly position-dependent) 
+        parameter
+
+        Parameters
+        ----------
+        position : np.ndarray, optional
+            the position (in the discretization domain) associated with the value, 
+            None by default
+
+        Returns
+        -------
+        np.ndarray
             an array of values or one value corresponding to the given positions
         """
         raise NotImplementedError
@@ -331,31 +346,14 @@ class UniformParameter(Parameter):
         vmin = self.get_hyper_param("vmin", position)
         vmax = self.get_hyper_param("vmax", position)
         return vmin, vmax
-
-    def initialize(
-        self, position: Union[np.ndarray, Number] = None
-    ) -> Union[np.ndarray, Number]:
-        r"""initialize the parameter, possibly at a specific position in the 
-        discretization domain
-        
-        Parameters
-        ----------
-        position: Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the parameter is 
-            initialized. None by default
-
-        Returns
-        -------
-        Union[Number, np.ndarray]
-            random number(s) chosen uniformly in the range associated with the
-            given position(s)
-        """
+    
+    def sample(self, position: Number = None) -> Number:
         vmin, vmax = self.get_vmin_vmax(position)
-        if isinstance(position, Number):
-            return random.uniform(vmin, vmax)
-        else:
-            n_vals = len(position) if position is not None else 1
-            return np.random.uniform(vmin, vmax, n_vals)
+        return random.uniform(vmin, vmax)
+
+    def initialize(self, positions: np.ndarray = None) -> np.ndarray:
+        vmin, vmax = self.get_vmin_vmax(positions)
+        return np.random.uniform(vmin, vmax, len(positions))
 
     def perturb_value(self, value: Number, position: Number = None) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
@@ -511,15 +509,18 @@ class GaussianParameter(Parameter):
         """
         return self.get_hyper_param("std", position)
 
-    def initialize(
-        self, position: Union[np.ndarray, Number] = None
-    ) -> Union[np.ndarray, Number]:
-        r"""initialize the parameter, possibly at a specific position in the 
+    def sample(self, position: Number = None) -> Number:
+        mean = self.get_mean(position)
+        std = self.get_std(position)
+        return random.gauss(mean, std)
+
+    def initialize(self, positions: np.ndarray = None) -> np.ndarray:
+        r"""initialize the parameter, possibly at specific positions in the 
         discretization domain
         
         Parameters
         ----------
-        position: Union[Number, np.ndarray], optional
+        positions: Union[Number, np.ndarray], optional
             the position in the discretization domain at which the parameter is 
             initialized. None by default
 
@@ -530,10 +531,9 @@ class GaussianParameter(Parameter):
             chosen according to the normal distribution defined
             by :attr:`mean` and :attr:`std` at the given position(s)
         """
-        mean = self.get_mean(position)
-        std = self.get_std(position)
-        n_vals = len(position) if position is not None else 1
-        values = np.random.normal(mean, std, n_vals)
+        mean = self.get_mean(positions)
+        std = self.get_std(positions)
+        values = np.random.normal(mean, std, len(positions))
         return values
 
     def perturb_value(self, 
@@ -620,7 +620,9 @@ class CustomParameter(Parameter):
     name : str
         name of the current parameter, for display and storing purposes
     log_prior : Callable[[Number, Number], Number]
-    initialize : Callable[[np.ndarray], np.ndarray]
+    sample : Callable[[Number], Number]
+        a function that samples a new value (optionally dependent on a position). The
+        parameter initialization will also be done by calling this function
     perturb_std : Union[Number, np.ndarray]
         standard deviation of the Gaussians used to randomly perturb the parameter. 
         This can either be a scalar or an array if the defined probability distribution 
@@ -633,14 +635,14 @@ class CustomParameter(Parameter):
         self,
         name: str,
         log_prior: Callable[[Number, Number], Number],
-        initialize: Callable[[np.ndarray], np.ndarray],
+        sample: Callable[[Number], Number],
         perturb_std: Union[Number, np.ndarray], 
         position: np.ndarray = None, 
     ):
         super().__init__(
             name=name,
             log_prior=log_prior,
-            initialize=initialize,
+            sample=sample,
             perturb_std=perturb_std, 
             position=position, 
         )
@@ -648,26 +650,16 @@ class CustomParameter(Parameter):
             "perturb_std": perturb_std
         })
         self._log_prior = log_prior
-        self._initialize = initialize
-        
-    def initialize(
-        self, position: Union[np.ndarray, Number] = None
-    ) -> Union[np.ndarray, Number]:
-        r"""initialize the parameter, possibly at a specific position in the 
-        discretization domain
-        
-        Parameters
-        ----------
-        position: Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the parameter is 
-            initialized. None by default
-        
-        Returns
-        -------
-        Union[np.ndarray, Number]
-            an array of values or one value corresponding to the given positions
-        """
-        return self._initialize(position)
+        self._sample = sample
+    
+    def sample(self, position: Number = None) -> Number:
+        return self._sample(position) 
+    
+    def initialize(self, positions: np.ndarray = None) -> np.ndarray:
+        result = np.empty_like(positions)
+        for i, position in enumerate(positions):
+            result[i] = self._sample(position)
+        return result
     
     def perturb_value(self, 
                       value: Number, 

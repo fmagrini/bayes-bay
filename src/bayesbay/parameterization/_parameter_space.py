@@ -193,7 +193,7 @@ class ParameterSpace:
             new_param_values[param_name] = insert_scalar(
                 param_vals, 
                 i_insert, 
-                self.parameters[param_name].initialize()
+                self.parameters[param_name].sample()
             )
         new_state = ParameterSpaceState(n_dims+1, new_param_values)
         prob_ratio = 0

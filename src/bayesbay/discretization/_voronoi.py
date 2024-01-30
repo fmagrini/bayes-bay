@@ -342,7 +342,7 @@ class Voronoi1D(Voronoi):
         """
         new_born_values = dict()
         for param_name, param in self.parameters.items():
-            new_value = param.initialize(new_site)
+            new_value = param.sample(new_site)
             new_born_values[param_name] = new_value
         return new_born_values, None
     
