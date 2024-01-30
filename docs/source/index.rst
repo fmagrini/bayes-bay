@@ -41,9 +41,8 @@ considered inverse problem.
    :maxdepth: 1
    :caption: Tutorials
 
-   tutorials/0_linregr
-   tutorials/1_hierarchical_linregr
-   tutorials/2_gaussian_mixture
+   tutorials/linregr
+   tutorials/gmm
 
 .. toctree::
    :maxdepth: 1
