@@ -101,10 +101,10 @@ inversion = bb.BayesianInversion(
 inversion.run(
     sampler=None, 
     n_iterations=300_000, 
-    burnin_iterations=0, 
-    save_every=1, 
+    burnin_iterations=75_000, 
+    save_every=500, 
     verbose=False, 
-    print_every=10_000
+    print_every=30_000
 )
 for chain in inversion.chains: chain._print_statistics()
 #%%
