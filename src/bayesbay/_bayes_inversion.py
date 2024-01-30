@@ -68,8 +68,8 @@ class BaseBayesianInversion:
     n_chains: int, optional
         the number of chains in the McMC sampling. Default is 10
     n_cpus: int, optional
-        the number of CPUs available. This is usually set to be equal to the number of
-        chains if there are enough CPUs. Default is 10
+        the number of CPUs available. If None (default) this is usually set to 
+        the number of chains (``n_chains``)
     """
 
     def __init__(
@@ -79,7 +79,7 @@ class BaseBayesianInversion:
         log_likelihood_func: Callable[[Any], Number] = None,
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         n_chains: int = 10,
-        n_cpus: int = 10,
+        n_cpus: int = None,
         save_dpred: bool = True,
     ):
         self.walkers_starting_models = walkers_starting_models
@@ -96,7 +96,7 @@ class BaseBayesianInversion:
         else:
             self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
-        self.n_cpus = n_cpus
+        self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
         self._chains = [
             BaseMarkovChain(
@@ -264,8 +264,8 @@ class BayesianInversion(BaseBayesianInversion):
     n_chains: int, 10 by default
         the number of chains in the McMC sampling
     n_cpus: int, 10 by default
-        the number of CPUs available. This is usually set to be equal to the number of
-        chains if there are enough CPUs
+        the number of CPUs available. If None (default) this is usually set to 
+        the number of chains (``n_chains``)
     """
 
     def __init__(
@@ -274,7 +274,7 @@ class BayesianInversion(BaseBayesianInversion):
         targets: List[Target],
         fwd_functions: List[Callable[[State], np.ndarray]],
         n_chains: int = 10,
-        n_cpus: int = 10,
+        n_cpus: int = None,
         save_dpred: bool = True,
     ):
         self.targets = targets if isinstance(targets, list) else [targets]
@@ -284,7 +284,7 @@ class BayesianInversion(BaseBayesianInversion):
 
         self.parameterization = parameterization
         self.n_chains = n_chains
-        self.n_cpus = n_cpus
+        self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
         self._chains = [
             MarkovChain(
