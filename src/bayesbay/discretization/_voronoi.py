@@ -852,7 +852,8 @@ class Voronoi1D(Voronoi):
         """
         if ax is None:
             _, ax = plt.subplots()
-
+        if max_depth is not None:
+            ax.set_ylim(0, max_depth)
         # Default plotting style for samples
         sample_style = {
             "linewidth": kwargs.pop("linewidth", kwargs.pop("lw", 0.5)),

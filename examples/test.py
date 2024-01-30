@@ -39,13 +39,12 @@ plt.plot(PERIODS, phase_vel, 'k', lw=2, label='Predicted data (true model)')
 plt.plot(PERIODS, d_obs, 'ro', label='Observed data')
 
 
-# def param_vs_initialize(param_vs, positions=None):
-#     vmin, vmax = param_vs.get_vmin_vmax()
-#     if isinstance(positions, (float, int)):
-#         return np.random.uniform(vmin, vmax)
-#     sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
-#     return sorted_vals
-
+def initialize_vs(param, positions=None):
+    vmin, vmax = param.get_vmin_vmax(positions)
+    if isinstance(positions, (float, int)):
+        return np.random.uniform(vmin, vmax)
+    sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
+    return sorted_vals
 
 vs = bb.parameters.UniformParameter(name="vs", 
                                     vmin=2.5, 
@@ -53,7 +52,7 @@ vs = bb.parameters.UniformParameter(name="vs",
                                     perturb_std=0.15)
 
 
-# param_vs.set_custom_initialize(param_vs_initialize)
+vs.set_custom_initialize(initialize_vs)
 
 
 
