@@ -80,7 +80,10 @@ class ParamPerturbation(Perturbation):
 
     @property
     def __name__(self) -> str:
-        param_names = [p.name for p in self.parameters]
+        param_names = [
+            (f"{p.name}.discretization" if hasattr(p, "trans_d") else p.name) \
+                for p in self.parameters
+        ]
         param_names_str = (
             str(param_names) if len(param_names) != 1 else str(param_names[0])
         )

@@ -83,3 +83,6 @@ class Perturbation(ABC):
             the name of this current class
         """
         return self.type
+    
+    def __repr__(self) -> str:
+        return self.__name__
