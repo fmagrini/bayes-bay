@@ -39,13 +39,23 @@ plt.plot(PERIODS, phase_vel, 'k', lw=2, label='Predicted data (true model)')
 plt.plot(PERIODS, d_obs, 'ro', label='Observed data')
 
 
-
+# def param_vs_initialize(param_vs, positions=None):
+#     vmin, vmax = param_vs.get_vmin_vmax()
+#     if isinstance(positions, (float, int)):
+#         return np.random.uniform(vmin, vmax)
+#     sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
+#     return sorted_vals
 
 
 vs = bb.parameters.UniformParameter(name="vs", 
                                     vmin=2.5, 
                                     vmax=5, 
                                     perturb_std=0.15)
+
+
+# param_vs.set_custom_initialize(param_vs_initialize)
+
+
 
 voronoi = Voronoi1D(
     name="voronoi", 
@@ -99,6 +109,43 @@ inversion.run(
     print_every=25_000
 )
 
+
+# saving plots, models and targets
+results = inversion.get_results(concatenate_chains=True)
+dpred = np.array(results["dpred"])
+interp_depths = np.linspace(0, 160, 160)
+all_thicknesses = [Voronoi1D.compute_cell_extents(m) for m in results["voronoi.discretization"]]
+
+statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
+    all_thicknesses, results["vs"], interp_depths
+    )
+
+
+# plot depths and velocities density profile
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+bb.discretization.Voronoi1D.plot_depth_profiles_density(
+    all_thicknesses, results["vs"], ax=ax1
+)
+ax1.set_xlabel("Vs")
+bb.discretization.Voronoi1D.plot_interface_hist(
+    all_thicknesses, ax=ax2
+)
+# ax1.set_ylim(interp_depths.max(), interp_depths.min())
+# ax2.set_ylim(interp_depths.max(), interp_depths.min())
+
+ax1.plot(statistics_vs['median'], interp_depths, 'r')
+Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax1)
+plt.tight_layout()
+plt.show()
+
+
+ax = Voronoi1D.plot_depth_profiles(
+    all_thicknesses, results["vs"], linewidth=0.1, color="k"
+)
+Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax)
+Voronoi1D.plot_depth_profiles_statistics(
+    all_thicknesses, results["vs"], interp_depths, ax=ax
+)
 
 
 

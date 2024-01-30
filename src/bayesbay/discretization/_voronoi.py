@@ -866,7 +866,10 @@ class Voronoi1D(Voronoi):
         for thicknesses, values in zip(
             samples_voronoi_cell_extents, samples_param_values
         ):
-            ax = Voronoi1D.plot_depth_profile(thicknesses, values, **sample_style)
+            Voronoi1D.plot_depth_profile(thicknesses, 
+                                         values, 
+                                         **sample_style, 
+                                         ax=ax)
 
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
