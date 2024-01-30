@@ -66,6 +66,7 @@ voronoi = Voronoi1D(
     n_dimensions_min=4,
     n_dimensions_max=15,
     parameters=[vs], 
+    birth_from='neighbour'
 )
 
 parameterization = bb.parameterization.Parameterization(voronoi)
