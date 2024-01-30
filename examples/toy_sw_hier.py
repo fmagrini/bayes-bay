@@ -143,8 +143,8 @@ inversion = bb.BayesianInversion(
     n_cpus=N_CHAINS, 
 )
 inversion.run(
-    n_iterations=5_000,
-    burnin_iterations=2_000,
+    n_iterations=300_000,
+    burnin_iterations=50_000,
     save_every=100,
     print_every=500,
 )
