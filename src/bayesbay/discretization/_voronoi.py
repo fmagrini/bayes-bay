@@ -764,21 +764,21 @@ class Voronoi1D(Voronoi):
         return ax
 
     @staticmethod
-    def plot_depth_profiles(
-        samples_voronoi_cell_extents: list,
-        samples_param_values: list,
+    def plot_depth_profile(
+        voronoi_cell_extents: list,
+        param_values: list,
         ax=None,
+        max_depth=None,
         **kwargs,
     ):
         """plot multiple 1D Earth models based on sampled parameters.
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : list
-            a list of voronoi cell extents (thicknesses in the 1D case)
-        samples_param_values : ndarray
-            a 2D numpy array where each row represents a sample of parameter values
-            (e.g., velocities)
+        voronoi_cell_extents : list
+            Voronoi cell extents (thickness of a 1D layered model)
+        param_values : ndarray
+            parameter values (e.g., velocity) associated with each Voronoi cell
         ax : Axes, optional
             an optional Axes object to plot on
         kwargs : dict, optional
@@ -795,7 +795,68 @@ class Voronoi1D(Voronoi):
         # Default plotting style for samples
         sample_style = {
             "linewidth": kwargs.pop("linewidth", kwargs.pop("lw", 0.5)),
-            "alpha": 0.2,
+            "alpha": kwargs.pop("alpha", 1),
+            "color": kwargs.pop(
+                "color", kwargs.pop("c", "blue")
+            ),  # Fixed color for the sample lines
+        }
+        sample_style.update(kwargs)  # Override with any provided kwargs
+        
+        depths = np.cumsum(voronoi_cell_extents[:-1])
+        if max_depth is not None:
+            assert max_depth > depths[-1], ("`max_depth` should be greater"
+                                            " than the sum of Voronoi site"
+                                            f" cell extents (here, {depths[-1]})")
+            final_depth = max_depth
+        else:
+            final_depth = depths[-1] + max(voronoi_cell_extents)
+            
+        y = np.insert(np.append(depths, final_depth), 0, 0)
+        x = np.insert(param_values, 0, param_values[0])
+        ax.step(x, y, where="post", **sample_style)
+        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+            ax.invert_yaxis()
+        if not ax.get_xlabel():
+            ax.set_xlabel("Parameter values")
+        if not ax.get_ylabel():
+            ax.set_ylabel("Depth")
+        return ax
+
+    @staticmethod
+    def plot_depth_profiles(
+        samples_voronoi_cell_extents: list,
+        samples_param_values: list,
+        ax=None,
+        max_depth=None,
+        **kwargs,
+    ):
+        """plot multiple 1D Earth models based on sampled parameters.
+
+        Parameters
+        ----------
+        samples_voronoi_cell_extents : list
+            a list of voronoi cell extents (thicknesses of 1D layered models)
+        samples_param_values : ndarray
+            a 2D numpy array where each row contains the parameter values 
+            (e.g., velocity) associated with the Voronoi discretization found
+            in ``samples_voronoi_cell_extents`` at the same row index
+        ax : Axes, optional
+            an optional Axes object to plot on
+        kwargs : dict, optional
+            additional keyword arguments to pass to ax.step
+
+        Returns
+        -------
+        ax : Axes
+            The Axes object containing the plot
+        """
+        if ax is None:
+            _, ax = plt.subplots()
+
+        # Default plotting style for samples
+        sample_style = {
+            "linewidth": kwargs.pop("linewidth", kwargs.pop("lw", 0.5)),
+            "alpha": kwargs.pop("alpha", 0.2),
             "color": kwargs.pop(
                 "color", kwargs.pop("c", "blue")
             ),  # Fixed color for the sample lines
@@ -805,15 +866,17 @@ class Voronoi1D(Voronoi):
         for thicknesses, values in zip(
             samples_voronoi_cell_extents, samples_param_values
         ):
-            thicknesses = np.insert(thicknesses[:-1], -1, max(thicknesses))
-            y = np.insert(np.cumsum(thicknesses), 0, 0)
-            x = np.insert(values, 0, values[0])
-            ax.step(x, y, where="post", **sample_style)
+            Voronoi1D.plot_depth_profile(thicknesses, 
+                                         values, 
+                                         **sample_style, 
+                                         ax=ax)
 
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
-        ax.set_xlabel("Parameter values")
-        ax.set_ylabel("Depth")
+        if not ax.get_xlabel():
+            ax.set_xlabel("Parameter values")
+        if not ax.get_ylabel():
+            ax.set_ylabel("Depth")
 
         return ax
     

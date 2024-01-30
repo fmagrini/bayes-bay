@@ -2,8 +2,7 @@
 Installation
 ============
 
-Install BayesBay
--------------------
+
 
 **Step 1**: (*Optional*) Set up a virtual environment.
 
