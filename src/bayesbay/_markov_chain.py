@@ -29,7 +29,7 @@ class BaseMarkovChain:
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         function that calculates that the log likelihood ratio
         :math:`\frac{p\left({{\bf d}_{obs} \mid  {\bf m'}}\right)}{p\left({{\bf d}_{obs} \mid  {\bf m}}\right)}`.
-        It takes in two models (of consistent type as other arguments of this class)
+        It takes in two states (of consistent type as other arguments of this class)
         and returns a scalar corresponding to the log likelihood ratio. This is utilised in the
         inversion by default, and ``log_likelihood_func`` gets used instead only when
         this argument is None. Default to None
@@ -150,7 +150,11 @@ class BaseMarkovChain:
             )
 
     def _log_likelihood_ratio(self, new_model):
-        return self.log_like_ratio_func(self.current_model, new_model)
+        log_like_ratio = self.log_like_ratio_func(self.current_model, new_model)
+        if isinstance(self.log_like_ratio_func, LogLikelihood):
+            return log_like_ratio
+        else:
+            return log_like_ratio / self.temperature
 
     def _next_iteration(self):
         _last_exception = None
@@ -285,17 +289,14 @@ class MarkovChain(BaseMarkovChain):
         self,
         id: Union[int, str],
         parameterization: Parameterization,
-        targets: List[Target],
-        fwd_functions: Callable[[State], numpy.ndarray],
+        log_likelihood: LogLikelihood, 
         temperature: float = 1,
         saved_dpred: bool = True,
     ):
         self.id = id
         self.parameterization = parameterization
-        self.log_like_ratio_func = LogLikelihood(
-            targets=targets,
-            fwd_functions=fwd_functions,
-        )
+        self.log_like_ratio_func = log_likelihood.log_likelihood_ratio
+        self.log_likelihood = log_likelihood
         self._temperature = temperature
         self.save_dpred = saved_dpred
         self.initialize()
@@ -306,12 +307,13 @@ class MarkovChain(BaseMarkovChain):
     def initialize(self):
         """Initialize the parameterization by defining a starting model."""
         self.current_model = self.parameterization.initialize()
-        for target in self.log_like_ratio_func.targets:
-            target.initialize(self.current_model)
+        if hasattr(self.log_likelihood, "targets"):
+            for target in self.log_likelihood.targets:
+                target.initialize(self.current_model)
 
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
-        funcs_from_log_likelihood = self.log_like_ratio_func.perturbation_functions
+        funcs_from_log_likelihood = self.log_likelihood.perturbation_functions
         self.perturbation_funcs = (
             funcs_from_parameterization + funcs_from_log_likelihood
         )

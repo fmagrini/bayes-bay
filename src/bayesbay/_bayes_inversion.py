@@ -10,6 +10,7 @@ from .parameterization import Parameterization
 from ._target import Target
 from ._state import State
 from ._utils import _preprocess_func, _LogLikeRatioFromFunc
+from ._log_likelihood import LogLikelihood
 
 
 class BaseBayesianInversion:
@@ -94,7 +95,10 @@ class BaseBayesianInversion:
                 )
             self.log_like_ratio_func = _LogLikeRatioFromFunc(log_likelihood_func)
         else:
-            self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
+            if isinstance(log_like_ratio_func, LogLikelihood):
+                self._log_like_ratio_func = log_like_ratio_func
+            else:
+                self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
         self.n_chains = n_chains
         self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
@@ -292,18 +296,19 @@ class BayesianInversion(BaseBayesianInversion):
     def __init__(
         self,
         parameterization: Parameterization,
-        targets: List[Target],
-        fwd_functions: List[Callable[[State], np.ndarray]],
+        log_likelihood: LogLikelihood, 
         n_chains: int = 10,
         n_cpus: int = None,
         save_dpred: bool = True,
     ):
-        self.targets = targets if isinstance(targets, list) else [targets]
-        if not isinstance(fwd_functions, list):
-            fwd_functions = [fwd_functions]
-        self.fwd_functions = [_preprocess_func(func) for func in fwd_functions]
+        if not isinstance(log_likelihood, LogLikelihood):
+            raise TypeError(
+                "``log_like_ratio_func`` should be an instance of "
+                "``bayesbay.LogLikelihood``"
+            )
 
         self.parameterization = parameterization
+        self.log_likelihood = log_likelihood
         self.n_chains = n_chains
         self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
@@ -311,8 +316,7 @@ class BayesianInversion(BaseBayesianInversion):
             MarkovChain(
                 id=i,
                 parameterization=self.parameterization,
-                targets=self.targets,
-                fwd_functions=self.fwd_functions,
+                log_likelihood=self.log_likelihood, 
                 saved_dpred=self.save_dpred,
             )
             for i in range(n_chains)
@@ -322,8 +326,7 @@ class BayesianInversion(BaseBayesianInversion):
         
     def _init_repr_args(self) -> dict:
         self._repr_args = {
-            "targets": self.targets, 
-            "fwd_functions": self.fwd_functions, 
+            "log_likelihood": self.log_likelihood, 
             "n_chains": self.n_chains, 
             "n_cpus": self.n_cpus, 
             "save_dpred": self.save_dpred, 

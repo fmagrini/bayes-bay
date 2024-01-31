@@ -86,9 +86,6 @@ class LogLikelihood:
         temperature = getattr(new_state, "temperature")
         return log_like_ratio / temperature
 
-    def __call__(self, old_misfit, temperature) -> Any:
-        return self.log_likelihood_ratio(old_misfit, temperature)
-
     def _check_duplicate_target_names(self):
         all_target_names = [t.name for t in self.targets]
         if len(all_target_names) != len(set(all_target_names)):
