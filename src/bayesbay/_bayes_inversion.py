@@ -115,6 +115,28 @@ class BaseBayesianInversion:
     def chains(self) -> List[BaseMarkovChain]:
         """The ``MarkovChain`` instances of the current Bayesian inversion"""
         return self._chains
+    
+    @chains.setter
+    def chains(self, updated_chains: List[BaseMarkovChain]):
+        """setters of chains attached to this BayesianInversion instance
+
+        Parameters
+        ----------
+        updated_chains : List[BaseMarkovChain]
+            a list of chains to be set to current inversion
+
+        Raises
+        ------
+        TypeError
+            when ``updated_chains` is not a list or the elements are not instances of
+            :class:`BaseMarkovChain`
+        """
+        if not isinstance(updated_chains, list) or \
+            all([isinstance(c, BaseMarkovChain) for c in updated_chains]):
+                raise TypeError("make sure the `updated_chains` is a list of chains")
+        self._chains = updated_chains
+        self.n_cpus = len(updated_chains)
+        self.n_chains = len(updated_chains)
 
     def run(
         self,
@@ -316,4 +338,3 @@ class BayesianInversion(BaseBayesianInversion):
             }
             _parameterization[ps_name]["parameters"] = list(ps.parameters.values())
         self._repr_args["parameterization"] = _parameterization
-        
