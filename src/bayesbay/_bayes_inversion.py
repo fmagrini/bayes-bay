@@ -135,7 +135,6 @@ class BaseBayesianInversion:
             all([isinstance(c, BaseMarkovChain) for c in updated_chains]):
                 raise TypeError("make sure the `updated_chains` is a list of chains")
         self._chains = updated_chains
-        self.n_cpus = len(updated_chains)
         self.n_chains = len(updated_chains)
 
     def run(
