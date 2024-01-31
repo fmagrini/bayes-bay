@@ -39,13 +39,10 @@ plt.plot(PERIODS, phase_vel, 'k', lw=2, label='Predicted data (true model)')
 plt.plot(PERIODS, d_obs, 'ro', label='Observed data')
 
 
-# def param_vs_initialize(param_vs, positions=None):
-#     vmin, vmax = param_vs.get_vmin_vmax()
-#     if isinstance(positions, (float, int)):
-#         return np.random.uniform(vmin, vmax)
-#     sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
-#     return sorted_vals
-
+def initialize_vs(param, positions=None):
+    vmin, vmax = param.get_vmin_vmax(positions)
+    sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
+    return sorted_vals
 
 vs = bb.parameters.UniformParameter(name="vs", 
                                     vmin=2.5, 
@@ -53,7 +50,7 @@ vs = bb.parameters.UniformParameter(name="vs",
                                     perturb_std=0.15)
 
 
-# param_vs.set_custom_initialize(param_vs_initialize)
+vs.set_custom_initialize(initialize_vs)
 
 
 
@@ -97,20 +94,20 @@ inversion = bb.BayesianInversion(
     parameterization=parameterization, 
     targets=target, 
     fwd_functions=(forward_sw), 
-    n_chains=10, 
-    n_cpus=10
+    n_chains=9, 
+    n_cpus=9
 )
 
 inversion.run(
     sampler=None, 
-    n_iterations=325_000, 
+    n_iterations=300_000, 
     burnin_iterations=75_000, 
     save_every=500, 
-    verbose=True, 
-    print_every=25_000
+    verbose=False, 
+    print_every=30_000
 )
-
-
+for chain in inversion.chains: chain._print_statistics()
+#%%
 # saving plots, models and targets
 results = inversion.get_results(concatenate_chains=True)
 dpred = np.array(results["dpred"])
@@ -140,13 +137,88 @@ plt.tight_layout()
 plt.show()
 
 
-ax = Voronoi1D.plot_depth_profiles(
-    all_thicknesses, results["vs"], linewidth=0.1, color="k"
+# ax = Voronoi1D.plot_depth_profiles(
+#     all_thicknesses, results["vs"], linewidth=0.1, color="k", max_depth=150
+# )
+# Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax)
+# Voronoi1D.plot_depth_profiles_statistics(
+#     all_thicknesses, results["vs"], interp_depths, ax=ax
+# )
+
+
+
+#%%
+fig, axes = plt.subplots(3, 3, figsize=(15, 10))
+for ax, chain in zip(np.ravel(axes), inversion.chains):
+    saved_models = chain.saved_models
+    saved_thickness = saved_models["voronoi.discretization"]
+    saved_vs = saved_models['vs']
+    # statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
+    #     saved_thickness, saved_vs, interp_depths
+    #     )
+    
+    ax.set_title(f'Chain {chain.id}')
+    Voronoi1D.plot_depth_profiles(
+    saved_thickness, saved_vs, ax=ax, linewidth=0.1, color="k", max_depth=150
 )
-Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax)
-Voronoi1D.plot_depth_profiles_statistics(
-    all_thicknesses, results["vs"], interp_depths, ax=ax
-)
+    Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax)
+    Voronoi1D.plot_depth_profiles_statistics(
+        saved_thickness, saved_vs, interp_depths, ax=ax
+    )
+plt.tight_layout()
+plt.savefig('/home/fabrizio/Downloads/samples_per_chains.png', dpi=200)
+plt.show()
+
+
+# def get_results(
+#     keys=None,
+#     concatenate_chains=True,
+# ):
+#     """To get the saved models
+
+#     Parameters
+#     ----------
+#     keys : Union[str, List[str]]
+#         one or more keys to retrieve from the saved models. This will be ignored when
+#         models are not of type :class:`State` or dict
+#     concatenate_chains : bool, optional
+#         whether to aggregate samples from all the Markov chains or to keep them
+#         seperate, by default True
+
+#     Returns
+#     -------
+#     Union[Dict[str, list], list]
+#         a dictionary from name of the attribute stored to the values, or a list of
+#         saved models
+#     """
+#     if isinstance(keys, str):
+#         keys = [keys]
+#     if hasattr(chains[0].saved_models, "items"):
+#         results_model = defaultdict(list)
+#         for chain in chains:
+#             for key, saved_values in chain.saved_models.items():
+#                 if keys is None or key in keys:
+#                     if concatenate_chains and isinstance(saved_values, list):
+#                         results_model[key].extend(saved_values)
+#                     else:
+#                         results_model[key].append(saved_values)
+#     else:
+#         results_model = []
+#         for chain in chains:
+#             if concatenate_chains:
+#                 results_model.extend(chain.saved_models)
+#             else:
+#                 results_model.append(chain.saved_models)
+#     return results_model
+
+
+
+
+
+
+
+
+
 
 
 

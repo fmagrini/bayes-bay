@@ -357,7 +357,7 @@ class SimulatedAnnealing(Sampler):
     .. note::
         In our implementation, the temperature of each Markov chain is decreased
         exponentially with iteration, from :attr:`temperature_start` to 1, 
-        during the burn-in phase. Using this ``SimulatedAnnealing`` is therefore 
+        during the burn-in phase. Using ``SimulatedAnnealing`` is therefore 
         incompatible with setting ``burnin_iterations`` to zero in :meth:`run`.
     
     Parameters
