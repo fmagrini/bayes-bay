@@ -43,7 +43,9 @@ considered inverse problem.
 
    tutorials/linregr
    tutorials/gmm
+   tutorials/sw
 
+   
 .. toctree::
    :maxdepth: 1
    :caption: Standard API

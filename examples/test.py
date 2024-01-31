@@ -24,19 +24,21 @@ PERIODS = np.geomspace(3, 80, 20)
 RAYLEIGH_STD = 0.02
 
 
-ax = Voronoi1D.plot_depth_profile(THICKNESS, VS)
-ax.set_xlabel('Vs [km/s]')
-ax.set_ylabel('Depth [km]')
-plt.show()
-
-
 true_model = np.array([THICKNESS, VP, VS, RHO])
 pd = PhaseDispersion(*true_model)
 phase_vel = pd(PERIODS, mode=0, wave="rayleigh").velocity
 d_obs = phase_vel + np.random.normal(0, RAYLEIGH_STD, phase_vel.size)
 
-plt.plot(PERIODS, phase_vel, 'k', lw=2, label='Predicted data (true model)')
-plt.plot(PERIODS, d_obs, 'ro', label='Observed data')
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 6))
+ax1 = Voronoi1D.plot_depth_profile(THICKNESS, VS, label='Vs', ax=ax1, color='r', lw=2)
+ax1 = Voronoi1D.plot_depth_profile(THICKNESS, VP, label='Vp', ax=ax1, color='b', lw=2)
+ax1 = Voronoi1D.plot_depth_profile(THICKNESS, RHO, label='Density', ax=ax1, color='green', lw=2)
+ax1.set_xlabel('')
+ax1.set_ylabel('Depth [km]')
+ax1.set_ylim(np.cumsum(THICKNESS)[-1] + max(THICKNESS), 0)
+ax1.grid()
+ax1.legend(loc='lower right')
+plt.show()
 
 
 def initialize_vs(param, positions=None):
@@ -106,7 +108,7 @@ inversion.run(
     verbose=False, 
     print_every=30_000
 )
-for chain in inversion.chains: chain._print_statistics()
+for chain in inversion.chains: chain.print_statistics()
 #%%
 # saving plots, models and targets
 results = inversion.get_results(concatenate_chains=True)
@@ -148,7 +150,13 @@ plt.show()
 
 
 #%%
-fig, axes = plt.subplots(3, 3, figsize=(15, 10))
+
+def get_subplot_layout(n_subplots):
+    rows = int(np.sqrt(n_subplots))
+    cols = int(np.ceil(n_subplots / rows))
+    return rows, cols
+
+fig, axes = plt.subplots(*get_subplot_layout(len(inversion.chains)), figsize=(15, 15))
 for ax, chain in zip(np.ravel(axes), inversion.chains):
     saved_models = chain.saved_models
     saved_thickness = saved_models["voronoi.discretization"]
@@ -166,9 +174,7 @@ for ax, chain in zip(np.ravel(axes), inversion.chains):
         saved_thickness, saved_vs, interp_depths, ax=ax
     )
 plt.tight_layout()
-plt.savefig('/home/fabrizio/Downloads/samples_per_chains.png', dpi=200)
 plt.show()
-
 
 # def get_results(
 #     keys=None,
