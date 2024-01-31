@@ -120,7 +120,11 @@ class BaseMarkovChain:
         self._statistics["n_explored_models_total"] += 1
         self._statistics["n_accepted_models_total"] += 1 if accepted else 0
 
-    def _print_statistics(self):
+    def print_statistics(self):
+        """print the statistics about the Markov Chain history, including the number of
+        explored and accepted models for each perturbation, acceptance rates and the 
+        current temperature
+        """
         head = f"Chain ID: {self.id}"
         head += f"\nTEMPERATURE: {self.temperature}"
         head += f"\nEXPLORED MODELS: {self.statistics['n_explored_models_total']}"
@@ -234,7 +238,7 @@ class BaseMarkovChain:
             self._next_iteration()
             end_iteration(self)
             if verbose and not i % print_every:
-                self._print_statistics()
+                self.print_statistics()
 
         return self
 
