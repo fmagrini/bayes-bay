@@ -2,14 +2,12 @@ from typing import List, Callable, Tuple, Any, Dict, Union
 from numbers import Number
 from collections import defaultdict
 from pprint import pformat
-import numpy as np
 
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler, Sampler
 from .parameterization import Parameterization
-from ._target import Target
-from ._state import State
-from ._utils import _preprocess_func, _LogLikeRatioFromFunc
+from ._utils import _preprocess_func
+from ._log_likelihood import LogLikelihood
 
 
 class BaseBayesianInversion:
@@ -52,19 +50,20 @@ class BaseBayesianInversion:
         \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
         \lvert \mathbf{J} \rvert)`, which is used in the calculation of
         the acceptance probability.
-    log_likelihood_func: Callable[[Any], Number], optional
+    log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]], optional
+        the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid 
+        \mathbf{m'})} {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and 
+        proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should 
+        be consistent with the other arguments of this class, and returns a scalar 
+        corresponding to the log likelihood ratio. This is utilised in the calculation 
+        of the acceptance probability. If None, ``log_like_func`` gets used 
+        instead. Default to None
+    log_like_func: Callable[[Any], Number], optional
         the log likelihood function :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`.
         It takes in a model :math:`\mathbf{m}` (any type is allowed, as long as it is
         consistent with the other arguments of this class) and returns the log
         of the likelihood function. This function is only used when ``log_like_ratio_func``
-        is None. Default is None
-    log_like_ratio_func: Callable[[Any, Any], Number], optional
-        the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid \mathbf{m'})}
-        {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and proposed models,
-        :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should be consistent
-        with the other arguments of this class, and returns a scalar corresponding to
-        the log likelihood ratio. This is utilised in the calculation of the
-        acceptance probability. If None, ``log_likelihood_func`` gets used instead. Default is None
+        is None. Default to None
     n_chains: int, optional
         the number of chains in the McMC sampling. Default is 10
     n_cpus: int, optional
@@ -76,25 +75,27 @@ class BaseBayesianInversion:
         self,
         walkers_starting_models: List[Any],
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
-        log_likelihood_func: Callable[[Any], Number] = None,
-        log_like_ratio_func: Callable[[Any, Any], Number] = None,
+        log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]] = None,
+        log_like_func: Callable[[Any], Number] = None,
         n_chains: int = 10,
         n_cpus: int = None,
         save_dpred: bool = True,
     ):
+        assert len(walkers_starting_models) == n_chains, (
+            "``walkers_starting_models`` doesn't match the number of chains: "
+            f"{len(walkers_starting_models)} != {n_chains}"
+        )
         self.walkers_starting_models = walkers_starting_models
         self.perturbation_funcs = [
             _preprocess_func(func) for func in perturbation_funcs
         ]
-        if log_like_ratio_func is None:
-            if log_likelihood_func is None:
-                raise ValueError(
-                    "at least one of `log_like_ratio_func` and `log_likelihood_func` needs"
-                    "to be provided"
-                )
-            self.log_like_ratio_func = _LogLikeRatioFromFunc(log_likelihood_func)
+        if isinstance(log_like_ratio_func, LogLikelihood):
+            self.log_likelihood = log_like_ratio_func
         else:
-            self.log_like_ratio_func = _preprocess_func(log_like_ratio_func)
+            self.log_likelihood = LogLikelihood(
+                log_like_ratio_func=log_like_ratio_func, 
+                log_like_func=log_like_func, 
+            ) 
         self.n_chains = n_chains
         self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
@@ -103,7 +104,7 @@ class BaseBayesianInversion:
                 id=i,
                 starting_model=self.walkers_starting_models[i],
                 perturbation_funcs=self.perturbation_funcs,
-                log_like_ratio_func=self.log_like_ratio_func,
+                log_likelihood=self.log_likelihood, 
                 save_dpred=self.save_dpred,
             )
             for i in range(n_chains)
@@ -229,7 +230,7 @@ class BaseBayesianInversion:
         self._repr_args = {
             "walkers_starting_models": self.walkers_starting_models, 
             "perturbation_funcs": self.perturbation_funcs, 
-            "log_like_ratio_func": self.log_like_ratio_func, 
+            "log_likelihood": self.log_likelihood, 
             "n_chains": self.n_chains, 
             "n_cpus": self.n_cpus, 
             "save_dpred": self.save_dpred, 
@@ -292,18 +293,19 @@ class BayesianInversion(BaseBayesianInversion):
     def __init__(
         self,
         parameterization: Parameterization,
-        targets: List[Target],
-        fwd_functions: List[Callable[[State], np.ndarray]],
+        log_likelihood: LogLikelihood, 
         n_chains: int = 10,
         n_cpus: int = None,
         save_dpred: bool = True,
     ):
-        self.targets = targets if isinstance(targets, list) else [targets]
-        if not isinstance(fwd_functions, list):
-            fwd_functions = [fwd_functions]
-        self.fwd_functions = [_preprocess_func(func) for func in fwd_functions]
+        if not isinstance(log_likelihood, LogLikelihood):
+            raise TypeError(
+                "``log_likelihood`` should be an instance of "
+                "``bayesbay.LogLikelihood``"
+            )
 
         self.parameterization = parameterization
+        self.log_likelihood = log_likelihood
         self.n_chains = n_chains
         self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
@@ -311,8 +313,7 @@ class BayesianInversion(BaseBayesianInversion):
             MarkovChain(
                 id=i,
                 parameterization=self.parameterization,
-                targets=self.targets,
-                fwd_functions=self.fwd_functions,
+                log_likelihood=self.log_likelihood, 
                 saved_dpred=self.save_dpred,
             )
             for i in range(n_chains)
@@ -322,8 +323,8 @@ class BayesianInversion(BaseBayesianInversion):
         
     def _init_repr_args(self) -> dict:
         self._repr_args = {
-            "targets": self.targets, 
-            "fwd_functions": self.fwd_functions, 
+            "parameterization": self.parameterization, 
+            "log_likelihood": self.log_likelihood, 
             "n_chains": self.n_chains, 
             "n_cpus": self.n_cpus, 
             "save_dpred": self.save_dpred, 

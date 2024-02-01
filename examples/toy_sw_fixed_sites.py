@@ -87,12 +87,13 @@ parameterization = bb.parameterization.Parameterization(
     )
 )
 
+log_likelihood = bb.LogLikelihood(targets, fwd_functions)
+
 
 # -------------- Define BayesianInversion
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    log_likelihood=log_likelihood, 
     n_chains=N_CHAINS, 
     n_cpus=N_CHAINS, 
 )

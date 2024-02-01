@@ -1,5 +1,6 @@
 from typing import Union
 from numbers import Number
+import math
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +12,9 @@ import bayesbay as bb
 # -------------- Setting up constants, fwd func, synth data
 VP_VS = 1.77
 RAYLEIGH_STD = 0.02
+RAYLEIGH_STD_MIN = 0.001
+RAYLEIGH_STD_MAX = 0.5
+RAYLEIGH_STD_PERTURB_STD = 0.01
 LAYERS_MIN = 3
 LAYERS_MAX = 15
 LAYERS_INIT_RANGE = 0.3
@@ -36,9 +40,9 @@ def _get_thickness(state: bb.State):
         state.save_to_cache("thickness", thickness)
     return thickness
 
-def forward_sw(model, periods, wave="rayleigh", mode=1):
-    vs = model["voronoi"]["vs"]
-    thickness = _get_thickness(model)
+def forward_sw(state, periods, wave="rayleigh", mode=1):
+    vs = state["voronoi"]["vs"]
+    thickness = _get_thickness(state)
     vp = vs * VP_VS
     rho = 0.32 * vp + 0.77
     return surf96(
@@ -56,7 +60,7 @@ def forward_sw(model, periods, wave="rayleigh", mode=1):
 true_thickness = np.array([10, 10, 15, 20, 20, 20, 20, 20, 0])
 true_voronoi_positions = np.array([5, 15, 25, 45, 65, 85, 105, 125, 145])
 true_vs = np.array([3.38, 3.44, 3.66, 4.25, 4.35, 4.32, 4.315, 4.38, 4.5])
-true_model = bb.State(
+true_state = bb.State(
     {
         "voronoi": bb.ParameterSpaceState(
             len(true_vs), 
@@ -66,18 +70,39 @@ true_model = bb.State(
 )
 
 periods1 = np.linspace(4, 80, 20)
-rayleigh1 = forward_sw(true_model, periods1, "rayleigh", 1)
+rayleigh1 = forward_sw(true_state, periods1, "rayleigh", 1)
 rayleigh1_dobs = rayleigh1 + np.random.normal(0, RAYLEIGH_STD, rayleigh1.size)
 
 
 # -------------- Define bayesbay objects
 targets = [
-    bb.Target("rayleigh1", rayleigh1_dobs, covariance_mat_inv=1 / RAYLEIGH_STD**2),
+    bb.Target(
+        "rayleigh1", 
+        rayleigh1_dobs, 
+        std_min=RAYLEIGH_STD_MIN, 
+        std_max=RAYLEIGH_STD_MAX, 
+        std_perturb_std=RAYLEIGH_STD_PERTURB_STD,         
+    ),
 ]
 
 fwd_functions = [
     (forward_sw, [periods1, "rayleigh", 1]),
 ]
+
+def my_log_like(state: bb.State):
+    rayleigh_std = state["rayleigh1"].std
+    rayleigh_dpred = forward_sw(state, periods1)
+    rayleigh_residual = rayleigh1_dobs - rayleigh_dpred
+    rayleigh_loglike = -0.5 * np.sum(
+        (rayleigh_residual / rayleigh_std) ** 2
+        + math.log(2 * np.pi * rayleigh_std**2)
+    )
+    return rayleigh_loglike
+
+def my_log_like_ratio(old_state, new_state):
+    old_loglike = my_log_like(old_state)
+    new_loglike = my_log_like(new_state)
+    return new_loglike - old_loglike
 
 param_vs = bb.parameters.UniformParameter(
     name="vs",
@@ -124,7 +149,11 @@ parameterization = bb.parameterization.Parameterization(
     )
 )
 
-log_likelihood = bb.LogLikelihood(targets, fwd_functions)
+log_likelihood = bb.LogLikelihood(
+    targets=targets, 
+    # log_like_func=my_log_like, 
+    log_like_ratio_func=my_log_like_ratio, 
+)
 
 
 # -------------- Define BayesianInversion
@@ -135,9 +164,9 @@ inversion = bb.BayesianInversion(
     n_cpus=N_CHAINS, 
 )
 inversion.run(
-    sampler=bb.samplers.ParallelTempering(), 
-    n_iterations=5_000,
-    burnin_iterations=2_000,
+    sampler=bb.samplers.SimulatedAnnealing(),
+    n_iterations=30_000,
+    burnin_iterations=10_000,
     save_every=100,
     print_every=500,
 )
@@ -170,7 +199,7 @@ for d in np.cumsum(true_thickness):
     axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
-prefix = "toy_sw_parallel_temp"
+prefix = "toy_sw_hier_loglike"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_models", saved_models)
