@@ -156,16 +156,13 @@ def get_subplot_layout(n_subplots):
     cols = int(np.ceil(n_subplots / rows))
     return rows, cols
 
-fig, axes = plt.subplots(*get_subplot_layout(len(inversion.chains)), figsize=(15, 15))
-for ax, chain in zip(np.ravel(axes), inversion.chains):
+rows, cols = get_subplot_layout(len(inversion.chains))
+fig, axes = plt.subplots(rows, cols, figsize=(15, 15))
+for ipanel, (ax, chain) in enumerate(zip(np.ravel(axes), inversion.chains)):
     saved_models = chain.saved_models
     saved_thickness = saved_models["voronoi.discretization"]
     saved_vs = saved_models['vs']
-    # statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
-    #     saved_thickness, saved_vs, interp_depths
-    #     )
     
-    ax.set_title(f'Chain {chain.id}')
     Voronoi1D.plot_depth_profiles(
     saved_thickness, saved_vs, ax=ax, linewidth=0.1, color="k", max_depth=150
 )
@@ -173,51 +170,21 @@ for ax, chain in zip(np.ravel(axes), inversion.chains):
     Voronoi1D.plot_depth_profiles_statistics(
         saved_thickness, saved_vs, interp_depths, ax=ax
     )
+    
+    ax.set_title(f'Chain {chain.id}')
+    ax.tick_params(direction='in', labelleft=False, labelbottom=False)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    
+    if not ipanel % cols:
+        ax.set_ylabel('Depth [km]')
+        ax.tick_params(labelleft=True)
+    if ipanel >= (rows-1) * cols:
+        ax.set_xlabel('Vs [km/s]')
+        ax.tick_params(labelbottom=True)
+    
 plt.tight_layout()
 plt.show()
-
-# def get_results(
-#     keys=None,
-#     concatenate_chains=True,
-# ):
-#     """To get the saved models
-
-#     Parameters
-#     ----------
-#     keys : Union[str, List[str]]
-#         one or more keys to retrieve from the saved models. This will be ignored when
-#         models are not of type :class:`State` or dict
-#     concatenate_chains : bool, optional
-#         whether to aggregate samples from all the Markov chains or to keep them
-#         seperate, by default True
-
-#     Returns
-#     -------
-#     Union[Dict[str, list], list]
-#         a dictionary from name of the attribute stored to the values, or a list of
-#         saved models
-#     """
-#     if isinstance(keys, str):
-#         keys = [keys]
-#     if hasattr(chains[0].saved_models, "items"):
-#         results_model = defaultdict(list)
-#         for chain in chains:
-#             for key, saved_values in chain.saved_models.items():
-#                 if keys is None or key in keys:
-#                     if concatenate_chains and isinstance(saved_values, list):
-#                         results_model[key].extend(saved_values)
-#                     else:
-#                         results_model[key].append(saved_values)
-#     else:
-#         results_model = []
-#         for chain in chains:
-#             if concatenate_chains:
-#                 results_model.extend(chain.saved_models)
-#             else:
-#                 results_model.append(chain.saved_models)
-#     return results_model
-
-
 
 
 
