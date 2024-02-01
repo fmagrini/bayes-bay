@@ -186,14 +186,17 @@ class LogLikelihood:
             )
 
     def _init_perturbation_funcs(self):
-        hier_targets = (
-            [t for t in self.targets if t.is_hierarchical]
-            if self.targets is not None
-            else []
-        )
-        self._perturbation_funcs = (
-            [NoisePerturbation(self.targets)] if hier_targets else []
-        )
+        if self.targets is not None:
+            hier_targets = (
+                [t for t in self.targets if t.is_hierarchical]
+                if self.targets is not None
+                else []
+            )
+            self._perturbation_funcs = (
+                [NoisePerturbation(self.targets)] if hier_targets else []
+            )
+        else:
+            self._perturbation_funcs = []
 
     def _get_misfit_and_det(self, state: State) -> Tuple[Number, Number]:
         misfit = 0
