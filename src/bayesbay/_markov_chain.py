@@ -3,9 +3,7 @@ from numbers import Number
 from collections import defaultdict
 import random
 import math
-import numpy
 from ._log_likelihood import LogLikelihood
-from ._target import Target
 from .parameterization import Parameterization
 from ._state import State
 from .exceptions import DimensionalityException, ForwardException, UserFunctionException
@@ -26,13 +24,8 @@ class BaseMarkovChain:
         starting model of the current chain
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
-    log_like_ratio_func: Callable[[Any, Any], Number], optional
-        function that calculates that the log likelihood ratio
-        :math:`\frac{p\left({{\bf d}_{obs} \mid  {\bf m'}}\right)}{p\left({{\bf d}_{obs} \mid  {\bf m}}\right)}`.
-        It takes in two states (of consistent type as other arguments of this class)
-        and returns a scalar corresponding to the log likelihood ratio. This is utilised in the
-        inversion by default, and ``log_likelihood_func`` gets used instead only when
-        this argument is None. Default to None
+    log_likelihood : bayesbay.LogLikelihood
+        instance of the ``bayesbay.LogLikelihood`` class
     temperature : int, optional
         used to temper the log likelihood, by default 1
     """
@@ -42,7 +35,7 @@ class BaseMarkovChain:
         id: Union[int, str],
         starting_model: Any,
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
-        log_like_ratio_func: Callable[[Any, Any], Number] = None,
+        log_likelihood: LogLikelihood,
         temperature: float = 1,
         save_dpred: bool = True,
     ):
@@ -51,7 +44,7 @@ class BaseMarkovChain:
         self.perturbation_funcs = perturbation_funcs
         self.perturbation_types = [func.__name__ for func in perturbation_funcs]
         self._temperature = temperature
-        self.log_like_ratio_func = log_like_ratio_func
+        self.log_likelihood = log_likelihood
         self.save_dpred = save_dpred
         self._init_statistics()
         self._init_saved_models()
@@ -64,7 +57,8 @@ class BaseMarkovChain:
     @temperature.setter
     def temperature(self, value):
         self._temperature = value
-        self.current_model.temperature = value
+        if isinstance(self.current_model, State):
+            self.current_model.temperature = value
 
     @property
     def saved_models(self) -> Union[Dict[str, list], list]:
@@ -150,11 +144,9 @@ class BaseMarkovChain:
             )
 
     def _log_likelihood_ratio(self, new_model):
-        log_like_ratio = self.log_like_ratio_func(self.current_model, new_model)
-        if isinstance(self.log_like_ratio_func, LogLikelihood):
-            return log_like_ratio
-        else:
-            return log_like_ratio / self.temperature
+        return self.log_likelihood.log_likelihood_ratio(
+            self.current_model, new_model, self.temperature
+        )
 
     def _next_iteration(self):
         _last_exception = None
@@ -276,11 +268,8 @@ class MarkovChain(BaseMarkovChain):
     parameterization : bayesbay.parameterization.Parameterization
         pre-configured parameterization. This includes information about the dimension,
         parameterization bounds and properties of unknown parameterizations
-    targets : List[bayesbay.Target]
-        a list of data targets
-    fwd_functions : Callable[[bayesbay.State], np.ndarray]
-        a lsit of forward functions corresponding to each data targets provided above.
-        Each function takes in a model and produces a numpy array of data predictions.
+    log_likelihood : bayesbay.LogLikelihood
+        instance of the ``bayesbay.LogLikelihood`` class
     temperature : int, optional
         used to temper the log likelihood, by default 1
     """
@@ -293,28 +282,26 @@ class MarkovChain(BaseMarkovChain):
         temperature: float = 1,
         saved_dpred: bool = True,
     ):
-        self.id = id
         self.parameterization = parameterization
-        self.log_like_ratio_func = log_likelihood.log_likelihood_ratio
         self.log_likelihood = log_likelihood
-        self._temperature = temperature
-        self.save_dpred = saved_dpred
-        self.initialize()
-        self._init_perturbation_funcs()
-        self._init_statistics()
-        self._init_saved_models()
+        starting_state = self._init_starting_state()
+        perturbation_funcs = self._init_perturbation_funcs()
+        super().__init__(
+            id=id, 
+            starting_model=starting_state, 
+            perturbation_funcs=perturbation_funcs, 
+            log_likelihood=log_likelihood, 
+            temperature=temperature,
+            save_dpred=saved_dpred, 
+        )
 
-    def initialize(self):
+    def _init_starting_state(self) -> State:
         """Initialize the parameterization by defining a starting model."""
-        self.current_model = self.parameterization.initialize()
-        if hasattr(self.log_likelihood, "targets"):
-            for target in self.log_likelihood.targets:
-                target.initialize(self.current_model)
+        starting_state = self.parameterization.initialize()
+        self.log_likelihood.initialize(starting_state)
+        return starting_state
 
     def _init_perturbation_funcs(self):
         funcs_from_parameterization = self.parameterization.perturbation_functions
         funcs_from_log_likelihood = self.log_likelihood.perturbation_functions
-        self.perturbation_funcs = (
-            funcs_from_parameterization + funcs_from_log_likelihood
-        )
-        self.perturbation_types = [f.__name__ for f in self.perturbation_funcs]
+        return funcs_from_parameterization + funcs_from_log_likelihood
