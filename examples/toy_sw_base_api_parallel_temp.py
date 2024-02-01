@@ -194,6 +194,7 @@ inversion = bb.BaseBayesianInversion(
     n_cpus=N_CHAINS,
 )
 inversion.run(
+    sampler=bb.samplers.ParallelTempering(temperature_max=2), 
     n_iterations=50_000,
     burnin_iterations=20_000,
     save_every=100,
@@ -241,7 +242,7 @@ for d in np.cumsum(true_thickness):
     axes[1].axhline(d, color="red", linewidth=1)
 
 # saving plots, models and targets
-prefix = "toy_sw_base_api"
+prefix = "toy_sw_base_api_parallel_temp"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
 with open(f"{prefix}_saved_models.pkl", "wb") as f:

@@ -124,17 +124,18 @@ parameterization = bb.parameterization.Parameterization(
     )
 )
 
+log_likelihood = bb.LogLikelihood(targets, fwd_functions)
+
 
 # -------------- Define BayesianInversion
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    log_likelihood=log_likelihood, 
     n_chains=N_CHAINS, 
     n_cpus=N_CHAINS, 
 )
 inversion.run(
-    sampler=bb.samplers.SimulatedAnnealing(), 
+    sampler=bb.samplers.ParallelTempering(), 
     n_iterations=5_000,
     burnin_iterations=2_000,
     save_every=100,
