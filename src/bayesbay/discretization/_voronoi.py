@@ -669,7 +669,9 @@ class Voronoi1D(Voronoi):
         Returns
         -------
         ax : Axes
-            The Axes object containing the plot
+            The Axes object containing the 2D histogram
+        cbar: Colorbar
+            The Colorbar object associated with the 2D histogram
         
         Examples
         --------
@@ -717,13 +719,13 @@ class Voronoi1D(Voronoi):
             **kwargs
         )
         # colorbar (for the histogram density)
-        cbar = plt.colorbar(cax[3], ax=ax)
+        cbar = plt.colorbar(cax[3], ax=ax, aspect=30, pad=0.02)
         cbar.set_label("Density")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         ax.set_xlabel("Parameter values")
         ax.set_ylabel("Depth")
-        return ax
+        return ax, cbar
 
     @staticmethod
     def plot_interface_hist(
