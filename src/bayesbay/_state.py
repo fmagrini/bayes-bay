@@ -154,9 +154,7 @@ class ParameterSpaceState:
         """
         _discretization = "discretization"
         res = {f"{name}.n_dimensions": self.n_dimensions}
-        res.update({k: v for k, v in self.param_values.items() if k != _discretization})
-        if _discretization in self.param_values:
-            res[f"{name}.{_discretization}"] = self.param_values[_discretization]
+        res.update({f"{name}.{k}": v for k, v in self.param_values.items()})
         return res
 
 

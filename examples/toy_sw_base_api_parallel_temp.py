@@ -214,10 +214,10 @@ def _get_vs(model: np.ndarray):
     k = int(len(model) / 2)
     return model[k:]
 
-saved_models = inversion.get_results(concatenate_chains=True)
+saved_states = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
-all_thicknesses = [_calc_thickness(m) for m in saved_models]
-all_vs = [_get_vs(m) for m in saved_models]
+all_thicknesses = [_calc_thickness(m) for m in saved_states]
+all_vs = [_get_vs(m) for m in saved_states]
 
 # plot samples, true model and statistics (mean, median, quantiles, etc.)
 ax = bb.discretization.Voronoi1D.plot_depth_profiles(
@@ -245,5 +245,5 @@ for d in np.cumsum(true_thickness):
 prefix = "toy_sw_base_api_parallel_temp"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
-with open(f"{prefix}_saved_models.pkl", "wb") as f:
-    pickle.dump(saved_models, f)
+with open(f"{prefix}_saved_states.pkl", "wb") as f:
+    pickle.dump(saved_states, f)

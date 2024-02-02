@@ -158,9 +158,9 @@ def get_subplot_layout(n_subplots):
 
 fig, axes = plt.subplots(*get_subplot_layout(len(inversion.chains)), figsize=(15, 15))
 for ax, chain in zip(np.ravel(axes), inversion.chains):
-    saved_models = chain.saved_models
-    saved_thickness = saved_models["voronoi.discretization"]
-    saved_vs = saved_models['vs']
+    saved_states = chain.saved_states
+    saved_thickness = saved_states["voronoi.discretization"]
+    saved_vs = saved_states['vs']
     # statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
     #     saved_thickness, saved_vs, interp_depths
     #     )
@@ -199,10 +199,10 @@ plt.show()
 #     """
 #     if isinstance(keys, str):
 #         keys = [keys]
-#     if hasattr(chains[0].saved_models, "items"):
+#     if hasattr(chains[0].saved_states, "items"):
 #         results_model = defaultdict(list)
 #         for chain in chains:
-#             for key, saved_values in chain.saved_models.items():
+#             for key, saved_values in chain.saved_states.items():
 #                 if keys is None or key in keys:
 #                     if concatenate_chains and isinstance(saved_values, list):
 #                         results_model[key].extend(saved_values)
@@ -212,9 +212,9 @@ plt.show()
 #         results_model = []
 #         for chain in chains:
 #             if concatenate_chains:
-#                 results_model.extend(chain.saved_models)
+#                 results_model.extend(chain.saved_states)
 #             else:
-#                 results_model.append(chain.saved_models)
+#                 results_model.append(chain.saved_states)
 #     return results_model
 
 

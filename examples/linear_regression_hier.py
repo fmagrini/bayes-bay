@@ -48,11 +48,12 @@ fwd_functions = [my_fwd]
 # define data target
 targets = [bb.Target("my_data", y_noisy, std_min=0, std_max=100, std_perturb_std=5)]
 
+log_likelihood = bb.LogLikelihood(targets, fwd_functions)
+
 # run the sampling
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    log_likelihood=log_likelihood, 
     n_chains=40, 
     n_cpus=40, 
 )
@@ -66,7 +67,7 @@ inversion.run(
 
 # get results and plot
 results = inversion.get_results()
-coefficients_samples = np.squeeze(np.array([results[f"m{i}"] for i in range(N_DIMS)]))
+coefficients_samples = np.squeeze(np.array([results[f"my_param_space.m{i}"] for i in range(N_DIMS)]))
 fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 all_y_pred = np.zeros((coefficients_samples.shape[1], len(y)))
 for i, coefficients in enumerate(coefficients_samples.T):

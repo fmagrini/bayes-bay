@@ -189,6 +189,24 @@ class BaseBayesianInversion:
         keys: Union[str, List[str]] = None,
         concatenate_chains: bool = True,
     ) -> Union[Dict[str, list], list]:
+        """To get the saved states from current inversion
+
+        Parameters
+        ----------
+        keys : Union[str, List[str]]
+            key(s) to retrieve from the saved states. This will be ignored when states 
+            are not of type :class:`State` or dict
+        concatenate_chains : bool, optional
+            whether to aggregate samples from all the Markov chains or to keep them
+            seperate, by default True
+
+        Returns
+        -------
+        Union[Dict[str, list], list]
+            a dictionary from name of the attribute stored to the values, or a list of
+            saved states (if the base level API is used, and states are not of type 
+            :class:`State` or dict)
+        """
         return self.get_results_from_chains(self.chains, keys, concatenate_chains)
 
     @staticmethod

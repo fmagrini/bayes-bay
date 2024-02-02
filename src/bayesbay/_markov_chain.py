@@ -100,10 +100,14 @@ class BaseMarkovChain:
                     ].trans_d)
                 ):
                     self.saved_states[k].append(v)
-            if self.save_dpred and "dpred" in self.current_state.cache:
-                self.saved_states["dpred"].append(
-                    self.current_state.load_from_cache("dpred")
-                )
+            if self.save_dpred:
+                for k, v in self.current_state.cache.items():
+                    if "dpred" in k:
+                        self.saved_states[k].append(v)
+            # if self.save_dpred and "dpred" in self.current_state.cache:
+            #     self.saved_states["dpred"].append(
+            #         self.current_state.load_from_cache("dpred")
+            #     )
         else:
             self.saved_states.append(self.current_state)
 
