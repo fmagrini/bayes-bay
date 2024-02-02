@@ -11,7 +11,7 @@ from bayesbay.discretization import Voronoi1D
 import numpy as np
 import matplotlib.pyplot as plt
 from disba import PhaseDispersion
-np.random.seed(30)
+np.random.seed(4)
 
 
 
@@ -91,61 +91,60 @@ target = bb.Target("rayleigh",
                    d_obs, 
                    covariance_mat_inv=1/RAYLEIGH_STD**2)
 
+log_likelihood = bb.LogLikelihood(targets=target, fwd_functions=forward_sw)
 
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=target, 
-    fwd_functions=(forward_sw), 
+    log_likelihood=log_likelihood,
     n_chains=9, 
     n_cpus=9
 )
 
 inversion.run(
     sampler=None, 
-    n_iterations=300_000, 
-    burnin_iterations=75_000, 
+    n_iterations=50_000, 
+    burnin_iterations=10_000, 
     save_every=500, 
-    verbose=False, 
-    print_every=30_000
+    verbose=False
 )
 for chain in inversion.chains: chain.print_statistics()
 #%%
 # saving plots, models and targets
 results = inversion.get_results(concatenate_chains=True)
-dpred = np.array(results["dpred"])
+# dpred = np.array(results["dpred"])
 interp_depths = np.linspace(0, 160, 160)
-all_thicknesses = [Voronoi1D.compute_cell_extents(m) for m in results["voronoi.discretization"]]
+# all_thicknesses = [Voronoi1D.compute_cell_extents(m) for m in results["voronoi.discretization"]]
 
-statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
-    all_thicknesses, results["vs"], interp_depths
-    )
-
-
-# plot depths and velocities density profile
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-bb.discretization.Voronoi1D.plot_depth_profiles_density(
-    all_thicknesses, results["vs"], ax=ax1
-)
-ax1.set_xlabel("Vs")
-bb.discretization.Voronoi1D.plot_interface_hist(
-    all_thicknesses, ax=ax2
-)
-# ax1.set_ylim(interp_depths.max(), interp_depths.min())
-# ax2.set_ylim(interp_depths.max(), interp_depths.min())
-
-ax1.plot(statistics_vs['median'], interp_depths, 'r')
-Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax1)
-plt.tight_layout()
-plt.show()
+# statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
+#     all_thicknesses, results["vs"], interp_depths
+#     )
 
 
-# ax = Voronoi1D.plot_depth_profiles(
-#     all_thicknesses, results["vs"], linewidth=0.1, color="k", max_depth=150
+# # plot depths and velocities density profile
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+# bb.discretization.Voronoi1D.plot_depth_profiles_density(
+#     all_thicknesses, results["vs"], ax=ax1
 # )
-# Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax)
-# Voronoi1D.plot_depth_profiles_statistics(
-#     all_thicknesses, results["vs"], interp_depths, ax=ax
+# ax1.set_xlabel("Vs")
+# bb.discretization.Voronoi1D.plot_interface_hist(
+#     all_thicknesses, ax=ax2
 # )
+# # ax1.set_ylim(interp_depths.max(), interp_depths.min())
+# # ax2.set_ylim(interp_depths.max(), interp_depths.min())
+
+# ax1.plot(statistics_vs['median'], interp_depths, 'r')
+# Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax1)
+# plt.tight_layout()
+# plt.show()
+
+
+# # ax = Voronoi1D.plot_depth_profiles(
+# #     all_thicknesses, results["vs"], linewidth=0.1, color="k", max_depth=150
+# # )
+# # Voronoi1D.plot_depth_profile(THICKNESS, VS, color='yellow', lw=2, ax=ax)
+# # Voronoi1D.plot_depth_profiles_statistics(
+# #     all_thicknesses, results["vs"], interp_depths, ax=ax
+# # )
 
 
 
