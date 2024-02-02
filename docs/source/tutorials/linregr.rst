@@ -17,3 +17,4 @@ This tutorial comprises two parts:
 
    01_linregr
    02_hierarchical_linregr
+   03_trans_d_linregr
