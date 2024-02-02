@@ -64,13 +64,27 @@ class LogLikelihood:
 
     def __init__(
         self,
-        targets: List[Target] = None,
-        fwd_functions: List[Callable[[State], np.ndarray]] = None,
+        targets: Union[Target, List[Target]] = None,
+        fwd_functions: Union[Callable, List[Callable[[State], np.ndarray]]] = None,
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         log_like_func: Callable[[Any], Number] = None,
     ):
         self.targets = targets
+        if targets is not None:
+            if not isinstance(targets, list):
+                self.targets = [targets]
+            for target in self.targets:
+                if not isinstance(target, Target):
+                    raise TypeError("`targets` should either be a list of Target instances or a Target")
+                
         self.fwd_functions = fwd_functions
+        if fwd_functions is not None:
+            if not isinstance(fwd_functions, list):
+                self.fwd_functions = [fwd_functions]
+            for func in self.fwd_functions:
+                if not isinstance(func, (Callable, tuple)):
+                    raise TypeError("`fwd_functions` should be a Callable/tuple or a list of Callables/tuples")
+            
         self.log_like_ratio_func = log_like_ratio_func
         self.log_like_func = log_like_func
         self._check_duplicate_target_names()

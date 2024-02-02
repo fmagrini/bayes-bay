@@ -719,8 +719,8 @@ class Voronoi1D(Voronoi):
             **kwargs
         )
         # colorbar (for the histogram density)
-        cbar = plt.colorbar(cax[3], ax=ax, aspect=30, pad=0.02)
-        cbar.set_label("Density")
+        cbar = plt.colorbar(cax[3], ax=ax, aspect=35, pad=0.02)
+        cbar.set_label("Counts")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         ax.set_xlabel("Parameter values")
@@ -761,7 +761,7 @@ class Voronoi1D(Voronoi):
         ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
-        ax.set_xlabel("Number of interfaces")
+        ax.set_xlabel("Probability density")
         ax.set_ylabel("Depth")
         return ax
 

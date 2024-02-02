@@ -156,16 +156,13 @@ def get_subplot_layout(n_subplots):
     cols = int(np.ceil(n_subplots / rows))
     return rows, cols
 
-fig, axes = plt.subplots(*get_subplot_layout(len(inversion.chains)), figsize=(15, 15))
-for ax, chain in zip(np.ravel(axes), inversion.chains):
+rows, cols = get_subplot_layout(len(inversion.chains))
+fig, axes = plt.subplots(rows, cols, figsize=(15, 15))
+for ipanel, (ax, chain) in enumerate(zip(np.ravel(axes), inversion.chains)):
     saved_states = chain.saved_states
     saved_thickness = saved_states["voronoi.discretization"]
     saved_vs = saved_states['vs']
-    # statistics_vs = bb.discretization.Voronoi1D.get_depth_profiles_statistics(
-    #     saved_thickness, saved_vs, interp_depths
-    #     )
     
-    ax.set_title(f'Chain {chain.id}')
     Voronoi1D.plot_depth_profiles(
     saved_thickness, saved_vs, ax=ax, linewidth=0.1, color="k", max_depth=150
 )
@@ -173,6 +170,19 @@ for ax, chain in zip(np.ravel(axes), inversion.chains):
     Voronoi1D.plot_depth_profiles_statistics(
         saved_thickness, saved_vs, interp_depths, ax=ax
     )
+    
+    ax.set_title(f'Chain {chain.id}')
+    ax.tick_params(direction='in', labelleft=False, labelbottom=False)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    
+    if not ipanel % cols:
+        ax.set_ylabel('Depth [km]')
+        ax.tick_params(labelleft=True)
+    if ipanel >= (rows-1) * cols:
+        ax.set_xlabel('Vs [km/s]')
+        ax.tick_params(labelbottom=True)
+    
 plt.tight_layout()
 plt.show()
 
@@ -216,15 +226,3 @@ plt.show()
 #             else:
 #                 results_model.append(chain.saved_states)
 #     return results_model
-
-
-
-
-
-
-
-
-
-
-
-
