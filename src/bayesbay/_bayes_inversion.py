@@ -183,19 +183,29 @@ class BaseBayesianInversion:
             verbose=verbose,
             print_every=print_every,
         )
-
+    
     def get_results(
-        self,
+        self, 
         keys: Union[str, List[str]] = None,
         concatenate_chains: bool = True,
     ) -> Union[Dict[str, list], list]:
-        """To get the saved states
+        return self.get_results_from_chains(self.chains, keys, concatenate_chains)
+
+    @staticmethod
+    def get_results_from_chains(
+        chains: Union[BaseMarkovChain, List[BaseMarkovChain]], 
+        keys: Union[str, List[str]] = None,
+        concatenate_chains: bool = True,
+    ) -> Union[Dict[str, list], list]:
+        """To get the saved states from a list of given Markov chains
 
         Parameters
         ----------
+        chains : Union[BaseMarkovChain, List[BaseMarkovChain]]
+            Markov chain(s) that the results are going to be extracted from
         keys : Union[str, List[str]]
-            one or more keys to retrieve from the saved states. This will be ignored when
-            states are not of type :class:`State` or dict
+            key(s) to retrieve from the saved states. This will be ignored when states 
+            are not of type :class:`State` or dict
         concatenate_chains : bool, optional
             whether to aggregate samples from all the Markov chains or to keep them
             seperate, by default True
@@ -204,13 +214,21 @@ class BaseBayesianInversion:
         -------
         Union[Dict[str, list], list]
             a dictionary from name of the attribute stored to the values, or a list of
-            saved states
+            saved states (if the base level API is used, and states are not of type 
+            :class:`State` or dict)
         """
+        if not isinstance(chains, list):
+            chains = [chains]
+        if not all([isinstance(c, BaseMarkovChain) for c in chains]):
+            raise TypeError(
+                "`chains` should be a list of Markov chains (i.e. instances of "
+                "BaseMarkovChain or MarkovChain)"
+            )
         if isinstance(keys, str):
             keys = [keys]
-        if hasattr(self.chains[0].saved_states, "items"):
+        if hasattr(chains[0].saved_states, "items"):
             results = defaultdict(list)
-            for chain in self.chains:
+            for chain in chains:
                 for key, saved_values in chain.saved_states.items():
                     if keys is None or key in keys:
                         if concatenate_chains and isinstance(saved_values, list):
@@ -219,12 +237,12 @@ class BaseBayesianInversion:
                             results[key].append(saved_values)
         else:
             results = []
-            for chain in self.chains:
+            for chain in chains:
                 if concatenate_chains:
                     results.extend(chain.saved_states)
                 else:
                     results.append(chain.saved_states)
-        return results
+        return dict(results)
     
     def _init_repr_args(self):
         self._repr_args = {
