@@ -6,7 +6,7 @@ import bayesbay as bb
 
 
 # -------------- Setting up constants, fwd func, data
-DATA_FILE = "toy_sw_saved_models.npy"
+DATA_FILE = "toy_sw_saved_states.npy"
 N_DATA = 100
 LAYERS_MIN = 3
 LAYERS_MAX = 15
@@ -19,9 +19,9 @@ NOISE_STD_PERTURB_STD = 0.01
 N_CHAINS = 10
 
 
-saved_models = np.load(DATA_FILE, allow_pickle=True).item()
+saved_states = np.load(DATA_FILE, allow_pickle=True).item()
 depths = []
-for sites in saved_models["voronoi.discretization"]:
+for sites in saved_states["voronoi.discretization"]:
     depths.extend((sites[:-1] + sites[1:])/2)
 h, e = np.histogram(depths, bins=N_DATA, density=True)
 data_x = (e[:-1] + e[1:]) / 2.0
@@ -87,19 +87,19 @@ inversion.run(
 
 
 # -------------- Plot and save results
-saved_models = inversion.get_results(concatenate_chains=True)
-saved_models_dpred = [
+saved_states = inversion.get_results(concatenate_chains=True)
+saved_states_dpred = [
     _forward(*m) for m in zip(
-        saved_models["voronoi.n_dimensions"], 
-        saved_models["voronoi.discretization"], 
-        saved_models["std"], 
-        saved_models["weight"], 
+        saved_states["voronoi.n_dimensions"], 
+        saved_states["voronoi.discretization"], 
+        saved_states["std"], 
+        saved_states["weight"], 
     )
 ]
 fig, ax = plt.subplots(figsize=(6, 10))
 ax.barh(data_x, data_y, align="edge", label="density data")
 ax.plot(
-    np.mean(np.array(saved_models_dpred), axis=0),
+    np.mean(np.array(saved_states_dpred), axis=0),
     data_x,
     color="r",
     label="density predicted",
@@ -107,4 +107,4 @@ ax.plot(
 
 prefix = "gmm_hier"
 fig.savefig(f"{prefix}_density_fit")
-np.save(f"{prefix}_saved_models", saved_models)
+np.save(f"{prefix}_saved_states", saved_states)

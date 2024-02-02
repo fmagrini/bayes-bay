@@ -158,9 +158,9 @@ def get_subplot_layout(n_subplots):
 rows, cols = get_subplot_layout(len(inversion.chains))
 fig, axes = plt.subplots(rows, cols, figsize=(15, 15))
 for ipanel, (ax, chain) in enumerate(zip(np.ravel(axes), inversion.chains)):
-    saved_models = chain.saved_models
-    saved_thickness = saved_models["voronoi.discretization"]
-    saved_vs = saved_models['vs']
+    saved_states = chain.saved_states
+    saved_thickness = saved_states["voronoi.discretization"]
+    saved_vs = saved_states['vs']
     
     Voronoi1D.plot_depth_profiles(
     saved_thickness, saved_vs, ax=ax, linewidth=0.1, color="k", max_depth=150
@@ -185,12 +185,43 @@ for ipanel, (ax, chain) in enumerate(zip(np.ravel(axes), inversion.chains)):
 plt.tight_layout()
 plt.show()
 
+# def get_results(
+#     keys=None,
+#     concatenate_chains=True,
+# ):
+#     """To get the saved models
 
+#     Parameters
+#     ----------
+#     keys : Union[str, List[str]]
+#         one or more keys to retrieve from the saved models. This will be ignored when
+#         models are not of type :class:`State` or dict
+#     concatenate_chains : bool, optional
+#         whether to aggregate samples from all the Markov chains or to keep them
+#         seperate, by default True
 
-
-
-
-
-
-
-
+#     Returns
+#     -------
+#     Union[Dict[str, list], list]
+#         a dictionary from name of the attribute stored to the values, or a list of
+#         saved models
+#     """
+#     if isinstance(keys, str):
+#         keys = [keys]
+#     if hasattr(chains[0].saved_states, "items"):
+#         results_model = defaultdict(list)
+#         for chain in chains:
+#             for key, saved_values in chain.saved_states.items():
+#                 if keys is None or key in keys:
+#                     if concatenate_chains and isinstance(saved_values, list):
+#                         results_model[key].extend(saved_values)
+#                     else:
+#                         results_model[key].append(saved_values)
+#     else:
+#         results_model = []
+#         for chain in chains:
+#             if concatenate_chains:
+#                 results_model.extend(chain.saved_states)
+#             else:
+#                 results_model.append(chain.saved_states)
+#     return results_model

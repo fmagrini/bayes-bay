@@ -124,25 +124,25 @@ inversion.run(
 )
 
 # -------------- Plot and save results
-saved_models = inversion.get_results(concatenate_chains=True)
+saved_states = inversion.get_results(concatenate_chains=True)
 interp_depths = np.arange(VORONOI_POS_MAX, dtype=float)
-all_thicknesses = [_calc_thickness(m) for m in saved_models["voronoi.discretization"]]
+all_thicknesses = [_calc_thickness(m) for m in saved_states["voronoi.discretization"]]
 
 # plot samples, true model and statistics (mean, median, quantiles, etc.)
 ax = bb.discretization.Voronoi1D.plot_depth_profiles(
-    all_thicknesses, saved_models["vs"], linewidth=0.1, color="k"
+    all_thicknesses, saved_states["voronoi.vs"], linewidth=0.1, color="k"
 )
 bb.discretization.Voronoi1D.plot_depth_profiles(
     [true_thickness], [true_vs], alpha=1, ax=ax, color="r", label="True"
 )
 bb.discretization.Voronoi1D.plot_depth_profiles_statistics(
-    all_thicknesses, saved_models["vs"], interp_depths, ax=ax
+    all_thicknesses, saved_states["voronoi.vs"], interp_depths, ax=ax
 )
 
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
 bb.discretization.Voronoi1D.plot_depth_profiles_density(
-    all_thicknesses, saved_models["vs"], ax=axes[0]
+    all_thicknesses, saved_states["voronoi.vs"], ax=axes[0]
 )
 bb.discretization.Voronoi1D.plot_interface_hist(
     all_thicknesses, ax=axes[1]
@@ -154,4 +154,4 @@ for d in np.cumsum(true_thickness):
 prefix = "inv_rf"
 ax.get_figure().savefig(f"{prefix}_samples")
 fig.savefig(f"{prefix}_density")
-np.save(f"{prefix}_saved_models", saved_models)
+np.save(f"{prefix}_saved_states", saved_states)
