@@ -20,8 +20,8 @@ class BaseMarkovChain:
     id : Union[int, str]
         an integer or a string representing the ID of the current chain. For display
         purposes only
-    starting_model : Any
-        starting model of the current chain
+    starting_state : Any
+        starting state of the current chain
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
     log_likelihood : bayesbay.LogLikelihood
@@ -33,21 +33,21 @@ class BaseMarkovChain:
     def __init__(
         self,
         id: Union[int, str],
-        starting_model: Any,
+        starting_state: Any,
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
         log_likelihood: LogLikelihood,
         temperature: float = 1,
         save_dpred: bool = True,
     ):
         self.id = id
-        self.current_model = starting_model
+        self.current_state = starting_state
         self.perturbation_funcs = perturbation_funcs
         self.perturbation_types = [func.__name__ for func in perturbation_funcs]
         self._temperature = temperature
         self.log_likelihood = log_likelihood
         self.save_dpred = save_dpred
         self._init_statistics()
-        self._init_saved_models()
+        self._init_saved_states()
 
     @property
     def temperature(self) -> Number:
@@ -57,13 +57,13 @@ class BaseMarkovChain:
     @temperature.setter
     def temperature(self, value):
         self._temperature = value
-        if isinstance(self.current_model, State):
-            self.current_model.temperature = value
+        if isinstance(self.current_state, State):
+            self.current_state.temperature = value
 
     @property
-    def saved_models(self) -> Union[Dict[str, list], list]:
-        """All the models saved so far"""
-        return getattr(self, "_saved_models", None)
+    def saved_states(self) -> Union[Dict[str, list], list]:
+        """All the states saved so far"""
+        return getattr(self, "_saved_states", None)
 
     @property
     def statistics(self):
@@ -71,26 +71,26 @@ class BaseMarkovChain:
     
     @property
     def ith_iteration(self):
-        return self.statistics["n_explored_models_total"]
+        return self.statistics["n_proposed_models_total"]
 
-    def _init_saved_models(self):
-        if isinstance(self.current_model, (State, dict)):
-            self._saved_models = defaultdict(list)
+    def _init_saved_states(self):
+        if isinstance(self.current_state, (State, dict)):
+            self._saved_states = defaultdict(list)
         else:
-            self._saved_models = []
+            self._saved_states = []
 
     def _init_statistics(self):
         self._statistics = {
-            "n_explored_models": defaultdict(int),
+            "n_proposed_models": defaultdict(int),
             "n_accepted_models": defaultdict(int),
-            "n_explored_models_total": 0,
+            "n_proposed_models_total": 0,
             "n_accepted_models_total": 0,
             "exceptions": defaultdict(int),
         }
 
-    def _save_model(self):
-        if isinstance(self.current_model, (State, dict)):
-            for k, v in self.current_model.items():
+    def _save_state(self):
+        if isinstance(self.current_state, (State, dict)):
+            for k, v in self.current_state.items():
                 if (
                     "n_dimensions" not in k
                     or (
@@ -99,31 +99,31 @@ class BaseMarkovChain:
                         k[: -len(".n_dimensions")]
                     ].trans_d)
                 ):
-                    self.saved_models[k].append(v)
-            if self.save_dpred and "dpred" in self.current_model.cache:
-                self.saved_models["dpred"].append(
-                    self.current_model.load_from_cache("dpred")
+                    self.saved_states[k].append(v)
+            if self.save_dpred and "dpred" in self.current_state.cache:
+                self.saved_states["dpred"].append(
+                    self.current_state.load_from_cache("dpred")
                 )
         else:
-            self.saved_models.append(self.current_model)
+            self.saved_states.append(self.current_state)
 
     def _save_statistics(self, perturb_i, accepted):
         perturb_type = self.perturbation_types[perturb_i]
-        self._statistics["n_explored_models"][perturb_type] += 1
+        self._statistics["n_proposed_models"][perturb_type] += 1
         self._statistics["n_accepted_models"][perturb_type] += 1 if accepted else 0
-        self._statistics["n_explored_models_total"] += 1
+        self._statistics["n_proposed_models_total"] += 1
         self._statistics["n_accepted_models_total"] += 1 if accepted else 0
 
     def print_statistics(self):
         """print the statistics about the Markov Chain history, including the number of
-        explored and accepted models for each perturbation, acceptance rates and the 
+        explored and accepted states for each perturbation, acceptance rates and the 
         current temperature
         """
         head = f"Chain ID: {self.id}"
         head += f"\nTEMPERATURE: {self.temperature}"
-        head += f"\nEXPLORED MODELS: {self.statistics['n_explored_models_total']}"
+        head += f"\nEXPLORED MODELS: {self.statistics['n_proposed_models_total']}"
         _accepted_total = self.statistics["n_accepted_models_total"]
-        _explored_total = self.statistics["n_explored_models_total"]
+        _explored_total = self.statistics["n_proposed_models_total"]
         acceptance_rate = _accepted_total / _explored_total * 100
         head += "\nACCEPTANCE RATE: %d/%d (%.2f %%)" % (
             _accepted_total,
@@ -133,8 +133,8 @@ class BaseMarkovChain:
         print(head)
         print("PARTIAL ACCEPTANCE RATES:")
         _accepted_all = self.statistics["n_accepted_models"]
-        _explored_all = self.statistics["n_explored_models"]
-        for perturb_type in sorted(self.statistics["n_explored_models"]):
+        _explored_all = self.statistics["n_proposed_models"]
+        for perturb_type in sorted(self.statistics["n_proposed_models"]):
             _explored = _explored_all[perturb_type]
             _accepted = _accepted_all[perturb_type]
             acceptance_rate = _accepted / _explored * 100
@@ -143,9 +143,9 @@ class BaseMarkovChain:
                 % (perturb_type, _accepted, _explored, acceptance_rate)
             )
 
-    def _log_likelihood_ratio(self, new_model):
+    def _log_likelihood_ratio(self, new_state):
         return self.log_likelihood.log_likelihood_ratio(
-            self.current_model, new_model, self.temperature
+            self.current_state, new_state, self.temperature
         )
 
     def _next_iteration(self):
@@ -158,7 +158,7 @@ class BaseMarkovChain:
             # perturb and get the partial acceptance probability excluding log
             # likelihood ratio
             try:
-                new_model, log_prob_ratio = perturb_func(self.current_model)
+                new_state, log_prob_ratio = perturb_func(self.current_state)
             except (DimensionalityException, UserFunctionException) as e:
                 _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
@@ -166,7 +166,7 @@ class BaseMarkovChain:
 
             # calculate the log likelihood ratio
             try:
-                log_likelihood_ratio = self._log_likelihood_ratio(new_model)
+                log_likelihood_ratio = self._log_likelihood_ratio(new_state)
             except (ForwardException, UserFunctionException) as e:
                 _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
@@ -176,12 +176,12 @@ class BaseMarkovChain:
             acceptance_probability = log_prob_ratio + log_likelihood_ratio
             accepted = acceptance_probability > math.log(random.random())
             if accepted:
-                self.current_model = new_model
+                self.current_state = new_state
 
-            # save statistics and current model
+            # save statistics and current state
             self._save_statistics(i_perturb, accepted)
             if self.save_current_iteration and self.temperature == 1.0:
-                self._save_model()
+                self._save_state()
             return
         raise RuntimeError(
             f"Chain {self.id} failed in perturb or forward calculation for 500 times. "
@@ -242,7 +242,7 @@ class BaseMarkovChain:
         return {
             "id": self.id, 
             "temperature": self.temperature, 
-            "n_explored_models_total": self.statistics["n_explored_models_total"], 
+            "n_proposed_models_total": self.statistics["n_proposed_models_total"], 
             "n_accepted_models_total": self.statistics["n_accepted_models_total"], 
         }
     
@@ -288,7 +288,7 @@ class MarkovChain(BaseMarkovChain):
         perturbation_funcs = self._init_perturbation_funcs()
         super().__init__(
             id=id, 
-            starting_model=starting_state, 
+            starting_state=starting_state, 
             perturbation_funcs=perturbation_funcs, 
             log_likelihood=log_likelihood, 
             temperature=temperature,
@@ -296,7 +296,7 @@ class MarkovChain(BaseMarkovChain):
         )
 
     def _init_starting_state(self) -> State:
-        """Initialize the parameterization by defining a starting model."""
+        """Initialize the parameterization by defining a starting state."""
         starting_state = self.parameterization.initialize()
         self.log_likelihood.initialize(starting_state)
         return starting_state

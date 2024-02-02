@@ -34,15 +34,15 @@ class BaseBayesianInversion:
 
     Parameters
     ----------
-    walkers_starting_models: List[Any]
-        a list of starting models for each chain. The models can be of any type so long
+    walkers_starting_states: List[Any]
+        a list of starting states for each chain. The states can be of any type so long
         as they are consistent with what is accepted as arguments in the perturbation
         functions and probability functions. The length of this list must be equal to
         the number of chains, i.e. ``n_chains``
     perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions. Each perturbation function should take
         in a model :math:`\mathbf{m}` (any type is allowed, as long as it is
-        consistent with ``walkers_starting_models`` and the below functions) and
+        consistent with ``walkers_starting_states`` and the below functions) and
         perturb it to produce the new model :math:`\bf m'`. Each perturbation function
         should return :math:`\bf m'` along with :math:`\log(
         \frac{p({\bf m'})}{p({\bf m})}
@@ -73,7 +73,7 @@ class BaseBayesianInversion:
 
     def __init__(
         self,
-        walkers_starting_models: List[Any],
+        walkers_starting_states: List[Any],
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
         log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]] = None,
         log_like_func: Callable[[Any], Number] = None,
@@ -81,11 +81,11 @@ class BaseBayesianInversion:
         n_cpus: int = None,
         save_dpred: bool = True,
     ):
-        assert len(walkers_starting_models) == n_chains, (
-            "``walkers_starting_models`` doesn't match the number of chains: "
-            f"{len(walkers_starting_models)} != {n_chains}"
+        assert len(walkers_starting_states) == n_chains, (
+            "``walkers_starting_states`` doesn't match the number of chains: "
+            f"{len(walkers_starting_states)} != {n_chains}"
         )
-        self.walkers_starting_models = walkers_starting_models
+        self.walkers_starting_states = walkers_starting_states
         self.perturbation_funcs = [
             _preprocess_func(func) for func in perturbation_funcs
         ]
@@ -102,7 +102,7 @@ class BaseBayesianInversion:
         self._chains = [
             BaseMarkovChain(
                 id=i,
-                starting_model=self.walkers_starting_models[i],
+                starting_state=self.walkers_starting_states[i],
                 perturbation_funcs=self.perturbation_funcs,
                 log_likelihood=self.log_likelihood, 
                 save_dpred=self.save_dpred,
@@ -164,7 +164,7 @@ class BaseBayesianInversion:
         burnin_iterations : int, optional
             the iteration number from which we start to save samples, by default 0
         save_every : int, optional
-            the frequency with which we save the samples. By default a model is
+            the frequency with which we save the samples. By default a state is
             saved every after 100 iterations after the burn-in phase
         verbose : bool, optional
             whether to print the progress during sampling or not, by default True
@@ -189,13 +189,13 @@ class BaseBayesianInversion:
         keys: Union[str, List[str]] = None,
         concatenate_chains: bool = True,
     ) -> Union[Dict[str, list], list]:
-        """To get the saved models
+        """To get the saved states
 
         Parameters
         ----------
         keys : Union[str, List[str]]
-            one or more keys to retrieve from the saved models. This will be ignored when
-            models are not of type :class:`State` or dict
+            one or more keys to retrieve from the saved states. This will be ignored when
+            states are not of type :class:`State` or dict
         concatenate_chains : bool, optional
             whether to aggregate samples from all the Markov chains or to keep them
             seperate, by default True
@@ -204,31 +204,31 @@ class BaseBayesianInversion:
         -------
         Union[Dict[str, list], list]
             a dictionary from name of the attribute stored to the values, or a list of
-            saved models
+            saved states
         """
         if isinstance(keys, str):
             keys = [keys]
-        if hasattr(self.chains[0].saved_models, "items"):
-            results_model = defaultdict(list)
+        if hasattr(self.chains[0].saved_states, "items"):
+            results = defaultdict(list)
             for chain in self.chains:
-                for key, saved_values in chain.saved_models.items():
+                for key, saved_values in chain.saved_states.items():
                     if keys is None or key in keys:
                         if concatenate_chains and isinstance(saved_values, list):
-                            results_model[key].extend(saved_values)
+                            results[key].extend(saved_values)
                         else:
-                            results_model[key].append(saved_values)
+                            results[key].append(saved_values)
         else:
-            results_model = []
+            results = []
             for chain in self.chains:
                 if concatenate_chains:
-                    results_model.extend(chain.saved_models)
+                    results.extend(chain.saved_states)
                 else:
-                    results_model.append(chain.saved_models)
-        return results_model
+                    results.append(chain.saved_states)
+        return results
     
     def _init_repr_args(self):
         self._repr_args = {
-            "walkers_starting_models": self.walkers_starting_models, 
+            "walkers_starting_states": self.walkers_starting_states, 
             "perturbation_funcs": self.perturbation_funcs, 
             "log_likelihood": self.log_likelihood, 
             "n_chains": self.n_chains, 
@@ -242,7 +242,7 @@ class BaseBayesianInversion:
         for k, v in self._repr_args.items():
             if hasattr(v, '__class__') and v.__class__.__repr__ is object.__repr__:
                 repr_v = v.__class__.__name__
-            elif k == "walkers_starting_models":
+            elif k == "walkers_starting_states":
                 repr_v = f"[{len(v)} arrays with shapes {', '.join(str(arr.shape) for arr in v)}]"
             elif k == "chains" and len(v) > 3: 
                 repr_v = f"{str(v[:3])[:-1]}, ...{len(v)} chains in total...]"
@@ -282,7 +282,7 @@ class BayesianInversion(BaseBayesianInversion):
         a list of data targets
     fwd_functions : Callable[[bayesbay.State], np.ndarray]
         a lsit of forward functions corresponding to each data targets provided above.
-        Each function takes in a model and returns a numpy array of data predictions.
+        Each function takes in a state and returns a numpy array of data predictions.
     n_chains: int, 10 by default
         the number of chains in the McMC sampling
     n_cpus: int, 10 by default

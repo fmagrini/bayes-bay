@@ -44,7 +44,7 @@ class LogLikelihood:
         a list of data targets, default to None
     fwd_functions : List[Callable[[bayesbay.State], np.ndarray]], optional
         a list of forward functions corresponding to each data targets provided above.
-        Each function takes in a model and produces a numpy array of data predictions.
+        Each function takes in a state and produces a numpy array of data predictions.
         Default to None.
     log_like_ratio_func: Callable[[Any, Any], Number], optional
         the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid

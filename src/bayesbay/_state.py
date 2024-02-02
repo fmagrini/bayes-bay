@@ -162,7 +162,7 @@ class ParameterSpaceState:
 
 @dataclass
 class State:
-    """Data structure that stores a model state, including all the necessary
+    """Data structure that stores a Markov chain state, including all the necessary
     information to perform the forward operation
 
     Parameters
@@ -343,7 +343,7 @@ class State:
         return iter(self._vars())
 
     def items(self):
-        """Key-value pairs of all the values in the current model, expanding all
+        """Key-value pairs of all the values in the current state, expanding all
         parameter values, excluding cache
 
         Returns

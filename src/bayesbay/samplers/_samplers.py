@@ -314,7 +314,7 @@ class ParallelTempering(Sampler):
         for i in range(len(self.chains)):
             chain1, chain2 = np.random.choice(self.chains, 2, replace=False)
             T1, T2 = chain1.temperature, chain2.temperature
-            log_like_ratio = chain1._log_likelihood_ratio(chain2.current_model)
+            log_like_ratio = chain1._log_likelihood_ratio(chain2.current_state)
             prob = (1 / T1 - 1 / T2) * log_like_ratio
             if prob > math.log(random.random()):
                 chain1.temperature = T2
@@ -330,7 +330,7 @@ class ParallelTempering(Sampler):
         print_every=100,
     ) -> List[BaseMarkovChain]:
         while True:
-            iteration = self.chains[0].statistics["n_explored_models_total"]
+            iteration = self.chains[0].statistics["n_proposed_models_total"]
             n_it = min(self._swap_every, n_iterations - iteration)
             burnin_it = max(
                 0, min(self._swap_every, burnin_iterations - iteration)
@@ -379,7 +379,7 @@ class SimulatedAnnealing(Sampler):
             chain.temperature = self.temperature_start
 
     def on_begin_iteration(self, chain: BaseMarkovChain):
-        iteration = chain.statistics["n_explored_models_total"]
+        iteration = chain.statistics["n_proposed_models_total"]
         if iteration < self.burnin_iterations:
             chain.temperature = self.temperature_start * math.exp(
                 -self.cooling_rate * iteration
