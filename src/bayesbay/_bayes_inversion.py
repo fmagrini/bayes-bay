@@ -29,7 +29,7 @@ class BaseBayesianInversion:
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
         \Bigg],
 
-    where :math:`p({\bf d}_{obs})` denotes the observed data and
+    where :math:`{\bf d}_{obs}` denotes the observed data and
     :math:`\mathbf{J}` the Jacobian of the transformation.
 
     Parameters
