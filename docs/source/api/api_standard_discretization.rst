@@ -1,11 +1,8 @@
 Discretization
 ==============
 
-Discretizations are special parameter spaces that are also parameters. They have values
-that represent spatial discretizations, and hold a list of parameters that are 
-dependent on these values.
+The ``Discretization`` class can be seen as a special type of ``ParameterSpace``, designed for applications that involve spatial domains (see :doc:`api_standard_parameterization`). Each dimension within a ``Discretization`` instance corresponds to a discretized element of the spatial domain, such as a pixel in a 2D space. Consequently, all free parameters associated with a ``Discretization`` instance are intrinsically associated with spatial domain elements. This allows for the definition of prior probabilities that are functions of position within the domain (see :doc:`api_standard_parameters`), enabling sophisticated parameterizations.
 
-Here is a class inheritance diagram of related classes we have in BayesBay so far:
 
 .. mermaid::
 
