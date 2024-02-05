@@ -1,26 +1,15 @@
-Overview
+OVERVIEW
 ========
 
 .. automodule:: bayesbay.parameterization
 
-BayesBay's standard API includes full-fledged utilities to define a 
-trans-dimensional or fixed-dimensional McMC sampler and to run it.
+BayesBay's standard API includes full-fledged utilities to define a Bayesian inference problem and to collect samples from a posterior distribution using Markov chain Monte Carlo (MCMC). Typically, this involves the following steps:
 
-Typically, this involves the following steps:
-
-#. Define your parameters (:doc:`api_standard_parameters`)
-#. Define your parameter space(s), which can be a discretization
-   (:doc:`api_standard_discretization`), or a parameter space (without discretization
-   to be inverted :class:`ParameterSpace`)
-#. Define your parameterization with all the parameter space(s) above
-   (:class:`Parameterization`)
-#. Define your data target(s) (:doc:`api_standard_target`)
-#. Define your inversion with all the above objects (:doc:`api_standard_inference`)
-#. (optional) Define and customize your own sampler (:doc:`api_standard_samplers`), if 
-   you'd like to customize chain initialization, or to add callback functions on the 
-   end of each iteration or each batch of iterations
+#. Define the prior probability for the unknown parameters to be inferred from the data (see :doc:`api_standard_parameters`)
+#. Link the free parameters to what we call a :class:`ParameterSpace` or to a discretized spatial domain (see :doc:`api_standard_discretization`)
+#. Define a :class:`Parameterization`, embedding all the defined instances of :class:`ParameterSpace` or `:class:`Discretization`
+#. Define a :class:`Target`, storing information about the observed data and noise (see :doc:`api_standard_target`)
+#. Use the above objects to define an instance of :class:`BayesianInversion`, that allows to sample the posterior in parallel through one or multiple Markov chains (see :doc:`api_standard_inference`)
+#. (optional) Define a :class:`Sampler` (see :doc:`api_standard_samplers`). This allows for customizing specific aspects of the Bayesian sampling, such as the behaviour of a Markov chain at the initialization or at the end of each iteration.
 #. Run the inversion (:meth:`bayesbay.BayesianInversion.run`)
-
-If you are new to BayesBay, we recommend :ref:`our tutorial page <simple_linregr>` to 
-get started.
 

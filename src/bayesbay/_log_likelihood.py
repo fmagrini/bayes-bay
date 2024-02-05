@@ -11,7 +11,7 @@ from ._utils import _preprocess_func
 
 
 class LogLikelihood:
-    """Helper class to evaluate the log likelihood ratio
+    r"""Helper class to evaluate the log likelihood ratio
 
     One out of the following three sets of input needs to be supplied:
 
@@ -41,18 +41,26 @@ class LogLikelihood:
         Each function takes in a state and produces a numpy array of data predictions.
         Default to None.
     log_like_ratio_func: Callable[[Any, Any], Number], optional
-        the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid
-        \mathbf{m'})} {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and
-        proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should
-        be consistent with the other arguments of this class, and returns a scalar
-        corresponding to the log likelihood ratio. This is utilised in the calculation
-        of the acceptance probability. If None, ``log_like_func`` gets used
-        instead. Default to None
+        a function to calculate the log likelihood ratio 
+        :math:`\log(\frac{p(\mathbf{d}_{obs} \mid \mathbf{m}')}{p(\mathbf{d}_{obs} \mid \mathbf{m})})`.
+        It takes the current and proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`, 
+        whose type should be consistent with the other arguments of this class, and returns a scalar. 
+        This is utilised in the calculation of the acceptance probability 
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+        
+        where :math:`\mathbf{J}` denotes the Jacobian of the transformation.        
+        If None, ``log_like_func`` gets used instead. Default to None
     log_like_func: Callable[[Any], Number], optional
-        the log likelihood function :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`.
+        a function to calculate the log likelihood 
+        :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`.
         It takes in a model :math:`\mathbf{m}` (any type is allowed, as long as it is
-        consistent with the other arguments of this class) and returns the log
-        of the likelihood function. This function is only used when ``log_like_ratio_func``
+        consistent with the other arguments of this class) and returns a
+        scalar. This function is only used when ``log_like_ratio_func``
         is None. Default to None
     """
 

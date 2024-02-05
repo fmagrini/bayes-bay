@@ -26,7 +26,7 @@ class Perturbation(ABC):
             \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}
         
-        where :math:`p({\bf d}_{obs})` denotes the observed data and 
+        where :math:`{\bf d}_{obs}` denotes the observed data and 
         :math:`\mathbf{J}` the Jacobian of the transformation.                                                                                                                                                                                                                                                                                                                                   
 
         Parameters
