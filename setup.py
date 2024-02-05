@@ -36,6 +36,7 @@ setup(
     name="bayesbay",
     version=read_version(),
     long_description=readme(),
+    long_description_content_type="text/markdown",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
