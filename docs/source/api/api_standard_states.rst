@@ -1,15 +1,12 @@
 States
 ======
 
-A state in BayesBay is the data structure that holds values associated with a phase
-in the inference (such as the initial status or at a certain iteration). It can 
-include the following, depending on what are being inverted in the current problem:
+A ``State`` in BayesBay is a data structure containing all numerical values associated with a certain Markov chain step. Depending on the inference problem at hand, it could contain information about:
 
-- Values of discretizations
-- Values of parameters
-- Values of noise standard deviation (and correlation)
-- (optional) Cached computing results, if the user chooses to attach them to a certain 
-  model via :meth:`bayesbay.State.save_to_cache`
+- Discretization. For example, the nuclei positions in a Voronoi tessellation.
+- Free parameters. For example, the value of the physical property to be inferred, associated with each Voronoi cell.
+- Data noise. This includes standard deviation and noise correlation.
+- Cached information. This consists of a Python dictionary containing arbitrary objects that the user might want to store and reuse at the next Markov chain step (see :meth:`bayesbay.State.save_to_cache`).
 
 .. autosummary::
     :toctree: generated/

@@ -1,11 +1,8 @@
 Inference
 =========
 
-This page contains the low-level ``BaseBayesianInversion``, the instances of which 
-keep a list of ``BaseMarkovChain`` as field.
+Our low-level API enables users to define a Bayesian inference problem via ``BaseBayesianInversion``. Internally, this process creates one or more instances of ``BaseMarkovChain``, which encapsulate the state of the inference problem and sample the posterior for an arbitrary number of iterations.
 
-It's worth noting that the classes in the standard API are subclasses of them as 
-shown below:
 
 .. mermaid::
 
