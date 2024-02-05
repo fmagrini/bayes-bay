@@ -155,7 +155,7 @@ class LogLikelihood:
             for target in targets:
                 if not isinstance(target, Target):
                     raise TypeError("`targets` should either be a list of Target instances or a Target")
-        self.targets.extend(targets)
+            self.targets.extend(targets)
         
         if fwd_functions is not None:
             if not isinstance(fwd_functions, list):
@@ -163,7 +163,7 @@ class LogLikelihood:
             for func in fwd_functions:
                 if not isinstance(func, (Callable, tuple)):
                     raise TypeError("`fwd_functions` should be a Callable/tuple or a list of Callables/tuples")
-        self.fwd_functions.extend(fwd_functions)
+            self.fwd_functions.extend(fwd_functions)
         
         self._check_duplicate_target_names()
         self._init_perturbation_funcs()
@@ -238,21 +238,17 @@ class LogLikelihood:
                 raise ValueError("duplicate target names found")
 
     def _init_log_likelihood_ratio(self):
-        if self.targets is not None and self.fwd_functions is not None:
+        if self.targets and self.fwd_functions:
             _fwd_functions = self.fwd_functions
             _targets = self.targets
-            if not isinstance(_fwd_functions, list):
-                _fwd_functions = [_fwd_functions]
-            if not isinstance(_targets, list):
-                _targets = [_targets]
             assert len(_fwd_functions) == len(_targets)
             self._targets = _targets
             self._fwd_functions = [_preprocess_func(func) for func in _fwd_functions]
             self._log_likelihood_ratio = self._log_likelihood_ratio_from_targets
-        elif self.log_like_ratio_func is not None:
+        elif self.log_like_ratio_func:
             self.log_like_ratio_func = _preprocess_func(self.log_like_ratio_func)
             self._log_likelihood_ratio = self._log_likelihood_ratio_from_loglike_ratio
-        elif self.log_like_func is not None:
+        elif self.log_like_func:
             self.log_like_func = _preprocess_func(self.log_like_func)
             self._log_likelihood_ratio = self._log_likelihood_ratio_from_loglike
         else:
