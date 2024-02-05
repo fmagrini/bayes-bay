@@ -8,6 +8,7 @@ from .samplers import VanillaSampler, Sampler
 from .parameterization import Parameterization
 from ._utils import _preprocess_func
 from ._log_likelihood import LogLikelihood
+from ._target import Target
 
 
 class BaseBayesianInversion:
@@ -345,18 +346,20 @@ class BayesianInversion(BaseBayesianInversion):
         self.n_chains = n_chains
         self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
+        self.perturbation_funcs = self._init_perturbation_funcs()
         self._chains = [
             MarkovChain(
                 id=i,
                 parameterization=self.parameterization,
                 log_likelihood=self.log_likelihood, 
+                perturbation_funcs=self.perturbation_funcs, 
                 saved_dpred=self.save_dpred,
             )
             for i in range(n_chains)
         ]
-        
+        self.log_likelihood.add_targets_observer(self)
         self._init_repr_args()
-        
+    
     def _init_repr_args(self) -> dict:
         self._repr_args = {
             "parameterization": self.parameterization, 
@@ -374,3 +377,27 @@ class BayesianInversion(BaseBayesianInversion):
             }
             _parameterization[ps_name]["parameters"] = list(ps.parameters.values())
         self._repr_args["parameterization"] = _parameterization
+
+    def _init_perturbation_funcs(self) -> list:
+        funcs_from_parameterization = self.parameterization.perturbation_functions
+        funcs_from_log_likelihood = self.log_likelihood.perturbation_functions
+        return funcs_from_parameterization + funcs_from_log_likelihood
+
+    def update_log_likelihood_targets(self, targets: List[Target]):
+        """function to be called by ``self.log_likelihood`` when there are more 
+        target(s) added to the inversion. This method updates the perturbation function 
+        list for the current inversion and its chains, and initializes the 
+        ``current_state`` for each chain when there are hierarchical targets added.
+        
+        This method is called because we register ``self`` (i.e. the current 
+        ``BayesianInversion``) as an observer to its log likelihood instance.
+
+        Parameters
+        ----------
+        targets : List[Target]
+            the list of targets added to ``self.log_likelihood``
+        """
+        self.perturbation_funcs = self._init_perturbation_funcs()
+        for chain in self.chains:
+            chain.update_perturbation_funcs(self.perturbation_funcs)
+            chain.update_targets(targets)

@@ -10,12 +10,6 @@ from .perturbations._data_noise import NoisePerturbation
 from ._utils import _preprocess_func
 
 
-# class BaseLogLikelihood:
-#     """Base API class to evaluate the log likelihood ratio
-#     """
-#     pass
-
-
 class LogLikelihood:
     """Helper class to evaluate the log likelihood ratio
 
@@ -69,27 +63,26 @@ class LogLikelihood:
         log_like_ratio_func: Callable[[Any, Any], Number] = None,
         log_like_func: Callable[[Any], Number] = None,
     ):
-        self.targets = targets
-        if targets is not None:
-            if not isinstance(targets, list):
-                self.targets = [targets]
-            for target in self.targets:
-                if not isinstance(target, Target):
-                    raise TypeError("`targets` should either be a list of Target instances or a Target")
-                
-        self.fwd_functions = fwd_functions
-        if fwd_functions is not None:
-            if not isinstance(fwd_functions, list):
-                self.fwd_functions = [fwd_functions]
-            for func in self.fwd_functions:
-                if not isinstance(func, (Callable, tuple)):
-                    raise TypeError("`fwd_functions` should be a Callable/tuple or a list of Callables/tuples")
-            
+        self._perturbation_funcs_observers = []
+        self.add_targets(targets, fwd_functions)
         self.log_like_ratio_func = log_like_ratio_func
         self.log_like_func = log_like_func
-        self._check_duplicate_target_names()
         self._init_log_likelihood_ratio()
-        self._init_perturbation_funcs()
+        
+    @property
+    def targets(self) -> List[Target]:
+        """list of targets associated with the current log likelihood instance"""
+        if not hasattr(self, "_targets"):
+            self._targets = []
+        return self._targets
+    
+    @property
+    def fwd_functions(self) -> List[Callable]:
+        """list of forward functions associated with the current log likelihood
+        instance"""
+        if not hasattr(self, "_fwd_functions"):
+            self._fwd_functions = []
+        return self._fwd_functions
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
@@ -102,9 +95,72 @@ class LogLikelihood:
         return self._perturbation_funcs
 
     def initialize(self, state: State):
+        """initialize the starting state of data noise associated with the targets in 
+        current log likelihood that are hierarchical (i.e. having unknown data noise)
+
+        Parameters
+        ----------
+        state : State
+            the state to be updated on
+        """
         if self.targets is not None:
             for target in self.targets:
                 target.initialize(state)
+    
+    def add_targets_observer(self, inversion):
+        """add an observer (typically an instance of the high level 
+        :class:`BayesianInversion`). When the data targets are extended with
+        new observations, the observers will be notified by being called 
+        ``update_log_likelihood_targets`` method
+
+        Parameters
+        ----------
+        inversion : BayesianInversion
+            the observer to be added to the notification list
+        """
+        self._perturbation_funcs_observers.append(inversion)
+    
+    def add_targets(
+        self, 
+        targets: Union[Target, List[Target]] = None, 
+        fwd_functions: Union[Callable, List[Callable[[State], np.ndarray]]] = None
+    ):
+        """add new target(s) and its/their associated forward function(s)
+
+        Parameters
+        ----------
+        targets : Union[Target, List[Target]], optional
+            the targets to be added, by default None
+        fwd_functions : Union[Callable, List[Callable[[State], np.ndarray]]], optional
+            the forward functions to be added, by default None
+
+        Raises
+        ------
+        TypeError
+            when the ``targets`` isn't a list of Target of a single Target instance, 
+            or when the ``fwd_functions`` isn't a list of functions or a single 
+            function
+        """
+        if targets is not None:
+            if not isinstance(targets, list):
+                targets = [targets]
+            for target in targets:
+                if not isinstance(target, Target):
+                    raise TypeError("`targets` should either be a list of Target instances or a Target")
+        self.targets.extend(targets)
+        
+        if fwd_functions is not None:
+            if not isinstance(fwd_functions, list):
+                fwd_functions = [fwd_functions]
+            for func in fwd_functions:
+                if not isinstance(func, (Callable, tuple)):
+                    raise TypeError("`fwd_functions` should be a Callable/tuple or a list of Callables/tuples")
+        self.fwd_functions.extend(fwd_functions)
+        
+        self._check_duplicate_target_names()
+        self._init_perturbation_funcs()
+        for inversion in self._perturbation_funcs_observers:
+            inversion.update_log_likelihood_targets(targets)
 
     def log_likelihood_ratio(
         self,
@@ -182,8 +238,8 @@ class LogLikelihood:
             if not isinstance(_targets, list):
                 _targets = [_targets]
             assert len(_fwd_functions) == len(_targets)
-            self.targets = _targets
-            self.fwd_functions = [_preprocess_func(func) for func in _fwd_functions]
+            self._targets = _targets
+            self._fwd_functions = [_preprocess_func(func) for func in _fwd_functions]
             self._log_likelihood_ratio = self._log_likelihood_ratio_from_targets
         elif self.log_like_ratio_func is not None:
             self.log_like_ratio_func = _preprocess_func(self.log_like_ratio_func)
@@ -199,7 +255,7 @@ class LogLikelihood:
                 "\t3. ``log_like_func``"
             )
 
-    def _init_perturbation_funcs(self):
+    def _init_perturbation_funcs(self) -> list:
         if self.targets is not None:
             hier_targets = (
                 [t for t in self.targets if t.is_hierarchical]
@@ -207,7 +263,7 @@ class LogLikelihood:
                 else []
             )
             self._perturbation_funcs = (
-                [NoisePerturbation(self.targets)] if hier_targets else []
+                [NoisePerturbation(hier_targets)] if hier_targets else []
             )
         else:
             self._perturbation_funcs = []

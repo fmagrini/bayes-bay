@@ -3,9 +3,11 @@ from numbers import Number
 from collections import defaultdict
 import random
 import math
+
 from ._log_likelihood import LogLikelihood
 from .parameterization import Parameterization
 from ._state import State
+from ._target import Target
 from .exceptions import DimensionalityException, ForwardException, UserFunctionException
 
 
@@ -41,13 +43,20 @@ class BaseMarkovChain:
     ):
         self.id = id
         self.current_state = starting_state
-        self.perturbation_funcs = perturbation_funcs
-        self.perturbation_types = [func.__name__ for func in perturbation_funcs]
         self._temperature = temperature
         self.log_likelihood = log_likelihood
         self.save_dpred = save_dpred
+        self.update_perturbation_funcs(perturbation_funcs)
         self._init_statistics()
         self._init_saved_states()
+
+    @property
+    def current_state(self) -> Union[State, Any]:
+        return self._current_state
+    
+    @current_state.setter
+    def current_state(self, state: Union[State, Any]):
+        self._current_state = state
 
     @property
     def temperature(self) -> Number:
@@ -73,6 +82,14 @@ class BaseMarkovChain:
     def ith_iteration(self):
         return self.statistics["n_proposed_models_total"]
 
+    def update_perturbation_funcs(self, funcs: List[Callable]):
+        self.perturbation_funcs = funcs
+        self.perturbation_types = [func.__name__ for func in funcs]
+    
+    def update_targets(self, targets: List[Target]):
+        for target in targets:
+            target.initialize(self.current_state)
+    
     def _init_saved_states(self):
         if isinstance(self.current_state, (State, dict)):
             self._saved_states = defaultdict(list)
@@ -104,10 +121,6 @@ class BaseMarkovChain:
                 for k, v in self.current_state.cache.items():
                     if "dpred" in k:
                         self.saved_states[k].append(v)
-            # if self.save_dpred and "dpred" in self.current_state.cache:
-            #     self.saved_states["dpred"].append(
-            #         self.current_state.load_from_cache("dpred")
-            #     )
         else:
             self.saved_states.append(self.current_state)
 
@@ -274,6 +287,9 @@ class MarkovChain(BaseMarkovChain):
         parameterization bounds and properties of unknown parameterizations
     log_likelihood : bayesbay.LogLikelihood
         instance of the ``bayesbay.LogLikelihood`` class
+    perturbation_funcs : List[Callable]
+        a list of perturbation functions (generated automatically by 
+        :class:`BayesianInversion` from ``parameterization`` and ``log_likelihood``)
     temperature : int, optional
         used to temper the log likelihood, by default 1
     """
@@ -283,13 +299,13 @@ class MarkovChain(BaseMarkovChain):
         id: Union[int, str],
         parameterization: Parameterization,
         log_likelihood: LogLikelihood, 
+        perturbation_funcs: List[Callable], 
         temperature: float = 1,
         saved_dpred: bool = True,
     ):
         self.parameterization = parameterization
         self.log_likelihood = log_likelihood
         starting_state = self._init_starting_state()
-        perturbation_funcs = self._init_perturbation_funcs()
         super().__init__(
             id=id, 
             starting_state=starting_state, 
@@ -304,8 +320,4 @@ class MarkovChain(BaseMarkovChain):
         starting_state = self.parameterization.initialize()
         self.log_likelihood.initialize(starting_state)
         return starting_state
-
-    def _init_perturbation_funcs(self):
-        funcs_from_parameterization = self.parameterization.perturbation_functions
-        funcs_from_log_likelihood = self.log_likelihood.perturbation_functions
-        return funcs_from_parameterization + funcs_from_log_likelihood
+    
