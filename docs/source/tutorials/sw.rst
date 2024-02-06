@@ -19,4 +19,5 @@ This tutorial comprises:
 .. toctree::
    :maxdepth: 1
 
-   21_rayleigh_wave
+   21_rayleigh
+   22_rayleigh_love
