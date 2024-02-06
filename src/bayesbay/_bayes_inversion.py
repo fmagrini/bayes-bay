@@ -280,7 +280,10 @@ class BaseBayesianInversion:
             if hasattr(v, '__class__') and v.__class__.__repr__ is object.__repr__:
                 repr_v = v.__class__.__name__
             elif k == "walkers_starting_states":
-                repr_v = f"[{len(v)} arrays with shapes {', '.join(str(arr.shape) for arr in v)}]"
+                try:
+                    repr_v = f"[{len(v)} arrays with shapes {', '.join(str(arr.shape) for arr in v)}]"
+                except AttributeError:
+                    repr_v = f"[{len(v)} {type(v[0])} objects]"
             elif k == "chains" and len(v) > 3: 
                 repr_v = f"{str(v[:3])[:-1]}, ...{len(v)} chains in total...]"
             else:
