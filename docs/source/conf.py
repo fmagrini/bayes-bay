@@ -77,3 +77,12 @@ html_context = {
     "github_version": "main", # Version
     "conf_py_path": "/source/", # Path in the checkout to the docs root
 }
+
+latex_elements = {
+    'preamble': r'''
+\usepackage{titlesec}
+\titleformat{\rubric}[display]
+  {\normalfont\Large\bfseries}
+  {\thesection}{1em}{}
+'''
+}

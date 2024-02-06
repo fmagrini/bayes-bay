@@ -6,7 +6,7 @@
 Welcome to BayesBay's documentation!
 ========================================
 
-BayesBay is a user-friendly Python package designed for **generalised transdimensional and hierarchical Bayesian inference**. 
+BayesBay is a user-friendly Python package designed for **generalised trans-dimensional and hierarchical Bayesian inference**. 
 Optimised computationally through Cython, our library offers multi-processing capabilities and runs seamlessly on both standard computers and computer clusters. 
 
 Distinguishing itself from existing packages, BayesBay provides **high-level functionalities for defining complex parameterizations**. 
