@@ -26,6 +26,8 @@ class BaseMarkovChain:
         starting state of the current chain
     perturbation_funcs : List[Callable[[Any], Tuple[Any, Number]]]
         a list of perturbation functions
+    perturbation_weights: List[Number]
+        a list of perturbation weights
     log_likelihood : bayesbay.LogLikelihood
         instance of the ``bayesbay.LogLikelihood`` class
     temperature : int, optional
@@ -37,6 +39,7 @@ class BaseMarkovChain:
         id: Union[int, str],
         starting_state: Any,
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
+        perturbation_weights: List[Number], 
         log_likelihood: LogLikelihood,
         temperature: float = 1,
         save_dpred: bool = True,
@@ -46,7 +49,7 @@ class BaseMarkovChain:
         self._temperature = temperature
         self.log_likelihood = log_likelihood
         self.save_dpred = save_dpred
-        self.update_perturbation_funcs(perturbation_funcs)
+        self.set_perturbation_funcs(perturbation_funcs, perturbation_weights)
         self._init_statistics()
         self._init_saved_states()
 
@@ -82,9 +85,10 @@ class BaseMarkovChain:
     def ith_iteration(self):
         return self.statistics["n_proposed_models_total"]
 
-    def update_perturbation_funcs(self, funcs: List[Callable]):
+    def set_perturbation_funcs(self, funcs: List[Callable], weights: List[Number]):
         self.perturbation_funcs = funcs
         self.perturbation_types = [func.__name__ for func in funcs]
+        self.perturbation_weights = weights
     
     def update_targets(self, targets: List[Target]):
         for target in targets:
@@ -169,7 +173,10 @@ class BaseMarkovChain:
         _last_exception = None
         for i in range(500):
             # choose one perturbation function and type
-            i_perturb = random.randint(0, len(self.perturbation_funcs) - 1)
+            i_perturb = random.choices(
+                range(len(self.perturbation_funcs)), 
+                self.perturbation_weights
+            )[0]
             perturb_func = self.perturbation_funcs[i_perturb]
 
             # perturb and get the partial acceptance probability excluding log
@@ -290,6 +297,8 @@ class MarkovChain(BaseMarkovChain):
     perturbation_funcs : List[Callable]
         a list of perturbation functions (generated automatically by 
         :class:`BayesianInversion` from ``parameterization`` and ``log_likelihood``)
+    perturbation_weights: List[Number]
+        a list of perturbation weights
     temperature : int, optional
         used to temper the log likelihood, by default 1
     """
@@ -300,6 +309,7 @@ class MarkovChain(BaseMarkovChain):
         parameterization: Parameterization,
         log_likelihood: LogLikelihood, 
         perturbation_funcs: List[Callable], 
+        perturbation_weights: List[Number], 
         temperature: float = 1,
         saved_dpred: bool = True,
     ):
@@ -310,6 +320,7 @@ class MarkovChain(BaseMarkovChain):
             id=id, 
             starting_state=starting_state, 
             perturbation_funcs=perturbation_funcs, 
+            perturbation_weights=perturbation_weights, 
             log_likelihood=log_likelihood, 
             temperature=temperature,
             save_dpred=saved_dpred, 

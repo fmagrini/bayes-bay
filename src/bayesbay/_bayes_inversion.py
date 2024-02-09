@@ -2,6 +2,7 @@ from typing import List, Callable, Tuple, Any, Dict, Union
 from numbers import Number
 from collections import defaultdict
 from pprint import pformat
+import warnings
 
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler, Sampler
@@ -9,6 +10,7 @@ from .parameterization import Parameterization
 from ._utils import _preprocess_func
 from ._log_likelihood import LogLikelihood
 from ._target import Target
+from .perturbations._birth_death import BirthPerturbation, DeathPerturbation
 
 
 class BaseBayesianInversion:
@@ -51,6 +53,10 @@ class BaseBayesianInversion:
         \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
         \lvert \mathbf{J} \rvert)`, which is used in the calculation of
         the acceptance probability.
+    perturbation_weights: List[Number], optional
+        a list of weights corresponding to each element of ``perturbation_funcs``. If
+        this is set to (the default value) ``None``, then each perturbation function
+        will have equal probability of being selected on each iteration.
     log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]], optional
         the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid 
         \mathbf{m'})} {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and 
@@ -76,6 +82,7 @@ class BaseBayesianInversion:
         self,
         walkers_starting_states: List[Any],
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
+        perturbation_weights: List[Number] = None, 
         log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]] = None,
         log_like_func: Callable[[Any], Number] = None,
         n_chains: int = 10,
@@ -83,13 +90,11 @@ class BaseBayesianInversion:
         save_dpred: bool = True,
     ):
         assert len(walkers_starting_states) == n_chains, (
-            "``walkers_starting_states`` doesn't match the number of chains: "
+            "`walkers_starting_states` doesn't match the number of chains: "
             f"{len(walkers_starting_states)} != {n_chains}"
         )
         self.walkers_starting_states = walkers_starting_states
-        self.perturbation_funcs = [
-            _preprocess_func(func) for func in perturbation_funcs
-        ]
+        self.set_perturbation_funcs(perturbation_funcs, perturbation_weights)
         if isinstance(log_like_ratio_func, LogLikelihood):
             self.log_likelihood = log_like_ratio_func
         else:
@@ -105,6 +110,7 @@ class BaseBayesianInversion:
                 id=i,
                 starting_state=self.walkers_starting_states[i],
                 perturbation_funcs=self.perturbation_funcs,
+                perturbation_weights=self.perturbation_weights, 
                 log_likelihood=self.log_likelihood, 
                 save_dpred=self.save_dpred,
             )
@@ -112,7 +118,67 @@ class BaseBayesianInversion:
         ]
         
         self._init_repr_args()
-
+    
+    def set_perturbation_funcs(
+        self, 
+        perturbation_funcs: List[Callable], 
+        perturbation_weights: List[Number] = None, 
+    ):
+        # preprocess functions (if necessary)
+        perturbation_funcs = [_preprocess_func(func) for func in perturbation_funcs]
+        # pad weights if it's None
+        if perturbation_weights is None:
+            perturbation_weights = [1] * len(self.perturbation_funcs)
+        # check lengths
+        assert len(perturbation_funcs) == len(perturbation_weights),  (
+                "`perturbation_funcs` should have the same length of "
+                f"`perturbation_weights`: {len(perturbation_funcs)} != "
+                f"{len(perturbation_weights)}"
+            )
+        # validate weights of birth-death pairs to be the same
+        birth_death_pairs = defaultdict(list)
+        for ifunc, func in enumerate(perturbation_funcs):
+            if isinstance(func, (BirthPerturbation, DeathPerturbation)):
+                birth_death_pairs[func.param_space_name].append(ifunc)
+        for ps_name, perturb_ifuncs in birth_death_pairs.items():
+            birth_func_indices = [i for i in perturb_ifuncs if \
+                isinstance(perturbation_funcs[i], BirthPerturbation)]
+            death_func_indices = [i for i in perturb_ifuncs if \
+                isinstance(perturbation_funcs[i], DeathPerturbation)]
+            if len(birth_func_indices) != 1:
+                raise ValueError(
+                    "there should be exactly one birth perturbation function for each "
+                    f"trans-dimensional parameter space, but {ps_name} has "
+                    f"{len(birth_func_indices)} birth perturbation function instead"
+                )
+            if len(death_func_indices) != 1:
+                raise ValueError(
+                    "there should be exactly one death perturbation function for each "
+                    f"trans-dimensional parameter space, but {ps_name} has "
+                    f"{len(death_func_indices)} death perturbation function instead"
+                )
+            birth_func_idx = birth_func_indices[0]
+            death_func_idx = death_func_indices[0]
+            birth_func_weight = perturbation_weights[birth_func_idx]
+            death_func_weight = perturbation_weights[death_func_idx]
+            birth_func = perturbation_funcs[birth_func_idx]
+            death_func = perturbation_funcs[death_func_idx]
+            if birth_func_weight != death_func_weight:
+                warnings.warn(
+                    f"weights for {birth_func} and {death_func} are different: "
+                    f"{birth_func_weight} != {death_func_weight}. We will default the death "
+                    "perturbation weight to be the same as birth weight"
+                )
+                perturbation_weights[death_func_idx] = birth_func_weight
+        # assign to self attributes
+        self.perturbation_funcs = perturbation_funcs
+        self.perturbation_weights = perturbation_weights
+        if hasattr(self, "_chains"):
+            for chain in self.chains:
+                chain.set_perturbation_funcs(
+                    self.perturbation_funcs, self.perturbation_weights
+                )
+    
     @property
     def chains(self) -> List[BaseMarkovChain]:
         """The ``MarkovChain`` instances of the current Bayesian inversion"""
@@ -349,13 +415,15 @@ class BayesianInversion(BaseBayesianInversion):
         self.n_chains = n_chains
         self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
-        self.perturbation_funcs = self._init_perturbation_funcs()
+        self.perturbation_funcs, self.perturbation_weights = \
+            self._init_perturbation_funcs()
         self._chains = [
             MarkovChain(
                 id=i,
                 parameterization=self.parameterization,
                 log_likelihood=self.log_likelihood, 
                 perturbation_funcs=self.perturbation_funcs, 
+                perturbation_weights=self.perturbation_weights, 
                 saved_dpred=self.save_dpred,
             )
             for i in range(n_chains)
@@ -384,7 +452,10 @@ class BayesianInversion(BaseBayesianInversion):
     def _init_perturbation_funcs(self) -> list:
         funcs_from_parameterization = self.parameterization.perturbation_functions
         funcs_from_log_likelihood = self.log_likelihood.perturbation_functions
-        return funcs_from_parameterization + funcs_from_log_likelihood
+        weights_from_parameterization = self.parameterization.perturbation_weights
+        weights_from_log_likelihood = self.log_likelihood.perturbation_weights
+        return funcs_from_parameterization + funcs_from_log_likelihood, \
+            weights_from_parameterization + weights_from_log_likelihood
 
     def update_log_likelihood_targets(self, targets: List[Target]):
         """function to be called by ``self.log_likelihood`` when there are more 
@@ -400,7 +471,10 @@ class BayesianInversion(BaseBayesianInversion):
         targets : List[Target]
             the list of targets added to ``self.log_likelihood``
         """
-        self.perturbation_funcs = self._init_perturbation_funcs()
+        self.perturbation_funcs, self.perturbation_weights = \
+            self._init_perturbation_funcs()
         for chain in self.chains:
-            chain.update_perturbation_funcs(self.perturbation_funcs)
+            chain.set_perturbation_funcs(
+                self.perturbation_funcs, self.perturbation_weights
+            )
             chain.update_targets(targets)

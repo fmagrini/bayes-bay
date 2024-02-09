@@ -93,6 +93,19 @@ class ParameterSpace:
         """
         return self._perturbation_funcs
     
+    @property
+    def perturbation_weights(self) -> List[Number]:
+        """a list of perturbation weights, corresponding to each of the 
+        :meth:`perturbation_functions` that determines the probability of each of them
+        to be chosen during each step
+        
+        The weights are not normalized and have the following default values:
+        
+        - Birth/Death perturbations: 3
+        - Parameter values perturbation: 6
+        """
+        return self._perturbation_weights
+    
     def initialize(self) -> ParameterSpaceState:
         """initializes the parameter space including its parameter values
 
@@ -243,13 +256,17 @@ class ParameterSpace:
     
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []
+        self._perturbation_weights = []
         if self.parameters:
             self._perturbation_funcs.append(
                 ParamPerturbation(self.name, list(self.parameters.values()))
             )
+            self._perturbation_weights.append(3)
         if self.trans_d:
             self._perturbation_funcs.append(BirthPerturbation(self))
             self._perturbation_funcs.append(DeathPerturbation(self))
+            self._perturbation_weights.append(1)
+            self._perturbation_weights.append(1)
 
     def _init_repr_args(self):
         self._repr_args = {

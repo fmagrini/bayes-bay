@@ -117,6 +117,7 @@ class Voronoi(Discretization):
     def _init_perturbation_funcs(self):
         ParameterSpace._init_perturbation_funcs(self)
         self._perturbation_funcs.append(ParamPerturbation(self.name, [self]))
+        self._perturbation_weights.append(1)
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
@@ -133,6 +134,20 @@ class Voronoi(Discretization):
 
         """
         return self._perturbation_funcs
+    
+    @property
+    def perturbation_weights(self) -> List[Number]:
+        """a list of perturbation weights, corresponding to each of the 
+        :meth:`perturbation_functions` that determines the probability of each of them
+        to be chosen during each step
+        
+        The weights are not normalized and have the following default values:
+        
+        - Birth/Death perturbations: 1
+        - Parameter values perturbation: 3
+        - Voronoi site perturbation: 1
+        """
+        return self._perturbation_weights
 
 
 class Voronoi1D(Voronoi):

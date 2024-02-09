@@ -101,6 +101,18 @@ class LogLikelihood:
         the target(s) is explicitly set to be unknown(s).
         """
         return self._perturbation_funcs
+    
+    @property
+    def perturbation_weights(self) -> List[Number]:
+        """a list of perturbation weights, corresponding to each of the 
+        :meth:`perturbation_functions` that determines the probability of each of them
+        to be chosen during each step
+        
+        The weights are not normalized and have a following default value of 1 for 
+        the data noise perturbation that perturbs all the target unknown noises 
+        together.
+        """
+        return self._perturbation_weights
 
     def initialize(self, state: State):
         """initialize the starting state of data noise associated with the targets in 
@@ -269,8 +281,10 @@ class LogLikelihood:
             self._perturbation_funcs = (
                 [NoisePerturbation(hier_targets)] if hier_targets else []
             )
+            self._perturbation_weights = [1] if hier_targets else []
         else:
             self._perturbation_funcs = []
+            self._perturbation_weights = []
 
     def _get_misfit_and_det(self, state: State) -> Tuple[Number, Number]:
         misfit = 0

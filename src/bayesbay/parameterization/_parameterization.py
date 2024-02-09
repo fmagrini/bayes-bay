@@ -1,4 +1,5 @@
 from typing import List, Union
+from numbers import Number
 from pprint import pformat
 
 from ._parameter_space import ParameterSpace
@@ -41,8 +42,10 @@ class Parameterization:
 
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []
+        self._perturbation_weights = []
         for ps in self.parameter_spaces.values():
             self._perturbation_funcs.extend(ps.perturbation_functions)
+            self._perturbation_weights.extend(ps.perturbation_weights)
     
     def initialize(self) -> State:
         """initializes the parameter space(s) constituting the parameterization
@@ -64,6 +67,12 @@ class Parameterization:
         parameterization
         """
         return self._perturbation_funcs
+    
+    @property
+    def perturbation_weights(self) -> List[Number]:
+        """the list of perturbation function weights that determines the probability of
+        which each corresponding perturbation function is to be chosen"""
+        return self._perturbation_weights
     
     def __repr__(self) -> str:
         return (
