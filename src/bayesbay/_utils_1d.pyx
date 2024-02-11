@@ -46,22 +46,12 @@ cpdef compute_voronoi1d_cell_extents(double[:] depth,
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef (int, int) _closest_and_final_index(double[:] ndarray, double value):
-    cdef int closest_idx = 0 
+cdef int floor_index(double xp, double[:] x, ssize_t xlen):
     cdef int i
-    cdef double vmin = fabs(ndarray[0] - value)
-    cdef double v
-    cdef size_t size = ndarray.shape[0]
-    
-    for i in range(1, size):
-        v = fabs(ndarray[i] - value)
-        if v < vmin:
-            vmin = v
-            closest_idx = i
-    if ndarray[closest_idx] > value:
-        return closest_idx, closest_idx
-    return closest_idx, closest_idx+1
-        
+    for i in range(xlen):
+        if x[i] <= xp <= x[i+1]:
+            return i
+
 
 @boundscheck(False)
 @wraparound(False) 
@@ -95,13 +85,13 @@ cdef double _interpolate_nearest_1d(double xp, double[:] x, double[:] y):
         return y[0]
     elif xp >= x[xlen-1]:
         return y[xlen-1]
-    i = nearest_index(xp, x, xlen)
+    i = nearest_neighbour_1d(xp, x, xlen)
     return y[i]
 
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef int nearest_index(double xp, double[:] x, ssize_t xlen):
+cpdef int nearest_neighbour_1d(double xp, double[:] x, ssize_t xlen):
     cdef int i
     cdef double x0, x1
     if xlen==1 or xp<x[0]:
@@ -114,15 +104,6 @@ cpdef int nearest_index(double xp, double[:] x, ssize_t xlen):
                 return i
             return i + 1
     return i + 1
-
-
-@boundscheck(False)
-@wraparound(False) 
-cdef int floor_index(double xp, double[:] x, ssize_t xlen):
-    cdef int i
-    for i in range(xlen):
-        if x[i] <= xp <= x[i+1]:
-            return i
 
 
 @boundscheck(False)
@@ -224,7 +205,7 @@ cpdef inverse_covariance(double sigma, double r, size_t n):
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef insert_scalar(double[:] values, long index, double value):
+cpdef insert_1d(double[:] values, long index, double value):
     cdef size_t new_size = values.shape[0] + 1
     cdef double[:] new_values = np.zeros(new_size, dtype=np.double)
     cdef size_t i = 0
@@ -241,7 +222,7 @@ cpdef insert_scalar(double[:] values, long index, double value):
 
 @boundscheck(False)
 @wraparound(False) 
-cpdef delete(double[:] values, long index):
+cpdef delete_1d(double[:] values, long index):
     cdef size_t size = values.shape[0]
     cdef double[:] new_values = np.zeros(size - 1, dtype=np.double)
     cdef size_t i, j = 0

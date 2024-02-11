@@ -15,9 +15,9 @@ from .._state import State, ParameterSpaceState
 from .._utils_1d import (
     interpolate_depth_profile, 
     compute_voronoi1d_cell_extents, 
-    insert_scalar,
-    nearest_index,
-    delete
+    insert_1d,
+    nearest_neighbour_1d,
+    delete_1d
 )
 
 
@@ -275,7 +275,7 @@ class Voronoi(Discretization):
             and the index of the Voronoi neighbour
         """
         if self.spatial_dimensions == 1:
-            isite = nearest_index(
+            isite = nearest_neighbour_1d(
                 xp=new_site, x=old_sites, xlen=old_sites.size
                 )
         else:
@@ -453,7 +453,7 @@ class Voronoi(Discretization):
         old_sites = old_ps_state["discretization"]
         new_sites = new_ps_state["discretization"]
         if self.spatial_dimensions == 1:
-            i_nearest = nearest_index(
+            i_nearest = nearest_neighbour_1d(
                 xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
                 )
         else:
@@ -505,7 +505,7 @@ class Voronoi(Discretization):
         new_values = dict()
         for name, old_values in old_ps_state.param_values.items():
             if self.spatial_dimensions == 1:
-                new_values[name] = delete(old_values, iremove)
+                new_values[name] = delete_1d(old_values, iremove)
             else:
                 new_values[name] = np.delete(old_values, iremove, axis=0)
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
@@ -775,11 +775,11 @@ class Voronoi1D(Voronoi):
         )
         new_values = dict()
         idx_insert = bisect_left(old_sites, new_site)
-        new_sites = insert_scalar(old_sites, idx_insert, new_site)
+        new_sites = insert_1d(old_sites, idx_insert, new_site)
         new_values["discretization"] = new_sites
         for name, value in unsorted_values.items():
             old_values = old_ps_state[name]
-            new_values[name] = insert_scalar(old_values, idx_insert, value)
+            new_values[name] = insert_1d(old_values, idx_insert, value)
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, self._log_probability_ratio_birth(
             i_nearest, old_ps_state, idx_insert, new_ps_state

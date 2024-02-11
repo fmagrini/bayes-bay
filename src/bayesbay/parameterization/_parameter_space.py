@@ -8,7 +8,7 @@ from ..exceptions import DimensionalityException
 from ..parameters import Parameter
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
-from .._utils_1d import delete, insert_scalar
+from .._utils_1d import delete_1d, insert_1d
 
 
 class ParameterSpace:
@@ -190,7 +190,7 @@ class ParameterSpace:
         i_insert = random.randint(0, n_dims)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
-            new_param_values[param_name] = insert_scalar(
+            new_param_values[param_name] = insert_1d(
                 param_vals, 
                 i_insert, 
                 self.parameters[param_name].sample()
@@ -236,7 +236,7 @@ class ParameterSpace:
         i_to_remove = random.randint(0, n_dims-1)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
-            new_param_values[param_name] = delete(param_vals, i_to_remove)
+            new_param_values[param_name] = delete_1d(param_vals, i_to_remove)
         new_state = ParameterSpaceState(n_dims-1, new_param_values)
         prob_ratio = 0
         return new_state, prob_ratio
