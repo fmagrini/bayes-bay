@@ -2,6 +2,21 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.10 (xx/02/2024)
+
+- API change: `bayesbay.parameters` -> `bayesbay.prior`
+    - `UniformParameter` -> `UniformPrior`
+    - `GaussianParameter` -> `GaussianPrior`
+    - `CustomParameter` -> `CustomPrior`
+- API change: `pertubation_weights`
+    - weights can be updated
+        - `BaseBayesianInversion.set_perturbation_funcs(funcs, weights)`
+        - `BaseMarkovChain.set_perturbation_funcs(funcs, weights)`
+    - weights can be assigned during initialization
+        - `BaseBayesianInversion(perturbation_weights, ...)`
+        - `BaseMarkovChain(perturbation_weights, ...)`
+        - `MarkovChain(perturbation_weights, ...)`
+
 ## v0.1.9 (05/02/2024)
 
 - API change: `LogLikelihood` can accept log likelihood function or log likelihood ratio function
