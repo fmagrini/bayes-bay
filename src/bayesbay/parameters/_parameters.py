@@ -13,6 +13,9 @@ import random
 from functools import partial
 import math
 import numpy as np
+import scipy
+
+from ..exceptions._exceptions import OutOfDomainException
 from .._utils_1d import interpolate_linear_1d
 
 
@@ -48,8 +51,8 @@ class Parameter(ABC):
 
         Returns
         -------
-        Union[np.ndarray, Number]
-            a value corresponding to the given position
+        Number
+            a value corresponding to the prior probability (at the given position)
         """
         raise NotImplementedError
 
@@ -57,17 +60,20 @@ class Parameter(ABC):
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
         r"""initializes the values of this (possibly position-dependent) 
         parameter
+        
+        This is the vectorized version of the method :meth:`sample`.
 
         Parameters
         ----------
-        position : np.ndarray, optional
+        positions : np.ndarray, optional
             the position (in the discretization domain) associated with the value, 
             None by default
 
         Returns
         -------
         np.ndarray
-            an array of values or one value corresponding to the given positions
+            an array of values or one value corresponding to the prior probability (at
+            the given positions)
         """
         raise NotImplementedError
 
@@ -125,16 +131,16 @@ class Parameter(ABC):
 
     def set_custom_initialize(
         self,
-        initialize_func: Callable[
-            ["Parameter", Union[np.ndarray, Number]], Union[np.ndarray, Number]
-        ],
+        initialize_func: Callable[["Parameter", np.ndarray], np.ndarray],
     ):
         r"""sets a custom initialization function
 
         Parameters
         ----------
-        initialize_func: Callable[[bayesbay.parameters.Parameter, Union[np.ndarray, Number]], Union[np.ndarray, Number]]
-            The function to use for initialization. This function should take no arguments.
+        initialize_func: Callable[["Parameter", np.ndarray], np.ndarray]
+            The function to use for initialization. This function should take a
+            :class:`Parameter` instance and optionally an array of positions as input
+            arguments, and produce an array of values as output.
 
         Examples
         --------
@@ -142,9 +148,10 @@ class Parameter(ABC):
 
             def my_init(
                 param: bb.parameters.Parameter,
-                position: Union[np.ndarray, Number]
-            ) -> Union[np.ndarray, Number]:
+                position: np.ndarray
+            ) -> np.ndarray:
                 print("This is my custom init!")
+                return np.ones(len(position))
 
             my_param.set_custom_initialize(my_init)
         """
@@ -157,7 +164,7 @@ class Parameter(ABC):
 
     def get_perturb_std(
         self, position: Union[Number, np.ndarray] = None
-    ) -> Union[Number, np.ndarray]:
+    ) -> Number:
         r"""get the standard deviation of the Gaussian used to perturb
         the parameter, which may be dependent on the position in the
         discretization domain
@@ -171,9 +178,9 @@ class Parameter(ABC):
 
         Returns
         -------
-        Union[Number, np.ndarray]
+        Number
             standard deviation of the Gaussian used to perturb the parameter,
-            possibly at the specified position(s)
+            possibly at the specified position
         """
         if self.has_hyper_param("perturb_std"):
             return self.get_hyper_param("perturb_std", position)
@@ -218,7 +225,7 @@ class Parameter(ABC):
             self, 
             hyper_param: str, 
             position: Union[Number, np.ndarray] = None
-            ) -> Union[Number, np.ndarray]:
+        ) -> Union[Number, np.ndarray]:
         r"""Retrieves the value corresponding to the specified attribute, which 
         may be a function of position
         
@@ -247,11 +254,17 @@ class Parameter(ABC):
 
     def _init_hyper_param(self, hyper_param: Union[Number, np.ndarray]):
         # to be called after self.position is assigned
-        return (
-            hyper_param
-            if np.isscalar(hyper_param)
-            else partial(interpolate_linear_1d, x=self.position, y=hyper_param)
-        )
+        if np.isscalar(hyper_param):
+            return hyper_param
+        elif np.ndim(self.position) == 1:
+            return partial(interpolate_linear_1d, x=self.position, y=hyper_param)
+        else:
+            interpolator = partial(
+                scipy.interpolate.LinearNDInterpolator, 
+                points=self.position,
+                values=hyper_param,
+            )
+            return _interpolate_linear_nd(self.name, interpolator)
 
     def __repr__(self) -> str:
         string = f"{self._repr_args['name']}("
@@ -309,7 +322,7 @@ class UniformParameter(Parameter):
 
     def get_delta(
         self, position: Union[Number, np.ndarray] = None
-    ) -> Union[Number, np.ndarray]:
+    ) -> Number:
         r"""get the range :math:`\Delta v = v_{max} - v_{min}`, which may be
         dependent on the specified position in the discretization domain
 
@@ -321,14 +334,14 @@ class UniformParameter(Parameter):
 
         Returns
         -------
-        Union[Number, np.ndarray]
+        Number
             the range :math:`\Delta v = v_{max} - v_{min}`
         """
         return self.get_hyper_param("delta", position)
 
     def get_vmin_vmax(
         self, position: Union[Number, np.ndarray] = None
-    ) -> Union[Tuple[Number, Number], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Tuple[Number, Number]:
         r"""get the lower and upper bounds of the parameter, which may be 
         dependent on position in the discretization domain
 
@@ -340,22 +353,24 @@ class UniformParameter(Parameter):
 
         Returns
         -------
-        Tuple[float, float]
+        Tuple[Number, Number]
             the lower (``vmin``) and upper (``vmax``)
         """
         vmin = self.get_hyper_param("vmin", position)
         vmax = self.get_hyper_param("vmax", position)
         return vmin, vmax
     
-    def sample(self, position: Number = None) -> Number:
+    def sample(self, position: Union[Number, np.ndarray] = None) -> Number:
         vmin, vmax = self.get_vmin_vmax(position)
         return random.uniform(vmin, vmax)
 
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
-        vmin, vmax = self.get_vmin_vmax(positions)
+        vmin, vmax = np.array([self.get_vmin_vmax(p) for p in positions]).T
         return np.random.uniform(vmin, vmax, len(positions))
 
-    def perturb_value(self, value: Number, position: Number = None) -> Tuple[Number, Number]:
+    def perturb_value(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization domain and calculates the log of the corresponding 
         partial acceptance probability,
@@ -377,7 +392,7 @@ class UniformParameter(Parameter):
         ----------
         value : Number
             the current value to be perturbed from
-        position : Number, optional
+        position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the parameter 
             ``value`` is to be perturbed
 
@@ -400,9 +415,9 @@ class UniformParameter(Parameter):
             if new_value >= vmin and new_value <= vmax:
                 return new_value, 0
 
-    def log_prior(self, 
-                  value: Number, 
-                  position: Union[Number, np.ndarray] = None) -> Number:
+    def log_prior(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Number:
         r"""calculates the log of the prior probability density for the given 
         value, which may be dependent on the position in the discretization
         domain
@@ -411,7 +426,7 @@ class UniformParameter(Parameter):
         ----------
         value : Number
             the value to calculate the probability density for
-        position : Number, optional
+        position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the prior
             probability of the parameter ``value`` is to be retrieved
 
@@ -473,39 +488,39 @@ class GaussianParameter(Parameter):
     
     def get_mean(
         self, position: Union[Number, np.ndarray] = None
-    ) -> Union[Number, np.ndarray]:
+    ) -> Number:
         """get the mean of the Gaussian parameter, which may be dependent on
         position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            position(s) in the discretization domain at which the mean of the 
+            position in the discretization domain at which the mean of the 
             Gaussian will be returned. None by default
 
         Returns
         -------
-        Union[Number, np.ndarray]
-            mean at the given position(s)
+        Number
+            mean at the given position
         """
         return self.get_hyper_param("mean", position)
 
     def get_std(
         self, position: Union[Number, np.ndarray] = None
-    ) -> Union[Number, np.ndarray]:
+    ) -> Number:
         """get the standard deviation of the Gaussian parameter, which may be 
         dependent on position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            position(s) in the discretization domain at which the standard 
+            position in the discretization domain at which the standard 
             deviation of the Gaussian will be returned. None by default
 
         Returns
         -------
-        Union[Number, np.ndarray]
-            standard deviation at the given position(s)
+        Number
+            standard deviation at the given position
         """
         return self.get_hyper_param("std", position)
 
@@ -520,25 +535,25 @@ class GaussianParameter(Parameter):
         
         Parameters
         ----------
-        positions: Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the parameter is 
+        positions: np.ndarray, optional
+            the positions in the discretization domain at which the parameter is 
             initialized. None by default
 
         Returns
         -------
-        Union[np.ndarray, Number]
-            an array of values or one value corresponding to the given position(s),
+        np.ndarray
+            an array of values or one value corresponding to the given positions,
             chosen according to the normal distribution defined
-            by :attr:`mean` and :attr:`std` at the given position(s)
+            by :attr:`mean` and :attr:`std` at the given positions
         """
         mean = self.get_mean(positions)
         std = self.get_std(positions)
         values = np.random.normal(mean, std, len(positions))
         return values
 
-    def perturb_value(self, 
-                      value: Number, 
-                      position: Union[Number, np.ndarray] = None) -> Tuple[Number, Number]:
+    def perturb_value(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization, and calculates the log of the corresponding 
         partial acceptance probability,
@@ -581,9 +596,9 @@ class GaussianParameter(Parameter):
         ratio = (value - new_value) * (value + new_value - 2 * mean) / (2 * std**2)
         return new_value, ratio
     
-    def log_prior(self, 
-                  value: Number, 
-                  position: Union[Number, np.ndarray] = None) -> Number:
+    def log_prior(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Number:
         r"""calculates the log of the prior probability density for the given 
         value, which may be dependent on the position in the discretization
         domain
@@ -592,7 +607,7 @@ class GaussianParameter(Parameter):
         ----------
         value : Number
             the value to calculate the probability density for
-        position : Number, optional
+        position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the prior
             probability of the parameter ``value`` is to be retrieved
         
@@ -652,7 +667,7 @@ class CustomParameter(Parameter):
         self._log_prior = log_prior
         self._sample = sample
     
-    def sample(self, position: Number = None) -> Number:
+    def sample(self, position: Union[Number, np.ndarray] = None) -> Number:
         return self._sample(position) 
     
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
@@ -661,10 +676,9 @@ class CustomParameter(Parameter):
             result[i] = self._sample(position)
         return result
     
-    def perturb_value(self, 
-                      value: Number, 
-                      position: Union[Number, np.ndarray] = None
-                      ) -> Tuple[Number, Number]:
+    def perturb_value(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization domain, and calculates the log of the corresponding 
         partial acceptance probability,
@@ -705,9 +719,9 @@ class CustomParameter(Parameter):
         ratio = self.log_prior(new_value, position) - self.log_prior(value, position)
         return new_value, ratio
 
-    def log_prior(self, 
-                  value: Number, 
-                  position: Union[Number, np.ndarray] = None) -> Number:
+    def log_prior(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Number:
         r"""calculates the log of the prior probability density for the given 
         value, which may be dependent on the position in the discretization
         domain
@@ -716,7 +730,7 @@ class CustomParameter(Parameter):
         ----------
         value : Number
             the value to calculate the probability density for
-        position : Number, optional
+        position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the prior
             probability of the parameter ``value`` is to be retrieved
         
@@ -729,3 +743,11 @@ class CustomParameter(Parameter):
             return self._log_prior(value, position)
         except:
             return self._log_prior(value)
+
+
+def _interpolate_linear_nd(variable_name, partial_interpolate_nd):
+    def func(x):
+        y_interp = partial_interpolate_nd(x)
+        if np.isnan(y_interp):
+            raise OutOfDomainException(variable_name, x)
+    return func

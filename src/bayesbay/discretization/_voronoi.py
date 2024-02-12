@@ -4,6 +4,7 @@ from typing import Tuple, Union, List, Dict, Callable
 from numbers import Number
 import random
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 
 from ..parameterization._parameter_space import ParameterSpace
@@ -147,7 +148,7 @@ class Voronoi(Discretization):
                 0, self.perturb_std, self.spatial_dimensions
                 )
             new_site = site + random_deviate
-            if all(new_site >= self.vmin) & (new_site <= self.vmax):
+            if all((new_site >= self.vmin) & (new_site <= self.vmax)):
                 return new_site
 
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
@@ -547,7 +548,7 @@ class Voronoi(Discretization):
 
         """
         return self._perturbation_funcs
-
+    
 
 class Voronoi1D(Voronoi):
     r"""Utility class for Voronoi tessellation in 1D
@@ -828,7 +829,7 @@ class Voronoi1D(Voronoi):
         )
 
     @staticmethod
-    def plot_depth_profiles_density(
+    def plot_depth_profile_density(
         samples_voronoi_cell_extents: np.ndarray,
         samples_param_values: np.ndarray,
         depths_bins: Union[int, np.ndarray] = 100, 
@@ -877,7 +878,7 @@ class Voronoi1D(Voronoi):
                 Voronoi1D.compute_cell_extents(d) for d in results["my_voronoi.discretization"]
             ]
             samples_param_values = results["vs"]
-            ax = Voronoi1D.plot_depth_profiles_density(
+            ax = Voronoi1D.plot_depth_profile_density(
                 samples_voronoi_cell_extents, samples_param_values
             )
         """
