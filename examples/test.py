@@ -46,7 +46,7 @@ def initialize_vs(param, positions=None):
     sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
     return sorted_vals
 
-vs = bb.parameters.UniformParameter(name="vs", 
+vs = bb.prior.UniformPrior(name="vs", 
                                     vmin=2.5, 
                                     vmax=5, 
                                     perturb_std=0.15)
@@ -122,7 +122,7 @@ interp_depths = np.linspace(0, 160, 160)
 
 # # plot depths and velocities density profile
 # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-# bb.discretization.Voronoi1D.plot_depth_profiles_density(
+# bb.discretization.Voronoi1D.plot_depth_profile_density(
 #     all_thicknesses, results["vs"], ax=ax1
 # )
 # ax1.set_xlabel("Vs")

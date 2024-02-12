@@ -30,15 +30,12 @@ class Parameterization:
             raise ValueError("duplicate parameter space names found")
     
     def _check_duplicate_param_names(self, parameter_spaces: List[ParameterSpace]):
-        all_param_names = []
         for ps in parameter_spaces:
             param_names = list(ps.parameters.keys())
-            all_param_names.extend(param_names)
-        if len(all_param_names) != len(set(all_param_names)):
-            raise ValueError(
-                "duplicate parameter names found, or one parameter has been assigned "
-                "to different parameter spaces"
-            )
+            if len(param_names) != len(set(param_names)):
+                raise ValueError(
+                    f"duplicate parameter names found in ParameterSpace {ps.name}"
+                )
 
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []

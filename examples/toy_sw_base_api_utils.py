@@ -78,7 +78,7 @@ fwd_functions = [
     (forward_sw, [periods1, "rayleigh", 1]),
 ]
 
-param_vs = bb.parameters.UniformParameter(
+param_vs = bb.prior.UniformPrior(
     name="vs",
     vmin=VS_UNIFORM_MIN,
     vmax=VS_UNIFORM_MAX,
@@ -87,7 +87,7 @@ param_vs = bb.parameters.UniformParameter(
 
 
 def param_vs_initialize(
-    param: bb.parameters.Parameter, 
+    param: bb.prior.Prior, 
     positions: Union[np.ndarray, Number]
 ) -> Union[np.ndarray, Number]: 
     vmin, vmax = param.get_vmin_vmax(positions)
@@ -162,7 +162,7 @@ bb.discretization.Voronoi1D.plot_depth_profiles_statistics(
 
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
-bb.discretization.Voronoi1D.plot_depth_profiles_density(
+bb.discretization.Voronoi1D.plot_depth_profile_density(
     all_thicknesses, saved_states["voronoi.vs"], ax=axes[0]
 )
 bb.discretization.Voronoi1D.plot_interface_hist(

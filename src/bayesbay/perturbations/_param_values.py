@@ -3,7 +3,7 @@ from typing import Tuple, List
 import random
 
 from .._state import State
-from ..parameters._parameters import Parameter
+from ..prior._parameters import Prior
 from ._base_perturbation import Perturbation
 
 
@@ -14,14 +14,14 @@ class ParamPerturbation(Perturbation):
     ----------
     param_name : str
         the name of the parameter to be perturbed
-    parameters : List[Parameter]
-        list containing the :class:`Parameter` instances to be perturbed
+    parameters : List[Prior]
+        list containing the :class:`Prior` instances to be perturbed
     """
 
     def __init__(
         self,
         param_space_name: str,
-        parameters: List[Parameter],
+        parameters: List[Prior],
     ):
         self.param_space_name = param_space_name
         self.parameters = parameters
@@ -81,7 +81,7 @@ class ParamPerturbation(Perturbation):
     @property
     def __name__(self) -> str:
         param_names = [
-            (f"{p.name}.discretization" if hasattr(p, "trans_d") else p.name) \
+            (f"{p.name}.discretization" if hasattr(p, "trans_d") else f"{self.param_space_name}.{p.name}") \
                 for p in self.parameters
         ]
         param_names_str = (

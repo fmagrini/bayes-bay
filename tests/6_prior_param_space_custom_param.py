@@ -6,7 +6,7 @@ import bayesbay as bb
 
 
 # define parameter: customly defined uniform parameter
-custom_param = bb.parameters.CustomParameter(
+custom_param = bb.prior.CustomPrior(
     "custom_param",
     lambda v: - math.log(10) if 0 <= v <= 10 else float("-inf"), 
     lambda p: \

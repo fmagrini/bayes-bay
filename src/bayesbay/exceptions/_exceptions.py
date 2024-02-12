@@ -60,3 +60,18 @@ class UserFunctionException(Exception):
 
     def __str__(self):
         return self.message
+
+
+class OutOfDomainException(Exception):
+    """Exception raised when a position-dependent prior is evaluated at a position
+    outside of the specified domain"""
+
+    def __init__(self, variable_name, x):
+        self.variable_name = variable_name
+        self.x = x
+        
+    def __str__(self):
+        return (
+            f"the position-dependent prior '{self.variable_name}' was evaluated at "
+            f"a position ({self.x}) outside of the domain specific earlier"
+        )

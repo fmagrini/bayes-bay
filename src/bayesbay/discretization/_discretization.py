@@ -3,12 +3,12 @@ from typing import Union, List, Tuple
 from numbers import Number
 import numpy as np
 
-from ..parameters._parameters import Parameter
+from ..prior._parameters import Prior
 from ..parameterization._parameter_space import ParameterSpace
 from .._state import ParameterSpaceState
 
 
-class Discretization(Parameter, ParameterSpace):
+class Discretization(Prior, ParameterSpace):
     r"""Low-level class to define a discretization
 
     Parameters
@@ -41,7 +41,7 @@ class Discretization(Parameter, ParameterSpace):
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
-    parameters : List[Parameter], optional
+    parameters : List[Prior], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional
         whether to initialize the newborn basis functions by randomly drawing from 
@@ -56,11 +56,11 @@ class Discretization(Parameter, ParameterSpace):
         n_dimensions_min: int = 1, 
         n_dimensions_max: int = 10, 
         n_dimensions_init_range: Number = 0.3,
-        parameters: List[Parameter] = None, 
+        parameters: List[Prior] = None, 
         birth_from: str = "prior",
         **kwargs
     ):
-        Parameter.__init__(
+        Prior.__init__(
             self, 
             name=name,
             perturb_std=perturb_std,

@@ -5,10 +5,10 @@ import numpy as np
 
 from .._state import State, ParameterSpaceState
 from ..exceptions import DimensionalityException
-from ..parameters import Parameter
+from ..prior import Prior
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
-from .._utils_1d import delete, insert_scalar
+from .._utils_1d import delete_1d, insert_1d
 
 
 class ParameterSpace:
@@ -36,7 +36,7 @@ class ParameterSpace:
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
-    parameters : List[Parameter], optional
+    parameters : List[Prior], optional
         a list of free parameters, by default None
     """
     def __init__(
@@ -46,7 +46,7 @@ class ParameterSpace:
         n_dimensions_min: int = 1, 
         n_dimensions_max: int = 10, 
         n_dimensions_init_range: Number = 0.3, 
-        parameters: List[Parameter] = None, 
+        parameters: List[Prior] = None, 
     ):
         self._name = name
         self._trans_d = n_dimensions is None
@@ -74,7 +74,7 @@ class ParameterSpace:
         return self._trans_d
     
     @property
-    def parameters(self) -> Dict[str, Parameter]:
+    def parameters(self) -> Dict[str, Prior]:
         """all the free parameters defined in this parameter space"""
         return self._parameters
     
@@ -203,7 +203,7 @@ class ParameterSpace:
         i_insert = random.randint(0, n_dims)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
-            new_param_values[param_name] = insert_scalar(
+            new_param_values[param_name] = insert_1d(
                 param_vals, 
                 i_insert, 
                 self.parameters[param_name].sample()
@@ -249,7 +249,7 @@ class ParameterSpace:
         i_to_remove = random.randint(0, n_dims-1)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
-            new_param_values[param_name] = delete(param_vals, i_to_remove)
+            new_param_values[param_name] = delete_1d(param_vals, i_to_remove)
         new_state = ParameterSpaceState(n_dims-1, new_param_values)
         prob_ratio = 0
         return new_state, prob_ratio
