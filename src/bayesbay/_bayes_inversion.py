@@ -128,7 +128,7 @@ class BaseBayesianInversion:
         perturbation_funcs = [_preprocess_func(func) for func in perturbation_funcs]
         # pad weights if it's None
         if perturbation_weights is None:
-            perturbation_weights = [1] * len(self.perturbation_funcs)
+            perturbation_weights = [1] * len(perturbation_funcs)
         # check lengths
         assert len(perturbation_funcs) == len(perturbation_weights),  (
                 "`perturbation_funcs` should have the same length of "
