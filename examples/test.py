@@ -122,7 +122,7 @@ interp_depths = np.linspace(0, 160, 160)
 
 # # plot depths and velocities density profile
 # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-# bb.discretization.Voronoi1D.plot_depth_profiles_density(
+# bb.discretization.Voronoi1D.plot_depth_profile_density(
 #     all_thicknesses, results["vs"], ax=ax1
 # )
 # ax1.set_xlabel("Vs")

@@ -168,7 +168,7 @@ bb.discretization.Voronoi1D.plot_depth_profiles_statistics(
 
 # plot depths and velocities density profile
 fig, axes = plt.subplots(1, 2, figsize=(10, 8))
-bb.discretization.Voronoi1D.plot_depth_profiles_density(
+bb.discretization.Voronoi1D.plot_depth_profile_density(
     all_thicknesses, saved_states["voronoi.vs"], ax=axes[0]
 )
 bb.discretization.Voronoi1D.plot_interface_hist(
