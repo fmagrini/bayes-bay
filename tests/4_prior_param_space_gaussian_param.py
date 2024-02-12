@@ -4,7 +4,7 @@ import bayesbay as bb
 
 
 # define parameter: Gaussian
-gaussian_param = bb.parameters.GaussianParameter("gaussian_param", 0, 1, 0.1)
+gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
 
 # define parameter space
 parameterization = bb.parameterization.Parameterization(

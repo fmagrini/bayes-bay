@@ -23,7 +23,7 @@ TWO_PI = 2 * math.pi
 SQRT_TWO_PI = math.sqrt(TWO_PI)
 
 
-class Parameter(ABC):
+class Prior(ABC):
     """Base class for an unknown parameter"""
 
     def __init__(self, **kwargs):
@@ -131,15 +131,15 @@ class Parameter(ABC):
 
     def set_custom_initialize(
         self,
-        initialize_func: Callable[["Parameter", np.ndarray], np.ndarray],
+        initialize_func: Callable[["Prior", np.ndarray], np.ndarray],
     ):
         r"""sets a custom initialization function
 
         Parameters
         ----------
-        initialize_func: Callable[["Parameter", np.ndarray], np.ndarray]
+        initialize_func: Callable[["Prior", np.ndarray], np.ndarray]
             The function to use for initialization. This function should take a
-            :class:`Parameter` instance and optionally an array of positions as input
+            :class:`Prior` instance and optionally an array of positions as input
             arguments, and produce an array of values as output.
 
         Examples
@@ -147,7 +147,7 @@ class Parameter(ABC):
         .. code-block:: python
 
             def my_init(
-                param: bb.parameters.Parameter,
+                param: bb.prior.Prior,
                 position: np.ndarray
             ) -> np.ndarray:
                 print("This is my custom init!")
@@ -211,7 +211,7 @@ class Parameter(ABC):
             setattr(self, name, self._init_hyper_param(param_val))
     
     def has_hyper_param(self, hyper_param: str) -> bool:
-        r"""Whether or not the :class:`Parameter` instance has the specified
+        r"""Whether or not the :class:`Prior` instance has the specified
         attribute
         
         Parameters
@@ -273,7 +273,7 @@ class Parameter(ABC):
         return f"{string[:-2]})"
 
 
-class UniformParameter(Parameter):
+class UniformPrior(Prior):
     r"""Class for defining a free parameter according to a uniform probability
     distribution
 
@@ -386,7 +386,7 @@ class UniformParameter(Parameter):
         distribution :math:`\mathcal{N}(v, \sigma)`, where :math:`v` denotes 
         the original ``value`` and :math:`\sigma` the standard deviation of the 
         Gaussian used for the perturbation. :math:`\sigma` may be dependent
-        on the specified position (:attr:`UniformParameter.perturb_std`).
+        on the specified position (:attr:`UniformPrior.perturb_std`).
 
         Parameters
         ----------
@@ -446,7 +446,7 @@ class UniformParameter(Parameter):
             return -math.inf
 
 
-class GaussianParameter(Parameter):
+class GaussianPrior(Prior):
     """Class for defining a free parameter using a Gaussian probability density
     function :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
     the mean and :math:`\sigma` the standard deviation of the Gaussian
@@ -569,7 +569,7 @@ class GaussianParameter(Parameter):
         where :math:`v` denotes the original ``value`` and :math:`\theta` the 
         standard deviation of the Gaussian used for the perturbation. 
         :math:`\theta` may be dependent on the specified position 
-        (:attr:`GaussianParameter.perturb_std`).
+        (:attr:`GaussianPrior.perturb_std`).
         
         Parameters
         ----------
@@ -627,7 +627,7 @@ class GaussianParameter(Parameter):
         return -0.5 * np.log(2 * np.pi) - np.log(std) - 0.5 * ((value - mean) / std)**2
 
 
-class CustomParameter(Parameter):
+class CustomPrior(Prior):
     """Class enabling the definition of an arbitrary prior for a free parameter
 
     Parameters
@@ -694,7 +694,7 @@ class CustomParameter(Parameter):
         where :math:`v` denotes the original ``value`` and :math:`\theta` the 
         standard deviation of the Gaussian used for the perturbation. 
         :math:`\theta` may be dependent on the specified position in the 
-        discretization domain (:attr:`CustomParameter.perturb_std`).
+        discretization domain (:attr:`CustomPrior.perturb_std`).
         
         Parameters
         ----------

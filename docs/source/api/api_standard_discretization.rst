@@ -8,7 +8,7 @@ The ``Discretization`` class can be seen as a special type of ``ParameterSpace``
 
    graph TD;
        ParameterSpace-->Discretization;
-       Parameter-->Discretization;
+       Prior-->Discretization;
        Discretization-->Voronoi;
        Voronoi-->Voronoi1D;
 

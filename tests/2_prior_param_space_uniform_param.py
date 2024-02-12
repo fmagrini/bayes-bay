@@ -4,7 +4,7 @@ import bayesbay as bb
 
 
 # define parameter: uniform
-uniform_param = bb.parameters.UniformParameter("uniform_param", -1, 1, 0.1)
+uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
 
 # define parameter space
 parameterization = bb.parameterization.Parameterization(

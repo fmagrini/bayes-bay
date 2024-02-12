@@ -11,7 +11,7 @@ from ..parameterization._parameter_space import ParameterSpace
 from ..perturbations._param_values import ParamPerturbation
 from ._discretization import Discretization
 from ..exceptions import DimensionalityException
-from ..parameters import Parameter
+from ..prior import Prior
 from .._state import State, ParameterSpaceState
 from .._utils_1d import (
     interpolate_depth_profile, 
@@ -58,7 +58,7 @@ class Voronoi(Discretization):
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
-    parameters : List[Parameter], optional
+    parameters : List[Prior], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional
         whether to initialize the free parameters associated with the newborn 
@@ -76,7 +76,7 @@ class Voronoi(Discretization):
         n_dimensions_min: int = 2, 
         n_dimensions_max: int = 10, 
         n_dimensions_init_range: Number = 0.3, 
-        parameters: List[Parameter] = None, 
+        parameters: List[Prior] = None, 
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
     ):
         super().__init__(
@@ -387,7 +387,7 @@ class Voronoi(Discretization):
         achieved through a random deviate from the normal distribution 
         :math:`\mathcal{N}(v_i, \theta)`, with :math:`\theta` denoting the 
         standard deviation of the Gaussian used to carry out the perturbation
-        (see, for example, :attr:`bayesbay.parameters.UniformParameter.perturb_std`) . 
+        (see, for example, :attr:`bayesbay.prior.UniformPrior.perturb_std`) . 
         The partial acceptance probability is then computed numerically.
                   
     
@@ -580,7 +580,7 @@ class Voronoi1D(Voronoi):
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
-    parameters : List[Parameter], optional
+    parameters : List[Prior], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional
         whether to initialize the free parameters associated with the newborn 
@@ -597,7 +597,7 @@ class Voronoi1D(Voronoi):
             n_dimensions_min: int = 1, 
             n_dimensions_max: int = 10, 
             n_dimensions_init_range: Number = 0.3, 
-            parameters: List[Parameter] = None, 
+            parameters: List[Prior] = None, 
             birth_from: str = "neighbour"  # either "neighbour" or "prior"
         ): 
         super().__init__(
@@ -739,7 +739,7 @@ class Voronoi1D(Voronoi):
         achieved through a random deviate from the normal distribution 
         :math:`\mathcal{N}(v_i, \theta)`, with :math:`\theta` denoting the 
         standard deviation of the Gaussian used to carry out the perturbation
-        (see, for example, :attr:`bayesbay.parameters.UniformParameter.perturb_std`) . 
+        (see, for example, :attr:`bayesbay.prior.UniformPrior.perturb_std`) . 
         The partial acceptance probability is then computed numerically.
                   
     
@@ -913,7 +913,7 @@ class Voronoi1D(Voronoi):
         cbar.set_label("Counts")
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
-        ax.set_xlabel("Parameter values")
+        ax.set_xlabel("Prior values")
         ax.set_ylabel("Depth")
         return ax, cbar
 
@@ -1009,7 +1009,7 @@ class Voronoi1D(Voronoi):
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         if not ax.get_xlabel():
-            ax.set_xlabel("Parameter values")
+            ax.set_xlabel("Prior values")
         if not ax.get_ylabel():
             ax.set_ylabel("Depth")
         return ax
@@ -1067,7 +1067,7 @@ class Voronoi1D(Voronoi):
         if ax.get_ylim()[0] < ax.get_ylim()[1]:
             ax.invert_yaxis()
         if not ax.get_xlabel():
-            ax.set_xlabel("Parameter values")
+            ax.set_xlabel("Prior values")
         if not ax.get_ylabel():
             ax.set_ylabel("Depth")
 

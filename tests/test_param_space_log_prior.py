@@ -4,9 +4,9 @@ import numpy as np
 import bayesbay as bb
 
 
-uniform_param = bb.parameters.UniformParameter("uniform_param", -1, 1, 0.1)
-gaussian_param = bb.parameters.GaussianParameter("gaussian_param", 0, 1, 0.1)
-custom_param = bb.parameters.CustomParameter(
+uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
+gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
+custom_param = bb.prior.CustomPrior(
     name="custom_param",
     log_prior=lambda v: 0 if 0 <= v <= 1 else float("-inf"), 
     initialize=(lambda p: \

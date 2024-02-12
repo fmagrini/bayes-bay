@@ -46,7 +46,7 @@ def initialize_vs(param, positions=None):
     sorted_vals = np.sort(np.random.uniform(vmin, vmax, positions.size))
     return sorted_vals
 
-vs = bb.parameters.UniformParameter(name="vs", 
+vs = bb.prior.UniformPrior(name="vs", 
                                     vmin=2.5, 
                                     vmax=5, 
                                     perturb_std=0.15)

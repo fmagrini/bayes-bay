@@ -6,9 +6,9 @@ import bayesbay as bb
 
 
 # define parameter: uniform, gaussian, custom
-uniform_param = bb.parameters.UniformParameter("uniform_param", -1, 1, 0.1)
-gaussian_param = bb.parameters.GaussianParameter("gaussian_param", 0, 1, 0.1)
-custom_param = bb.parameters.CustomParameter(
+uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
+gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
+custom_param = bb.prior.CustomPrior(
     "custom_param",
     lambda v: - math.log(10) if 0 <= v <= 10 else float("-inf"), 
     lambda p: \

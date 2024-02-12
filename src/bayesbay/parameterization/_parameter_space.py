@@ -5,7 +5,7 @@ import numpy as np
 
 from .._state import State, ParameterSpaceState
 from ..exceptions import DimensionalityException
-from ..parameters import Parameter
+from ..prior import Prior
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
 from .._utils_1d import delete_1d, insert_1d
@@ -36,7 +36,7 @@ class ParameterSpace:
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
             
-    parameters : List[Parameter], optional
+    parameters : List[Prior], optional
         a list of free parameters, by default None
     """
     def __init__(
@@ -46,7 +46,7 @@ class ParameterSpace:
         n_dimensions_min: int = 1, 
         n_dimensions_max: int = 10, 
         n_dimensions_init_range: Number = 0.3, 
-        parameters: List[Parameter] = None, 
+        parameters: List[Prior] = None, 
     ):
         self._name = name
         self._trans_d = n_dimensions is None
@@ -74,7 +74,7 @@ class ParameterSpace:
         return self._trans_d
     
     @property
-    def parameters(self) -> Dict[str, Parameter]:
+    def parameters(self) -> Dict[str, Prior]:
         """all the free parameters defined in this parameter space"""
         return self._parameters
     

@@ -4,7 +4,7 @@ from ._log_likelihood import LogLikelihood
 from ._markov_chain import MarkovChain, BaseMarkovChain
 from ._bayes_inversion import BayesianInversion, BaseBayesianInversion
 
-from . import samplers, parameters, perturbations, parameterization, discretization
+from . import samplers, prior, perturbations, parameterization, discretization
 
 from ._version import __version__
 

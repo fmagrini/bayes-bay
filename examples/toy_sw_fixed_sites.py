@@ -57,7 +57,7 @@ fwd_functions = [
     (forward_sw, [periods1, "rayleigh", 1]),
 ]
 
-param_vs = bb.parameters.UniformParameter(
+param_vs = bb.prior.UniformPrior(
     name="vs",
     vmin=VS_UNIFORM_MIN,
     vmax=VS_UNIFORM_MAX,
@@ -66,7 +66,7 @@ param_vs = bb.parameters.UniformParameter(
 
 
 def param_vs_initialize(
-    param: bb.parameters.Parameter, 
+    param: bb.prior.Prior, 
     positions: Union[np.ndarray, Number]
 ) -> Union[np.ndarray, Number]: 
     vmin, vmax = param.get_vmin_vmax(positions)
