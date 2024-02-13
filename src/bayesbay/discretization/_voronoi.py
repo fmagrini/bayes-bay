@@ -122,7 +122,7 @@ class Voronoi(Discretization):
         lb, ub, spatial_dimensions = self.vmin, self.vmax, self.spatial_dimensions
         voronoi_sites = np.random.uniform(lb, ub, (n_voronoi_cells, spatial_dimensions))
         if spatial_dimensions == 1:
-            voronoi_sites = np.sort(np.squeeze(voronoi_sites))
+            voronoi_sites = np.sort(np.ravel(voronoi_sites))
 
         # initialize parameter values
         parameter_vals = {"discretization": voronoi_sites}

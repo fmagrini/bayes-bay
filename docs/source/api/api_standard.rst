@@ -5,7 +5,7 @@ Standard API --- Overview
 
 BayesBay's standard API offers comprehensive utilities for defining Bayesian inference problems and collecting samples from posterior distributions via Markov chain Monte Carlo (MCMC). The typical workflow includes the following steps:
 
-#. Define the prior probability for the parameters to be inferred from the data (see :doc:`api_standard_parameters`)
+#. Define the prior probability for the parameters to be inferred from the data (see :doc:`api_standard_prior`)
 #. Link the free parameters to what we call a ``ParameterSpace`` or to a discretized spatial domain (see :doc:`api_standard_discretization`)
 #. Create a ``Parameterization`` that encompasses all instances of ``ParameterSpace`` or ``Discretization``
 #. Define one or more instances of ``Target`` to store information about the observed data and their associated noise. Use such instances, along with forward functions that enable data predictions from the considered model parameters, to define a ``LogLikelihood`` instance (see :doc:`api_standard_target`).

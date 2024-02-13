@@ -52,7 +52,7 @@ considered inverse problem.
 
    api/api_standard
    api/api_standard_inference
-   api/api_standard_parameters
+   api/api_standard_prior
    api/api_standard_parameterization
    api/api_standard_discretization
    api/api_standard_states

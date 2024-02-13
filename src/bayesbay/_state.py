@@ -68,6 +68,7 @@ class ParameterSpaceState:
 
     n_dimensions: int
     param_values: Dict[str, np.ndarray] = field(default_factory=dict)
+    cache: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if not isinstance(self.n_dimensions, int):
@@ -121,6 +122,48 @@ class ParameterSpaceState:
             return self.param_values.get(param_name, None)
         else:
             raise ValueError("`param_name` should be a string")
+
+    def saved_in_cache(self, name: str) -> bool:
+        """Indicates whether there is cache value stored for the given ``name``
+
+        Parameters
+        ----------
+        name : str
+            the cache name to look up
+
+        Returns
+        -------
+        bool
+            whether there is cache stored for the given ``name``
+        """
+        return name in self.cache
+
+    def load_from_cache(self, name: str) -> Any:
+        """Load the cached value for the given ``name``
+
+        Parameters
+        ----------
+        name : str
+            the cache name to look up
+
+        Returns
+        -------
+        Any
+            the cache stored for the given ``name``
+        """
+        return self.cache[name]
+
+    def save_to_cache(self, name: str, value: Any):
+        """Store the given value to cache
+
+        Parameters
+        ----------
+        name : str
+            the cache name to store
+        value : Any
+            the cache value to store
+        """
+        self.cache[name] = value
 
     def copy(self) -> "ParameterSpaceState":
         """Returns a clone of self
