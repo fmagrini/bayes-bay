@@ -133,7 +133,7 @@ inversion.run(
     burnin_iterations=100_000, 
     save_every=1000, 
     verbose=True,
-    print_every=100_000
+    print_every=10_000
 )
 
 fig, ax = plt.subplots()
