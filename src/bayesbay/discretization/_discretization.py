@@ -17,8 +17,6 @@ class Discretization(Prior, ParameterSpace):
         name of the discretization, for display and storing purposes
     spatial_dimensions : int
         number of spatial dimensions of the discretization, e.g. 1D, 2D, or 3D.
-    vmin, vmax : Union[Number, np.ndarray]
-        minimum/maximum value bounding each dimension
     perturb_std : Union[Number, np.ndarray]
         standard deviation of the Gaussians used to randomly perturb the discretization
         in each dimension. 

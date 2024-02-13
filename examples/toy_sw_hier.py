@@ -180,5 +180,5 @@ for d in np.cumsum(true_thickness):
 # saving plots, models and targets
 prefix = "toy_sw_hier"
 ax.get_figure().savefig(f"{prefix}_samples")
-fig.savefig(f"{prefix}_density")
-np.save(f"{prefix}_saved_states", saved_states)
+# fig.savefig(f"{prefix}_density")
+# np.save(f"{prefix}_saved_states", saved_states)

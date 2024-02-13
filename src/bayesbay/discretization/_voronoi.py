@@ -158,7 +158,7 @@ class Voronoi(Discretization):
                 if all((new_site >= self.vmin) & (new_site <= self.vmax)):
                     return new_site
 
-    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
+    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
         r"""perturbs the value of one Voronoi site and calculates the log of the
         partial acceptance probability
         
@@ -1148,12 +1148,34 @@ class Voronoi2D(Voronoi):
         self.compute_kdtree = compute_kdtree
         
     def initialize(self):
-        ps_state = Voronoi.initialize(self)
+        ps_state = super().initialize()
         if self.compute_kdtree:
-            voronoi_sites = ps_state.param_values['discretization']
-            kdtree = scipy.spatial.KDTree(voronoi_sites)
-            ps_state.save_to_cache('kdtree', kdtree)
+            return self._add_kdtree_to_ps_state(ps_state)
         return ps_state
+    
+    def _add_kdtree_to_ps_state(self, ps_state: ParameterSpaceState):
+        voronoi_sites = ps_state.get_param_values('discretization')
+        kdtree = scipy.spatial.KDTree(voronoi_sites)
+        ps_state.save_to_cache('kdtree', kdtree)
+        return ps_state
+
+    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
+        new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
+        if self.compute_kdtree:
+            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
+        return new_ps_state, log_prior_ratio
+    
+    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        new_ps_state, log_prob_ratio_birth = super().birth(old_ps_state)
+        if self.compute_kdtree:
+            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
+        return new_ps_state, log_prob_ratio_birth
+
+    def death(self, old_ps_state: ParameterSpaceState):
+        new_ps_state, log_prob_ratio_death = super().death(old_ps_state)
+        if self.compute_kdtree:
+            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
+        return new_ps_state, log_prob_ratio_death
     
     @staticmethod
     def plot_tessellation(
@@ -1219,13 +1241,13 @@ class Voronoi2D(Voronoi):
             }
         sites_style.update(voronoi_sites_kwargs)
 
-        xmin, xmax = voronoi_sites[:, 0].min(), voronoi_sites[:, 0].max()
-        ymin, ymax = voronoi_sites[:, 1].min(), voronoi_sites[:, 1].max()
+        xmax = np.max(np.abs(voronoi_sites[:, 0]))
+        ymax = np.max(np.abs(voronoi_sites[:, 1]))
         sites = np.append(voronoi_sites, 
                           [[xmax*100, ymax*100], 
-                           [-xmin*100, ymax*100], 
-                           [xmax*100, -ymin*100], 
-                           [-xmin*100, -ymin*100]],
+                           [-xmax*100, ymax*100], 
+                           [xmax*100, -ymax*100], 
+                           [-xmax*100, -ymax*100]],
                           axis=0)
         
         voronoi = scipy.spatial.Voronoi(sites)
@@ -1249,8 +1271,8 @@ class Voronoi2D(Voronoi):
         ax.plot(voronoi_sites[:, 0], voronoi_sites[:, 1], **sites_style) 
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ax.set_xlim(xmin, xmax)
-        ax.set_ylim(ymin, ymax)
+        ax.set_xlim(voronoi_sites[:, 0].min(), voronoi_sites[:, 0].max())
+        ax.set_ylim(voronoi_sites[:, 1].min(), voronoi_sites[:, 1].max())
         return ax, cbar
 
     @staticmethod
