@@ -259,10 +259,8 @@ class Prior(ABC):
         elif np.ndim(self.position) == 1:
             return partial(interpolate_linear_1d, x=self.position, y=hyper_param)
         else:
-            interpolator = partial(
-                scipy.interpolate.LinearNDInterpolator, 
-                points=self.position,
-                values=hyper_param,
+            interpolator = scipy.interpolate.LinearNDInterpolator(
+                points=self.position, values=hyper_param,
             )
             return _interpolate_linear_nd(self.name, interpolator)
 
@@ -745,9 +743,10 @@ class CustomPrior(Prior):
             return self._log_prior(value)
 
 
-def _interpolate_linear_nd(variable_name, partial_interpolate_nd):
+def _interpolate_linear_nd(variable_name, interpolator):
     def func(x):
-        y_interp = partial_interpolate_nd(x)
+        y_interp = interpolator(x)
         if np.isnan(y_interp):
             raise OutOfDomainException(variable_name, x)
+        return y_interp.item()
     return func

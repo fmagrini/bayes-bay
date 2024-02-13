@@ -1,4 +1,4 @@
-from ._parameters import (
+from ._prior import (
     Prior,
     UniformPrior,
     GaussianPrior,

@@ -5,6 +5,7 @@ from numbers import Number
 import random
 import numpy as np
 import scipy
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from ..parameterization._parameter_space import ParameterSpace
@@ -417,17 +418,25 @@ class Voronoi(Discretization):
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
         lb, ub = self.vmin, self.vmax
-        new_site = random.uniform(lb, ub, self.spatial_dimensions)
+        new_site = np.random.uniform(lb, ub, self.spatial_dimensions)
         old_sites = old_ps_state["discretization"]
         initialized_values, i_nearest = self._initialize_newborn_params(
             new_site, old_sites, old_ps_state
         )
         new_values = dict()
-        new_sites = np.row_stack((old_sites, new_site))
-        new_values["discretization"] = new_sites
-        for name, value in initialized_values.items():
-            old_values = old_ps_state[name]
-            new_values[name] = np.row_stack((old_values, value))
+        if self.spatial_dimensions == 1:
+            idx_insert = bisect_left(old_sites, new_site)
+            new_sites = insert_1d(old_sites, idx_insert, new_site)
+            new_values["discretization"] = new_sites
+            for name, value in initialized_values.items():
+                old_values = old_ps_state[name]
+                new_values[name] = insert_1d(old_values, idx_insert, value)
+        else:
+            new_sites = np.row_stack((old_sites, new_site))
+            new_values["discretization"] = new_sites
+            for name, value in initialized_values.items():
+                old_values = old_ps_state[name]
+                new_values[name] = np.append(old_values, value)
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, self._log_probability_ratio_birth(
             i_nearest, old_ps_state, n_cells, new_ps_state
@@ -690,117 +699,7 @@ class Voronoi1D(Voronoi):
             
         new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
         return new_ps_state, log_prior_ratio # log_proposal_ratio=0 and log_det_jacobian=0         
-    
-    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
-        r"""creates a new Voronoi cell, initializes all free parameters 
-        associated with it, and returns the pertubed state along with the
-        log of the corresponding partial acceptance probability,
         
-        .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
-            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}.
-    
-        In this case, the prior probability of the model :math:`{\bf m}` is
-        
-        .. math::
-            p({\bf m}) = p({\bf c} \mid k) p(k) \prod_i{p({\bf v}_i \mid {\bf c})} ,
-        
-        where :math:`k` denotes the number of Voronoi cells, each entry of the 
-        vector :math:`{\bf c}` corresponds to the position of a Voronoi site, 
-        and each :math:`i`\ th free parameter :math:`{\bf v}` has the same 
-        dimensionality as :math:`{\bf c}`. 
-        
-        Following [1]_, :math:`p({\bf c} \mid k) = \frac{k! \left(N - k \right)!}{N!}`. If we then
-        assume that :math:`p(k) = \frac{1}{\Delta k}`, where :math:`\Delta k = k_{max} - k_{min}`,
-        the prior ratio reads
-        
-        .. math::
-            \frac{p({\bf m'})}{p({\bf m})} = 
-            \frac{(k+1) \prod_i p(v_i^{k+1})}{(N-k)},
-                                         
-        where :math:`p(v_i^{k+1})` denotes the prior probability of the newly
-        born :math:`i`\ th parameter, which may be dependent on :math:`{\bf c}`.
-        The proposal ratio reads
-        
-        .. math::
-            \frac{q({\bf m} \mid {\bf m'})}{q({\bf m'} \mid {\bf m})} =
-            \frac{(N-k)}{(k+1) \prod_i q_{v_i}^{k+1}},
-                         
-        where :math:`q_{v_i}^{k+1}` denotes the proposal probability for the
-        newly born :math:`i`\ th parameter in the new dimension. It is easy to
-        show that, in the case of a birth from neighbor [1]_ or a birth from
-        prior [2]_ (see :attr:`birth_from`), :math:`\lvert \mathbf{J} \rvert = 1`
-        and :math:`\alpha_{p} = \frac{p({\bf m'})}{p({\bf m})} \frac{q({\bf m} \mid {\bf m'})}{q({\bf m'} \mid {\bf m})}`. 
-        It follows that
-        
-        .. math::
-            \alpha_{p} = 
-            \frac{(k+1) \prod_i p(v_i^{k+1})}{(N-k)} \frac{(N-k)}{(k+1) \prod_i q_{v_i}^{k+1}} = 
-            \frac{\prod_i p(v_i^{k+1})}{\prod_i{q_{v_i}^{k+1}}}.
-            
-        In the case of a birth from prior, :math:`q_{v_i}^{k+1} = p(v_i^{k+1})`
-        and
-        
-        .. math::
-            \alpha_{p} = 
-            \frac{\prod_i p(v_i^{k+1})}{\prod_i{p(v_i^{k+1})}} = 1.
-                                                                  
-        In the case of a birth from neighbor, :math:`q_{v_i}^{k+1} = 
-        \frac{1}{\theta \sqrt{2 \pi}} \exp \lbrace -\frac{\left( v_i^{k+1} - v_i \right)^2}{2\theta^2} \rbrace`,
-        where the newly born value, :math:`v_i^{k+1}`, is generated by perturbing
-        the original value, :math:`v_i`, of the :math:`i`\ th parameter. This is 
-        achieved through a random deviate from the normal distribution 
-        :math:`\mathcal{N}(v_i, \theta)`, with :math:`\theta` denoting the 
-        standard deviation of the Gaussian used to carry out the perturbation
-        (see, for example, :attr:`bayesbay.prior.UniformPrior.perturb_std`) . 
-        The partial acceptance probability is then computed numerically.
-                  
-    
-        Parameters
-        ----------
-        old_ps_state : ParameterSpaceState
-            current parameter space state
-    
-        Returns
-        -------
-        ParameterSpaceState
-            new parameter space state
-        Number
-            log of the partial acceptance probability, 
-            :math:`log(\alpha_{p}) = \log(\frac{\prod_i p(v_i^{k+1})}{\prod_i{q_{v_i}^{k+1}}})`
-            
-        References
-        ----------
-        .. [1] Bodin et al. 2012, Transdimensional inversion of receiver functions 
-            and surface wave dispersion
-        .. [2] Hawkins and Sambridge 2015, Geophysical imaging using trans-dimensional 
-            trees
-        """
-        # prepare for birth perturbation
-        n_cells = old_ps_state.n_dimensions
-        if n_cells == self._n_dimensions_max:
-            raise DimensionalityException("Birth")
-        # randomly choose a new Voronoi site position
-        lb, ub = self.vmin, self.vmax
-        new_site = random.uniform(lb, ub)
-        old_sites = old_ps_state["discretization"]
-        unsorted_values, i_nearest = self._initialize_newborn_params(
-            new_site, old_sites, old_ps_state
-        )
-        new_values = dict()
-        idx_insert = bisect_left(old_sites, new_site)
-        new_sites = insert_1d(old_sites, idx_insert, new_site)
-        new_values["discretization"] = new_sites
-        for name, value in unsorted_values.items():
-            old_values = old_ps_state[name]
-            new_values[name] = insert_1d(old_values, idx_insert, value)
-        new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
-        return new_ps_state, self._log_probability_ratio_birth(
-            i_nearest, old_ps_state, idx_insert, new_ps_state
-        )
-    
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):
         r"""compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
@@ -1220,3 +1119,212 @@ class Voronoi1D(Voronoi):
         )
         ax.legend()
         return ax
+
+
+class Voronoi2D(Voronoi):
+    r"""Utility class for Voronoi tessellation in 1D
+
+    Parameters
+    ----------
+    name : str
+        name attributed to the Voronoi tessellation, for display and storing 
+        purposes
+    vmin, vmax : Union[Number, np.ndarray]
+        minimum/maximum value bounding each dimension
+    perturb_std : Union[Number, np.ndarray]
+        standard deviation of the Gaussians used to randomly perturb the Voronoi
+        sites in each dimension. 
+    n_dimensions : Number, optional
+        number of dimensions. None (default) results in a trans-dimensional
+        discretization, with the dimensionality of the parameter space allowed
+        to vary in the range ``n_dimensions_min``-``n_dimensions_max``
+    n_dimensions_min, n_dimensions_max : Number, optional
+        minimum and maximum number of dimensions, by default 1 and 10. These
+        parameters are ignored if ``n_dimensions`` is not None, i.e. if the
+        discretization is not trans-dimensional
+    n_dimensions_init_range : Number, optional
+        percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
+        initialize the number of dimensions (0.3. by default). For example, if 
+        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and 
+        ``n_dimensions_init_range`` = 0.5,
+        the maximum number of dimensions at the initialization is::
+            
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            
+    parameters : List[Parameter], optional
+        a list of free parameters, by default None
+    birth_from : {"prior", "neighbour"}, optional
+        whether to initialize the free parameters associated with the newborn 
+        Voronoi cell by randomly drawing from their prior or by perturbing the 
+        value found in the nearest Voronoi cell (default)
+    compute_kdtree : bool
+        whether to compute a kd-tree for quick nearest-neighbor lookup at every
+        perturbation of the discretization
+    """
+    def __init__(        
+            self,
+            name: str,
+            vmin: Number,
+            vmax: Number,
+            perturb_std: Union[Number, np.ndarray],
+            n_dimensions: int = None, 
+            n_dimensions_min: int = 2, 
+            n_dimensions_max: int = 100, 
+            n_dimensions_init_range: Number = 0.3, 
+            parameters: List[Prior] = None, 
+            birth_from: str = "neighbour",  # either "neighbour" or "prior"
+            compute_kdtree: bool = False
+        ): 
+        super().__init__(
+            name=name,
+            spatial_dimensions=2,
+            vmin=vmin,
+            vmax=vmax,
+            perturb_std=perturb_std,
+            n_dimensions=n_dimensions,
+            n_dimensions_min=n_dimensions_min,
+            n_dimensions_max=n_dimensions_max,
+            n_dimensions_init_range=n_dimensions_init_range,
+            parameters=parameters,
+            birth_from=birth_from
+        )    
+        self.compute_kdtree = compute_kdtree
+        
+    def initialize(self):
+        ps_state = Voronoi.initialize(self)
+        if self.compute_kdtree:
+            voronoi_sites = ps_state.param_values['discretization']
+            kdtree = scipy.spatial.KDTree(voronoi_sites)
+            ps_state.save_to_cache('kdtree', kdtree)
+        return ps_state
+    
+    @staticmethod
+    def plot_tessellation(
+        voronoi_sites: np.ndarray,
+        param_values: np.ndarray = None,
+        ax=None,
+        cmap='viridis',
+        norm=None,
+        vmin=None,
+        vmax=None,
+        voronoi_sites_kwargs=None,
+        voronoi_plot_2d_kwargs=None
+    ):
+        """plot a 2D histogram of parameter values density at refined depth positions
+
+        Parameters
+        ----------
+        voronoi_sites : np.ndarray of shape (m, 2)
+            2D Voronoi-site positions
+        param_values: np.ndarray, optional
+            parameter values associated with each Voronoi cell. These could 
+            represent the physical property inferred in each cell of the
+            discretized medium
+        ax : matplotlib.axes.Axes, optional
+            an optional Axes object to plot on
+        cmap : Union[str, matplotlib.colors.Colormap]
+            the Colormap instance or registered colormap name used to map scalar 
+            data to colors
+        norm : Union[str, matplotlib.colors.Normalize]
+            the normalization method used to scale scalar data to the [0, 1] 
+            range before mapping to colors using ``cmap``. By default, a linear 
+            scaling is used, mapping the lowest value to 0 and the highest to 1.
+        vmin, vmax : Number
+            minimum and maximum values used to create the colormap
+        voronoi_sites_kwargs : dict
+            keyword arguments passed to ``matplotlib.pyplot.plot``, used to
+            plot the voronoi nuclei
+        voronoi_plot_2d_kwargs : dict
+            keyword arguments passed to ``scipy.spatial.voronoi_plot_2d``, used to
+            plot the Voronoi interfaces
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The Axes object containing the 2D histogram
+        """        
+        voronoi_plot_2d_kwargs = \
+            voronoi_plot_2d_kwargs if voronoi_plot_2d_kwargs is not None else {}
+        interfaces_style = {
+            'line_colors': 'k',
+            'show_vertices': False,
+            'show_points': False,
+            'line_width': 1
+            }
+        interfaces_style.update(voronoi_plot_2d_kwargs)
+        voronoi_sites_kwargs = \
+            voronoi_sites_kwargs if voronoi_sites_kwargs is not None else {}
+        sites_style = {
+            'color': voronoi_sites_kwargs.pop('color', voronoi_sites_kwargs.pop('c', 'k')),
+            'marker': voronoi_sites_kwargs.pop('marker', 'o'),
+            'ms': voronoi_sites_kwargs.pop('ms', voronoi_sites_kwargs.pop('markersize', 2)),
+            'ls': '',
+            'lw': 0,
+            }
+        sites_style.update(voronoi_sites_kwargs)
+
+        xmin, xmax = voronoi_sites[:, 0].min(), voronoi_sites[:, 0].max()
+        ymin, ymax = voronoi_sites[:, 1].min(), voronoi_sites[:, 1].max()
+        sites = np.append(voronoi_sites, 
+                          [[xmax*100, ymax*100], 
+                           [-xmin*100, ymax*100], 
+                           [xmax*100, -ymin*100], 
+                           [-xmin*100, -ymin*100]],
+                          axis=0)
+        
+        voronoi = scipy.spatial.Voronoi(sites)
+        if ax is None:
+            fig, ax = plt.subplots()
+        if param_values is not None:
+            # make sure scipy.spatial.Voronoi didn't resort the original sites
+            isort = [np.flatnonzero(np.all(p == voronoi.points, axis=1)).item() \
+                    for i, p in enumerate(sites[:-4])]
+            ax, cbar = Voronoi2D._fill_tessellation(
+                voronoi, 
+                param_values[isort],
+                ax=ax,
+                vmin=vmin,
+                vmax=vmax,
+                norm=norm,
+                cmap=cmap
+                )
+        
+        scipy.spatial.voronoi_plot_2d(voronoi, ax=ax, **interfaces_style)
+        ax.plot(voronoi_sites[:, 0], voronoi_sites[:, 1], **sites_style) 
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        return ax, cbar
+
+    @staticmethod
+    def _fill_tessellation(
+        voronoi: scipy.spatial.Voronoi, 
+        param_values: np.ndarray,
+        ax=None,
+        vmin=None,
+        vmax=None,
+        norm=None,
+        cmap=None
+    ):    
+        if ax is None:
+            fig, ax = plt.subplots()
+        vmin = vmin if vmin is not None else min(param_values)
+        vmax = vmax if vmax is not None else max(param_values)
+        norm = norm if norm is not None else plt.Normalize(vmin=vmin, vmax=vmax)
+        cmap = cmap if isinstance(cmap, mpl.colors.Colormap) \
+            else mpl.colormaps[cmap]
+        colors = cmap(norm(param_values))
+        
+        for ipoint, iregion in enumerate(voronoi.point_region):
+            region = voronoi.regions[iregion]
+            if region and not -1 in region: # Filter out points at infinity
+                polygon = [voronoi.vertices[i] for i in region if i >= 0]  
+                ax.fill(*zip(*polygon), color=colors[ipoint]) 
+        
+        # Create a colorbar to show the mapping between values and colors
+        cbar = ax.figure.colorbar(mpl.cm.ScalarMappable(cmap=cmap, norm=norm),
+                          ax=ax,
+                          aspect=35, 
+                          pad=0.02)
+        cbar.set_label('Parameter Values')
+        return ax, cbar
