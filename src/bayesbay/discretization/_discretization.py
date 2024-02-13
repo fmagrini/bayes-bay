@@ -3,7 +3,7 @@ from typing import Union, List, Tuple
 from numbers import Number
 import numpy as np
 
-from ..prior._parameters import Prior
+from ..prior._prior import Prior
 from ..parameterization._parameter_space import ParameterSpace
 from .._state import ParameterSpaceState
 

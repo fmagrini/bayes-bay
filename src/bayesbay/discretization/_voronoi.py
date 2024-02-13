@@ -145,12 +145,18 @@ class Voronoi(Discretization):
             perturbed Voronoi site position
         """        
         while True:
-            random_deviate = np.random.normal(
-                0, self.perturb_std, self.spatial_dimensions
-                )
-            new_site = site + random_deviate
-            if all((new_site >= self.vmin) & (new_site <= self.vmax)):
-                return new_site
+            if self.spatial_dimensions == 1:
+                random_deviate = random.normalvariate(0, self.perturb_std)
+                new_site = site + random_deviate
+                if new_site >= self.vmin and new_site <= self.vmax:
+                    return new_site
+            else: 
+                random_deviate = np.random.normal(
+                    0, self.perturb_std, self.spatial_dimensions
+                    )
+                new_site = site + random_deviate
+                if all((new_site >= self.vmin) & (new_site <= self.vmax)):
+                    return new_site
 
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
         r"""perturbs the value of one Voronoi site and calculates the log of the
@@ -180,15 +186,28 @@ class Voronoi(Discretization):
         new_site = self._perturb_site(old_sites[isite])
         new_sites = old_sites.copy()
         new_sites[isite] = new_site
-        new_values = {"discretization": new_sites}
-        log_prior_ratio = 0
-        for param_name, param in self.parameters.items():
-            values = old_ps_state[param_name]
-            if param.position is not None:
-                log_prior_old = param.log_prior(values[isite], old_site)
-                log_prior_new = param.log_prior(values[isite], new_site)
-                log_prior_ratio += log_prior_new - log_prior_old
-            new_values[param_name] = values
+        if self.spatial_dimensions == 1:
+            isort = np.argsort(new_sites)
+            new_sites = new_sites[isort]
+            new_values = {"discretization": new_sites}
+            log_prior_ratio = 0
+            for param_name, param in self.parameters.items():
+                values = old_ps_state[param_name]
+                if param.position is not None:
+                    log_prior_old = param.log_prior(values[isite], old_site)
+                    log_prior_new = param.log_prior(values[isite], new_site)
+                    log_prior_ratio += log_prior_new - log_prior_old
+                new_values[param_name] = values[isort]
+        else:
+            new_values = {"discretization": new_sites}
+            log_prior_ratio = 0
+            for param_name, param in self.parameters.items():
+                values = old_ps_state[param_name]
+                if param.position is not None:
+                    log_prior_old = param.log_prior(values[isite], old_site)
+                    log_prior_new = param.log_prior(values[isite], new_site)
+                    log_prior_ratio += log_prior_new - log_prior_old
+                new_values[param_name] = values
             
         new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
         return new_ps_state, log_prior_ratio # log_proposal_ratio=0 and log_det_jacobian=0
@@ -636,69 +655,7 @@ class Voronoi1D(Voronoi):
             n_dimensions_init_range=n_dimensions_init_range,
             parameters=parameters,
             birth_from=birth_from
-        )
-    
-    def _perturb_site(self, site: Number) -> Number:
-        """perturbes a Voronoi  site
-        
-        Parameters
-        ----------
-        site : float
-            Voronoi site position
-
-        Returns
-        -------
-        Number
-            perturbed Voronoi site position
-        """        
-        while True:
-            random_deviate = random.normalvariate(0, self.perturb_std)
-            new_site = site + random_deviate
-            if new_site >= self.vmin and new_site <= self.vmax:
-                return new_site   
-        
-    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: Number):
-        r"""perturbs the value of one Voronoi site and calculates the log of the
-        partial acceptance probability
-        
-        .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
-            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}}.
-
-        Parameters
-        ----------
-        old_ps_state : ParameterSpaceState
-            the current parameter space state
-        isite : Number
-            the index of the Voronoi site to be perturbed
-
-        Returns
-        -------
-        Tuple[ParameterSpaceState, Number]
-            the new parameter space state and its associated partial acceptance 
-            probability excluding log likelihood ratio
-        """
-        old_sites = old_ps_state["discretization"]
-        old_site = old_sites[isite]
-        new_site = self._perturb_site(old_sites[isite])
-        new_sites = old_sites.copy()
-        new_sites[isite] = new_site
-        isort = np.argsort(new_sites)
-        new_sites = new_sites[isort]
-        new_values = {"discretization": new_sites}
-        log_prior_ratio = 0
-        for param_name, param in self.parameters.items():
-            values = old_ps_state[param_name]
-            if param.position is not None:
-                log_prior_old = param.log_prior(values[isite], old_site)
-                log_prior_new = param.log_prior(values[isite], new_site)
-                log_prior_ratio += log_prior_new - log_prior_old
-            new_values[param_name] = values[isort]
-            
-        new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
-        return new_ps_state, log_prior_ratio # log_proposal_ratio=0 and log_det_jacobian=0         
+        )      
         
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):
