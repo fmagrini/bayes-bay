@@ -3,7 +3,7 @@ from typing import Tuple, List
 import random
 
 from .._state import State
-from ..prior._parameters import Prior
+from ..prior._prior import Prior
 from ._base_perturbation import Perturbation
 
 
