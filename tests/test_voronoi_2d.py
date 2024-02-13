@@ -109,7 +109,7 @@ voronoi = Voronoi2D(
     vmax=[tomo.grid.lonmax, tomo.grid.latmax], 
     perturb_std=0.05, 
     n_dimensions_min=50, 
-    n_dimensions_max=500, 
+    n_dimensions_max=1500, 
     parameters=[vel], 
     compute_kdtree=True)
 parameterization = bb.parameterization.Parameterization(voronoi)
@@ -129,9 +129,9 @@ inversion = bb.BayesianInversion(
 #%%
 inversion.run(
     sampler=None, 
-    n_iterations=500_000, 
+    n_iterations=350_000, 
     burnin_iterations=100_000, 
-    save_every=1000, 
+    save_every=500, 
     verbose=True,
     print_every=10_000
 )
