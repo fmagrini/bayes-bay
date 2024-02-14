@@ -2,13 +2,11 @@
 
 <!--next-version-placeholder-->
 
-## v0.1.10 (xx/02/2024)
+## v0.2.0 (14/02/2024)
 
-- API change: `bayesbay.parameters` -> `bayesbay.prior`
-    - `UniformParameter` -> `UniformPrior`
-    - `GaussianParameter` -> `GaussianPrior`
-    - `CustomParameter` -> `CustomPrior`
-- API change: `pertubation_weights`
+- New feature:
+    - `Voronoi2D` added
+- New feature: `pertubation_weights`
     - weights can be updated
         - `BaseBayesianInversion.set_perturbation_funcs(funcs, weights)`
         - `BaseMarkovChain.set_perturbation_funcs(funcs, weights)`
@@ -16,6 +14,18 @@
         - `BaseBayesianInversion(perturbation_weights, ...)`
         - `BaseMarkovChain(perturbation_weights, ...)`
         - `MarkovChain(perturbation_weights, ...)`
+- API change: `bayesbay.parameters` -> `bayesbay.prior`
+    - `UniformParameter` -> `UniformPrior`
+    - `GaussianParameter` -> `GaussianPrior`
+    - `CustomParameter` -> `CustomPrior`
+- API change: `ParameterSpaceState` and `State`
+    - `cache` added to `ParameterSpaceState`
+    - `save_to_cache`, `load_from_cache`, `saved_in_cache` added to `ParameterSpaceState`
+    - By default, the `ParameterSpaceState.cache` is carried over when calling `State.copy()`, i.e., it is copied to the new ParameterSpaceState
+- API change: `bayesbay.discretization._voronoi`
+    - All methods in `Voronoi1D`, except for static ones, have been moved to `Voronoi`, which is now more general
+
+    
 
 ## v0.1.9 (05/02/2024)
 
