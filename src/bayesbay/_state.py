@@ -175,7 +175,9 @@ class ParameterSpaceState:
         new_param_values = dict()
         for name, param_vals in self.param_values.items():
             new_param_values[name] = param_vals.copy()
-        return ParameterSpaceState(self.n_dimensions, new_param_values)
+        new_ps_state = ParameterSpaceState(self.n_dimensions, new_param_values)
+        new_ps_state.cache = self.cache.copy()
+        return new_ps_state
 
     def todict(self, name: str) -> dict:
         """Returns a dictionary containing the numerical values defining the

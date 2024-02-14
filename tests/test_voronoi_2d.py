@@ -64,13 +64,9 @@ def _forward(kdtree, vel):
 
 def forward(state):
     voronoi = state["voronoi"]
-    if voronoi.saved_in_cache('kdtree'):
-        kdtree = voronoi.load_from_cache('kdtree')
-    else:
-        voronoi_sites = voronoi.get_param_values('discretization')
-        kdtree = scipy.spatial.KDTree(voronoi_sites)
+    kdtree = voronoi.load_from_cache('kdtree')
     interp_vel, d_pred = _forward(kdtree, voronoi.get_param_values('vel'))
-    # state.save_to_extra_storage('interp_vel', interp_vel)
+    state.save_to_extra_storage('interp_vel', interp_vel)
     return d_pred
 
 
@@ -129,18 +125,46 @@ inversion = bb.BayesianInversion(
 #%%
 inversion.run(
     sampler=None, 
-    n_iterations=350_000, 
-    burnin_iterations=100_000, 
-    save_every=500, 
+    n_iterations=15_000, 
+    burnin_iterations=5_000, 
+    save_every=200, 
     verbose=True,
-    print_every=10_000
+    print_every=1_000
 )
 
+results = inversion.get_results()
+inferred_vel = np.mean(results['interp_vel'], axis=0)
+
 fig, ax = plt.subplots()
-ax.tricontourf(*grid_points.T, vel_true, levels=50, cmap=scm.roma)
+img = ax.tricontourf(*grid_points.T, 
+                     vel_true, 
+                     levels=50, 
+                     cmap=scm.roma,
+                     vmin=vel_true.min(),
+                     vmax=vel_true.max(),
+                     extend='both')
 ax.plot(*sources.T, 'r*')
 ax.plot(*receivers.T, 'k^')
+ax.set_xlim(grid_points[:,0].min(), grid_points[:,0].max())
+ax.set_ylim(grid_points[:,1].min(), grid_points[:,1].max())
+cbar = fig.colorbar(img, ax=ax, aspect=35, pad=0.02)
+cbar.set_label('Velocity [km/s]')
+ax.set_title('True model')
 plt.show()
 
-tomo.A @ (1 / vel_true)
+fig, ax = plt.subplots()
+img = ax.tricontourf(*grid_points.T, 
+                     inferred_vel, 
+                     levels=50, 
+                     cmap=scm.roma,
+                     vmin=vel_true.min(),
+                     vmax=vel_true.max(),
+                     extend='both')
+ax.set_xlim(grid_points[:,0].min(), grid_points[:,0].max())
+ax.set_ylim(grid_points[:,1].min(), grid_points[:,1].max())
+cbar = fig.colorbar(img, ax=ax, aspect=35, pad=0.02)
+ax.set_title('Inferred (average) model')
+cbar.set_label('Velocity [km/s]')
+plt.show()
+
 
