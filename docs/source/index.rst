@@ -44,6 +44,7 @@ considered inverse problem.
    tutorials/linregr
    tutorials/gmm
    tutorials/sw
+   tutorials/tomography
 
    
 .. toctree::
