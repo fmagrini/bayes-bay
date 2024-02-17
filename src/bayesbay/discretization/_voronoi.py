@@ -451,6 +451,7 @@ class Voronoi(Discretization):
                 old_values = old_ps_state[name]
                 new_values[name] = insert_1d(old_values, idx_insert, value)
         else:
+            idx_insert = n_cells
             new_sites = np.row_stack((old_sites, new_site))
             new_values["discretization"] = new_sites
             for name, value in initialized_values.items():
@@ -458,7 +459,7 @@ class Voronoi(Discretization):
                 new_values[name] = np.append(old_values, value)
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, self._log_probability_ratio_birth(
-            i_nearest, old_ps_state, n_cells, new_ps_state
+            i_nearest, old_ps_state, idx_insert, new_ps_state
         )
     
     def _log_probability_ratio_death(
