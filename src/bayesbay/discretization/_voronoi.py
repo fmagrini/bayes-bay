@@ -1190,7 +1190,7 @@ class Voronoi2D(Voronoi):
         voronoi_sites_kwargs=None,
         voronoi_plot_2d_kwargs=None
     ):
-        """plot a 2D histogram of parameter values density at refined depth positions
+        """display the Voronoi tessellation
 
         Parameters
         ----------
@@ -1267,6 +1267,8 @@ class Voronoi2D(Voronoi):
                 norm=norm,
                 cmap=cmap
                 )
+        else:
+            cbar = None
         
         scipy.spatial.voronoi_plot_2d(voronoi, ax=ax, **interfaces_style)
         ax.plot(voronoi_sites[:, 0], voronoi_sites[:, 1], **sites_style) 
