@@ -120,14 +120,14 @@ log_likelihood = bb.LogLikelihood(targets=target, fwd_functions=forward)
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
     log_likelihood=log_likelihood,
-    n_chains=10
+    n_chains=1
 )
 #%%
 inversion.run(
     sampler=None, 
-    n_iterations=15_000, 
-    burnin_iterations=5_000, 
-    save_every=200, 
+    n_iterations=100, 
+    burnin_iterations=0, 
+    save_every=10, 
     verbose=True,
     print_every=1_000
 )
