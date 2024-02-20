@@ -945,6 +945,7 @@ class Voronoi1D(Voronoi):
 
         return ax
     
+    @staticmethod
     def interpolate_depth_profile(
         voronoi_cell_extents, param_values, interp_positions
     ):
@@ -1310,3 +1311,29 @@ class Voronoi2D(Voronoi):
                           pad=0.02)
         cbar.set_label('Parameter Values')
         return ax, cbar
+    
+    @staticmethod
+    def interpolate_tessellation(
+        voronoi_sites, param_values, query_points
+    ):
+        """nearest neighbour interpolation based on Voronoi-site
+        positions and values associated with them.
+
+        Parameters
+        ----------
+        voronoi_sites : (n, 2) np.ndarray
+            the positions of the Voronoi sites
+        param_values : (n,) np.ndarray
+            the parameter values associated with each Voronoi cell
+        query_points : (m, 2) np.ndarray
+            the positions where interpolation is performed
+
+        Returns
+        -------
+        np.ndarray
+            interpolated values
+        """ 
+        kdtree = scipy.spatial.KDTree(voronoi_sites)
+        inearest = kdtree.query(query_points)[1]
+        return param_values[inearest]
+
