@@ -1142,7 +1142,9 @@ class Voronoi2D(Voronoi):
             birth_from: str = "neighbour",  # either "neighbour" or "prior"
             compute_kdtree: bool = False
         ): 
-        assert vmin is not None or polygon is not None
+        assert (vmin is not None and vmax is not None) \
+            or polygon is not None, ("Either `vmin`/`vmax` or `polygon`"
+            " must not be None to properly define the discretization domain.")
         if polygon is not None:
             polygon = shapely.geometry.Polygon(polygon)
             vmin = polygon.bounds[:2]
