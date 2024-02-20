@@ -1186,6 +1186,30 @@ class Voronoi2D(Voronoi):
         ps_state.save_to_cache('kdtree', kdtree)
         return ps_state
 
+    def _perturb_site(self, site: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
+        """perturbes a Voronoi  site
+        
+        Parameters
+        ----------
+        site : Union[Number, np.ndarray]
+            Voronoi site position.
+
+        Returns
+        -------
+        Union[Number, np.ndarray]
+            perturbed Voronoi site position
+        """        
+        if self.polygon is None:
+            return super()._perturb_site(site)
+        while True:
+            random_deviate = np.random.normal(
+                0, self.perturb_std, self.spatial_dimensions
+                )
+            new_site = site + random_deviate
+            point = shapely.geometry.Point(new_site)
+            if self.polygon.contains(point):
+                return new_site
+    
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
         new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
         if self.compute_kdtree:
