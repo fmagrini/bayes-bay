@@ -4,7 +4,8 @@ from typing import Tuple, Union, List, Dict, Callable
 from numbers import Number
 import random
 import numpy as np
-import scipy
+import scipy.spatial
+import shapely.geometry
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -101,6 +102,10 @@ class Voronoi(Discretization):
             assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
             assert isinstance(n_dimensions, int), msg % "maximum" + "`n_dimensions`, should be an integer"
 
+    def sample(self):
+        """draws a Voronoi-site position at random within the discretization domain"""
+        return np.random.uniform(self.vmin, self.vmax, self.spatial_dimensions)
+    
     def initialize(self) -> ParameterSpaceState:
         """initializes the parameter space linked to the Voronoi tessellation
 
@@ -120,9 +125,8 @@ class Voronoi(Discretization):
             n_voronoi_cells = random.randint(n_dims_min, init_max)
 
         # initialize Voronoi sites
-        lb, ub, spatial_dimensions = self.vmin, self.vmax, self.spatial_dimensions
-        voronoi_sites = np.random.uniform(lb, ub, (n_voronoi_cells, spatial_dimensions))
-        if spatial_dimensions == 1:
+        voronoi_sites = np.array([self.sample() for cell in range(n_voronoi_cells)])
+        if self.spatial_dimensions == 1:
             voronoi_sites = np.sort(np.ravel(voronoi_sites))
 
         # initialize parameter values
@@ -436,8 +440,7 @@ class Voronoi(Discretization):
         if n_cells == self._n_dimensions_max:
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
-        lb, ub = self.vmin, self.vmax
-        new_site = np.random.uniform(lb, ub, self.spatial_dimensions)
+        new_site = self.sample()
         old_sites = old_ps_state["discretization"]
         initialized_values, i_nearest = self._initialize_newborn_params(
             new_site, old_sites, old_ps_state
@@ -1089,7 +1092,11 @@ class Voronoi2D(Voronoi):
         name attributed to the Voronoi tessellation, for display and storing 
         purposes
     vmin, vmax : Union[Number, np.ndarray]
-        minimum/maximum value bounding each dimension
+        minimum/maximum value bounding each dimension. Ignored when
+        ``polygon`` is not ``None``
+    polygon: Union[np.ndarray, shapely.geometry.Polygon], optional
+        polygon defining the domain of the Voronoi tessellation; Voronoi sites
+        outside this polygon are not allowed
     perturb_std : Union[Number, np.ndarray]
         standard deviation of the Gaussians used to randomly perturb the Voronoi
         sites in each dimension. 
@@ -1123,9 +1130,10 @@ class Voronoi2D(Voronoi):
     def __init__(        
             self,
             name: str,
-            vmin: Number,
-            vmax: Number,
-            perturb_std: Union[Number, np.ndarray],
+            vmin: Number = None,
+            vmax: Number = None,
+            polygon: Union[np.ndarray, shapely.geometry.Polygon] = None,
+            perturb_std: Union[Number, np.ndarray] = 1,
             n_dimensions: int = None, 
             n_dimensions_min: int = 2, 
             n_dimensions_max: int = 100, 
@@ -1134,6 +1142,12 @@ class Voronoi2D(Voronoi):
             birth_from: str = "neighbour",  # either "neighbour" or "prior"
             compute_kdtree: bool = False
         ): 
+        assert vmin is not None or polygon is not None
+        if polygon is not None:
+            polygon = shapely.geometry.Polygon(polygon)
+            vmin = polygon.bounds[:2]
+            vmax = polygon.bounds[2:]
+        self.polygon = polygon
         super().__init__(
             name=name,
             spatial_dimensions=2,
@@ -1148,7 +1162,16 @@ class Voronoi2D(Voronoi):
             birth_from=birth_from
         )    
         self.compute_kdtree = compute_kdtree
-        
+
+    def sample(self):
+        if self.polygon is not None:
+            while True:
+                new_site = super().sample()
+                point = shapely.geometry.Point(new_site)
+                if self.polygon.contains(point):
+                    return new_site
+        return super().sample()
+    
     def initialize(self):
         ps_state = super().initialize()
         if self.compute_kdtree:
@@ -1314,9 +1337,11 @@ class Voronoi2D(Voronoi):
     
     @staticmethod
     def interpolate_tessellation(
-        voronoi_sites, param_values, query_points
+        voronoi_sites: np.ndarray, 
+        param_values: np.ndarray, 
+        query_points: np.ndarray
     ):
-        """nearest neighbour interpolation based on Voronoi-site
+        r"""nearest neighbour interpolation based on Voronoi-site
         positions and values associated with them.
 
         Parameters
