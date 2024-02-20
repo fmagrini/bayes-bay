@@ -37,16 +37,7 @@ considered inverse problem.
 
    installation
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorials
-
-   tutorials/linregr
-   tutorials/gmm
-   tutorials/sw
-   tutorials/tomography
-
-   
+  
 .. toctree::
    :maxdepth: 1
    :caption: Standard API
@@ -67,6 +58,15 @@ considered inverse problem.
 
    api/api_low_level
    api/api_low_level_inference
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples
+
+   tutorials/linregr
+   tutorials/gmm
+   tutorials/sw
+   tutorials/tomography
 
 .. toctree::
    :maxdepth: 1
