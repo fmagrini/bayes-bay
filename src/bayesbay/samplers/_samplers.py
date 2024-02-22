@@ -1,10 +1,10 @@
 from abc import abstractmethod, ABC
 from typing import Callable, List, Tuple
 from functools import partial
-import multiprocessing
 import math
 import random
 import numpy as np
+import joblib
 
 from .._markov_chain import MarkovChain, BaseMarkovChain
 
@@ -173,6 +173,7 @@ class Sampler(ABC):
         save_every=100,
         verbose=True,
         print_every=100,
+        parallel_config={}
     ) -> List[BaseMarkovChain]:
         """advances the Markov chains for a given number of iterations
 
@@ -191,7 +192,9 @@ class Sampler(ABC):
         print_every : int, optional
             the frequency with which we print the progress and information during the
             sampling, by default 100 iterations
-
+        parallel_config : dict, optional
+            keyword arguments passed to ``joblib.Parallel``. Ignored when 
+            ``len(self.chains)`` is 1
         Returns
         -------
         List[BaseMarkovChain]
@@ -208,10 +211,9 @@ class Sampler(ABC):
             end_iteration=self.end_iteration,
         )
         if n_cpus > 1:
-            pool = multiprocessing.Pool(n_cpus)
-            self._chains = pool.map(func, self.chains)
-            pool.close()
-            pool.join()
+            self._chains = joblib.Parallel(**parallel_config)(
+                joblib.delayed(func)(chain) for chain in self.chains
+            )
         else:
             self._chains = [func(chain) for chain in self.chains]
         self.on_end_advance_chain()
