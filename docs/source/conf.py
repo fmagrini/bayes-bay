@@ -33,6 +33,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
     "sphinx_design",
     "sphinx_togglebutton",
     "sphinx_copybutton",
@@ -45,6 +46,9 @@ exclude_patterns = [
     "tutorials/jupyter_cache/*"
 ]
 
+intersphinx_mapping = {
+    "joblib": ("https://joblib.readthedocs.io/en/stable", None),
+}
 
 # settings for the sphinx-copybutton extension
 copybutton_prompt_text = ">>> "

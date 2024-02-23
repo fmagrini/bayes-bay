@@ -213,7 +213,7 @@ class BaseBayesianInversion:
         save_every: int = 100,
         verbose: bool = True,
         print_every: int = 100,
-        parallel_config={}
+        parallel_config: dict = None
     ):
         r"""To run the inversion
 
@@ -240,14 +240,16 @@ class BaseBayesianInversion:
             the frequency with which we print the progress and information during the
             sampling, by default 100 iterations
         parallel_config : dict, optional
-            keyword arguments passed to ``joblib.Parallel``. Ignored when 
+            keyword arguments passed to :class:`joblib.Parallel`. Ignored when 
             ``len(self.chains)`` is 1
         """
         if sampler is None:
             sampler = VanillaSampler()
         sampler.initialize(self.chains)
-        kwargs = {"n_jobs": len(self.chains), "backend": "loky"}
-        kwargs.update(parallel_config)
+        _parallel_config = {"n_jobs": len(self.chains), "backend": "loky"}
+        if parallel_config is not None:
+            _parallel_config.update(parallel_config)
+        sampler.set_parallel_config(_parallel_config)
         self._chains = sampler.run(
             n_iterations=n_iterations,
             n_cpus=self.n_cpus,
@@ -255,7 +257,6 @@ class BaseBayesianInversion:
             save_every=save_every,
             verbose=verbose,
             print_every=print_every,
-            parallel_config=kwargs
         )
     
     def get_results(

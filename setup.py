@@ -42,7 +42,8 @@ setup(
     install_requires=[
         "numpy>=1.22",
         "matplotlib>=3.0.0",
-        "shapely>=2.0.0"
+        "shapely>=2.0.0", 
+        "joblib>=1.3.2", 
     ],
     ext_modules=cythonize(ext_modules, language_level="3"),
     include_dirs=[numpy.get_include()],

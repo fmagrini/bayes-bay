@@ -164,6 +164,27 @@ class Sampler(ABC):
     def chains(self) -> List[BaseMarkovChain]:
         """the ``MarkovChain`` instances of the current Bayesian inference"""
         return self._chains
+    
+    @property
+    def parallel_config(self) -> dict:
+        """customized parallel configuration dictionary that will be passed to
+        :class:`joblib.Parallel`
+        """
+        if not hasattr(self, "_parallel_config"):
+            self._parallel_config = dict()
+        return self._parallel_config
+    
+    def set_parallel_config(self, parallel_config: dict):
+        """set the parallel configuration that will be passed to 
+        :class:`joblib.Parallel`
+
+        Parameters
+        ----------
+        parallel_config : dict
+            updated parallel configuration
+        """
+        assert isinstance(parallel_config, dict)
+        self._parallel_config = parallel_config
 
     def advance_chain(
         self,
@@ -173,7 +194,6 @@ class Sampler(ABC):
         save_every=100,
         verbose=True,
         print_every=100,
-        parallel_config={}
     ) -> List[BaseMarkovChain]:
         """advances the Markov chains for a given number of iterations
 
@@ -210,8 +230,8 @@ class Sampler(ABC):
             begin_iteration=self.begin_iteration,
             end_iteration=self.end_iteration,
         )
-        if n_cpus > 1:
-            self._chains = joblib.Parallel(**parallel_config)(
+        if n_cpus > 1 and len(self.chains) > 1:
+            self._chains = joblib.Parallel(**self.parallel_config)(
                 joblib.delayed(func)(chain) for chain in self.chains
             )
         else:
