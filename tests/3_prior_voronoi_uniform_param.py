@@ -23,12 +23,12 @@ parameterization = bb.parameterization.Parameterization(
 # define dumb log likelihood
 targets = [bb.Target("dumb_data", np.array([1], dtype=float), 1)]
 fwd_functions = [lambda _: np.array([1], dtype=float)]
+log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 
 # run the sampler
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    log_likelihood=log_likelihood,  
     n_chains=1, 
 )
 inversion.run(
@@ -43,7 +43,7 @@ inversion.run(
 results = inversion.get_results()
 n_dims = results["my_voronoi.n_dimensions"]
 sites = results["my_voronoi.discretization"]
-param_values = results["uniform_param"]
+param_values = results["my_voronoi.uniform_param"]
 fig, axes = plt.subplots(1, 3)
 axes[0].hist(n_dims, bins=10, ec="w")
 axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")

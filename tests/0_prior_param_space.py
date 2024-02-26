@@ -17,12 +17,12 @@ parameterization = bb.parameterization.Parameterization(
 # define dumb log likelihood
 targets = [bb.Target("dumb_data", np.array([1], dtype=float), 1)]
 fwd_functions = [lambda _: np.array([1], dtype=float)]
+log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 
 # run the sampler
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    log_likelihood=log_likelihood,  
     n_chains=1, 
 )
 inversion.run(
@@ -36,7 +36,6 @@ inversion.run(
 # get results and plot
 results = inversion.get_results()
 n_dims = results["my_param_space.n_dimensions"]
-sites = results["my_param_space.discretization"]
 fig, ax = plt.subplots()
 ax.hist(n_dims, bins=10, ec="w")
 fig.savefig("0_prior_param_space")

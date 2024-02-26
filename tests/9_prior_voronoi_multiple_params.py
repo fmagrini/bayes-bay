@@ -39,12 +39,12 @@ parameterization = bb.parameterization.Parameterization(
 # define dumb log likelihood
 targets = [bb.Target("dumb_data", np.array([1], dtype=float), 1)]
 fwd_functions = [lambda _: np.array([1], dtype=float)]
+log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 
 # run the sampler
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
-    targets=targets, 
-    fwd_functions=fwd_functions, 
+    log_likelihood=log_likelihood,  
     n_chains=1, 
 )
 inversion.run(
@@ -59,13 +59,13 @@ inversion.run(
 results = inversion.get_results()
 n_dims = results["my_voronoi.n_dimensions"]
 sites = results["my_voronoi.discretization"]
-uniform_param = results["uniform_param"]
-gaussian_param = results["gaussian_param"]
-custom_param = results["custom_param"]
+uniform_param = results["my_voronoi.uniform_param"]
+gaussian_param = results["my_voronoi.gaussian_param"]
+custom_param = results["my_voronoi.custom_param"]
 fig, axes = plt.subplots(1, 5, figsize=(10, 5))
 axes[0].hist(n_dims, bins=10, ec="w")
 axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")
 axes[2].hist(np.concatenate(uniform_param), bins=20, ec="w")
 axes[3].hist(np.concatenate(gaussian_param), bins=20, ec="w")
 axes[4].hist(np.concatenate(custom_param), bins=20, ec="w")
-# fig.savefig("9_prior_voronoi_multiple_params")
+fig.savefig("9_prior_voronoi_multiple_params")
