@@ -174,7 +174,8 @@ class Sampler(ABC):
             self._parallel_config = dict()
         return self._parallel_config
     
-    def set_parallel_config(self, parallel_config: dict):
+    @parallel_config.setter
+    def parallel_config(self, parallel_config: dict):
         """set the parallel configuration that will be passed to 
         :class:`joblib.Parallel`
 
@@ -189,7 +190,6 @@ class Sampler(ABC):
     def advance_chain(
         self,
         n_iterations,
-        n_cpus=10,
         burnin_iterations=0,
         save_every=100,
         verbose=True,
@@ -230,7 +230,7 @@ class Sampler(ABC):
             begin_iteration=self.begin_iteration,
             end_iteration=self.end_iteration,
         )
-        if n_cpus > 1 and len(self.chains) > 1:
+        if self.parallel_config["n_jobs"] > 1:
             self._chains = joblib.Parallel(**self.parallel_config)(
                 joblib.delayed(func)(chain) for chain in self.chains
             )
@@ -262,7 +262,6 @@ class VanillaSampler(Sampler):
     def run(
         self,
         n_iterations,
-        n_cpus=10,
         burnin_iterations=0,
         save_every=100,
         verbose=True,
@@ -270,7 +269,6 @@ class VanillaSampler(Sampler):
     ) -> List[BaseMarkovChain]:
         return self.advance_chain(
             n_iterations=n_iterations,
-            n_cpus=n_cpus,
             burnin_iterations=burnin_iterations,
             save_every=save_every,
             verbose=verbose,
@@ -345,7 +343,6 @@ class ParallelTempering(Sampler):
     def run(
         self,
         n_iterations,
-        n_cpus=10,
         burnin_iterations=0,
         save_every=100,
         verbose=True,
@@ -359,7 +356,6 @@ class ParallelTempering(Sampler):
             )
             self.advance_chain(
                 n_iterations=n_it,
-                n_cpus=n_cpus,
                 burnin_iterations=burnin_it,
                 save_every=save_every,
                 verbose=verbose,
@@ -418,7 +414,6 @@ class SimulatedAnnealing(Sampler):
     def run(
         self,
         n_iterations,
-        n_cpus=10,
         burnin_iterations=0,
         save_every=100,
         verbose=True,
@@ -429,7 +424,6 @@ class SimulatedAnnealing(Sampler):
             self.cooling_rate = math.log(self.temperature_start) / burnin_iterations
         self.advance_chain(
             n_iterations=n_iterations,
-            n_cpus=n_cpus,
             burnin_iterations=burnin_iterations,
             save_every=save_every,
             verbose=verbose,

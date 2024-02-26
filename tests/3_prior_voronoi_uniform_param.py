@@ -30,7 +30,6 @@ inversion = bb.BayesianInversion(
     targets=targets, 
     fwd_functions=fwd_functions, 
     n_chains=1, 
-    n_cpus=1, 
 )
 inversion.run(
     sampler=None, 

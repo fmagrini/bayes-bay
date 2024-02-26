@@ -86,7 +86,6 @@ class BaseBayesianInversion:
         log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]] = None,
         log_like_func: Callable[[Any], Number] = None,
         n_chains: int = 10,
-        n_cpus: int = None,
         save_dpred: bool = True,
     ):
         assert len(walkers_starting_states) == n_chains, (
@@ -103,7 +102,6 @@ class BaseBayesianInversion:
                 log_like_func=log_like_func, 
             ) 
         self.n_chains = n_chains
-        self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
         self._chains = [
             BaseMarkovChain(
@@ -249,10 +247,9 @@ class BaseBayesianInversion:
         _parallel_config = {"n_jobs": len(self.chains), "backend": "loky"}
         if parallel_config is not None:
             _parallel_config.update(parallel_config)
-        sampler.set_parallel_config(_parallel_config)
+        sampler.parallel_config = _parallel_config
         self._chains = sampler.run(
             n_iterations=n_iterations,
-            n_cpus=self.n_cpus,
             burnin_iterations=burnin_iterations,
             save_every=save_every,
             verbose=verbose,
