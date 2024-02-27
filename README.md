@@ -16,6 +16,10 @@ Utilising object-oriented programming principles, BayesBay ensures that each com
 is a self-contained unit. This design facilitates the integration of various forward solvers and data sets, promoting the simultaneous use of multiple data types in the 
 considered inverse problem.
 
+## Documentation
+
+For comprehensive guides and examples on using BayesBay, make sure to check out our [documentation](https://bayes-bay.readthedocs.io/en/latest/).
+
 ## Development tips
 
 - To set up development environment:
