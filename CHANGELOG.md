@@ -2,7 +2,7 @@
 
 <!--next-version-placeholder-->
 
-## v0.2.1 (_/02/2024)
+## v0.2.1 (27/02/2024)
 - New feature: `Voronoi2D`
     - `Voronoi2D.interpolate_tessellation()` added
     - `Voronoi2D.polygon` added, allowing for prior probabilities defined within polygons
