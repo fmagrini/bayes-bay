@@ -63,7 +63,7 @@ considered inverse problem.
    :maxdepth: 1
    :caption: Examples
 
-   tutorials/linregr
+   tutorials/polyfit
    tutorials/gmm
    tutorials/sw
    tutorials/tomography
