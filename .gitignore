@@ -32,9 +32,9 @@ cmake-build-debug/
 
 # Automation cache
 .nox
-.vscode
 .pytest_cache
 
 # Others
 refs
 examples/results
+.vscode/
