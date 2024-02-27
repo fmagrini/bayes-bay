@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from collections import namedtuple
-from typing import Dict, Any, Union
+from typing import Dict, List, Any, Union
 from numbers import Number
 import numpy as np
 
@@ -54,7 +54,7 @@ class ParameterSpaceState:
     ----------
     n_dimensions : int
         number of dimensions characterizing the parameter space
-    param_values : Dict[str, Union[ParameterSpaceState, DataNoiseState]]
+    param_values : Dict[str, Union[np.ndarray, list(ParameterSpaceState)]]
         dictionary containing parameter values, e.g.
         ``{"voronoi": ParameterSpaceState(3, {"voronoi": np.array([1,2,3]), "vs":
         np.array([4,5,6])}), "rayleigh": DataNoiseState(std=0.01,
@@ -67,7 +67,9 @@ class ParameterSpaceState:
     """
 
     n_dimensions: int
-    param_values: Dict[str, np.ndarray] = field(default_factory=dict)
+    param_values: Dict[str, Union[np.ndarray, List["ParameterSpaceState"]]] = field(
+        default_factory=dict
+    )
     cache: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -83,10 +85,23 @@ class ParameterSpaceState:
                 )
             self.set_param_values(name, values)
 
-    def __getitem__(self, name: str) -> np.ndarray:
-        return self.get_param_values(name)
+    def __getitem__(
+        self, idx: Union[str, list]
+    ) -> Union[np.ndarray, "ParameterSpaceState"]:
+        if isinstance(idx, str):
+            return self.get_param_values(idx)
+        elif isinstance(idx, list):
+            new_param_values = dict()
+            for name, param_vals in self.param_values.items():
+                if isinstance(param_vals, np.ndarray):
+                    new_param_values[name] = param_vals[idx]
+                else:
+                    new_param_values[name] = [param_vals[i].copy() for i in idx]
+            return ParameterSpaceState(len(idx), new_param_values)
 
-    def set_param_values(self, param_name: str, values: np.ndarray):
+    def set_param_values(
+        self, param_name: str, values: Union[np.ndarray, List["ParameterSpaceState"]]
+    ):
         """Changes the numerical value(s) of a parameter
 
         Parameters
@@ -97,8 +112,13 @@ class ParameterSpaceState:
             the value(s) to be set for the given ``param_name``
         """
         if isinstance(param_name, str):
-            if not isinstance(values, np.ndarray):
-                raise TypeError("parameter values should be a numpy ndarray instance")
+            if not isinstance(values, np.ndarray) and not (
+                isinstance(values, list) and isinstance(values[0], ParameterSpaceState)
+            ):
+                raise TypeError(
+                    "parameter values should either be a numpy ndarray instance or a "
+                    "list of ParameterSpaceState instances"
+                )
             self.param_values[param_name] = values
             setattr(self, param_name, values)
         else:
@@ -199,7 +219,11 @@ class ParameterSpaceState:
         """
         _discretization = "discretization"
         res = {f"{name}.n_dimensions": self.n_dimensions}
-        res.update({f"{name}.{k}": v for k, v in self.param_values.items()})
+        for k, v in self.param_values.items():
+            if isinstance(v, np.ndarray):
+                res[f"{name}.{k}"] = v
+            elif isinstance(v, list):
+                res[f"{name}.{k}"] = [vv.todict(f"{name}.{k}") for vv in v]
         return res
 
 
@@ -331,9 +355,9 @@ class State:
             the cache value to store
         """
         self.cache[name] = value
-    
+
     def saved_in_extra_storage(self, name: str) -> bool:
-        """Indicates whether there is an extra_storage value stored for the given 
+        """Indicates whether there is an extra_storage value stored for the given
         ``name``
 
         Parameters
