@@ -41,7 +41,7 @@ setup(
     package_dir={"": "src"},
     install_requires=[
         "numpy>=1.22",
-        "scipy>=1.9.0"
+        "scipy>=1.9.0",
         "matplotlib>=3.0.0",
         "shapely>=2.0.0", 
         "joblib>=1.3.2", 
