@@ -16,7 +16,7 @@ from bayesbay import Target, LogLikelihood, BayesianInversion
 np.random.seed(30)
 
 
-X_DATA = np.linspace(0, 10, 200)
+X_DATA = np.linspace(0, 10, 100)
 NOISE_STD = 5
 
 
@@ -66,13 +66,14 @@ def fwd_function(state):
 
 d_obs = piecewise_function(X_DATA) + np.random.normal(0, NOISE_STD, X_DATA.size)
 
-# plt.step(X_DATA, piecewise_function(X_DATA), 'gray', lw=3, label='True model')
-# plt.plot(X_DATA, d_obs, 'ro', markeredgecolor='k', label='Obs. data')
-# plt.legend()
-# plt.grid()
-# plt.show()
+plt.figure(figsize=(10, 6))
+plt.step(X_DATA, piecewise_function(X_DATA), 'gray', lw=3, label='True model')
+plt.plot(X_DATA, d_obs, 'ro', markeredgecolor='k', label='Obs. data')
+plt.legend()
+plt.grid()
+plt.show()
 
-
+#%%
 y = UniformPrior('y', vmin=-35, vmax=35, perturb_std=3.5)
 voronoi = Voronoi1D(
     name="voronoi", 
@@ -141,6 +142,7 @@ ax2.fill_between([target.std_min, target.std_max],
                  alpha=0.2, 
                  label='Prior')
 ax2.set_xlabel('Noise standard deviation')
+# ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 ax2.legend(framealpha=0.9)
 plt.tight_layout()
 plt.show()
