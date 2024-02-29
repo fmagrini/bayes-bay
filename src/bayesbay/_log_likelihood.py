@@ -228,7 +228,7 @@ class LogLikelihood:
     ) -> Number:
         old_misfit, old_log_det = self._get_misfit_and_det(old_state)
         new_misfit, new_log_det = self._get_misfit_and_det(new_state)
-        log_like_ratio = (old_log_det - new_log_det) + (old_misfit - new_misfit) / 2
+        log_like_ratio = (old_log_det - new_log_det + old_misfit - new_misfit) / 2
         return log_like_ratio
 
     def _log_likelihood_ratio_from_loglike(
