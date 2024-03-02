@@ -73,11 +73,7 @@ class BaseBayesianInversion:
         is None. Default to None
     n_chains: int, optional
         the number of chains in the McMC sampling. Default is 10
-    n_cpus: int, optional
-        the number of CPUs available. If None (default) this is usually set to 
-        the number of chains (``n_chains``)
     """
-
     def __init__(
         self,
         walkers_starting_states: List[Any],
@@ -340,7 +336,6 @@ class BaseBayesianInversion:
             "perturbation_funcs": self.perturbation_funcs, 
             "log_likelihood": self.log_likelihood, 
             "n_chains": self.n_chains, 
-            "n_cpus": self.n_cpus, 
             "save_dpred": self.save_dpred, 
             "chains": self.chains, 
         }
@@ -396,9 +391,6 @@ class BayesianInversion(BaseBayesianInversion):
         Each function takes in a state and returns a numpy array of data predictions.
     n_chains: int, 10 by default
         the number of chains in the McMC sampling
-    n_cpus: int, 10 by default
-        the number of CPUs available. If None (default) this is usually set to 
-        the number of chains (``n_chains``)
     """
 
     def __init__(
@@ -406,7 +398,6 @@ class BayesianInversion(BaseBayesianInversion):
         parameterization: Parameterization,
         log_likelihood: LogLikelihood, 
         n_chains: int = 10,
-        n_cpus: int = None,
         save_dpred: bool = True,
     ):
         if not isinstance(log_likelihood, LogLikelihood):
@@ -418,7 +409,6 @@ class BayesianInversion(BaseBayesianInversion):
         self.parameterization = parameterization
         self.log_likelihood = log_likelihood
         self.n_chains = n_chains
-        self.n_cpus = n_cpus if n_cpus is not None else n_chains
         self.save_dpred = save_dpred
         self.perturbation_funcs, self.perturbation_weights = \
             self._init_perturbation_funcs()
@@ -441,7 +431,6 @@ class BayesianInversion(BaseBayesianInversion):
             "parameterization": self.parameterization, 
             "log_likelihood": self.log_likelihood, 
             "n_chains": self.n_chains, 
-            "n_cpus": self.n_cpus, 
             "save_dpred": self.save_dpred, 
             "chains": self.chains, 
         }
