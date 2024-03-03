@@ -16,15 +16,24 @@ from ..exceptions import DimensionalityException
 from ..prior import Prior
 from .._state import State, ParameterSpaceState
 from .._utils_1d import (
-    interpolate_depth_profile, 
+    interpolate_depth_profile,
+    interpolate_nearest_1d, 
     compute_voronoi1d_cell_extents, 
     insert_1d,
+    delete_1d,
     nearest_neighbour_1d,
-    delete_1d
+    
 )
 
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
+
+
+def _plot(x, y, ax, swap_xy_axes=False, **kwargs):
+    if swap_xy_axes:
+        ax.plot(y, x, **kwargs)
+    else:
+        ax.plot(x, y, **kwargs)
 
 
 class Voronoi(Discretization):
@@ -688,46 +697,159 @@ class Voronoi1D(Voronoi):
 
         Examples
         --------
-        >>> depth = np.array([2, 5.5, 8, 10])
+        >>> voronoi_sites = np.array([2, 5.5, 8, 10])
 
-        >>> Voronoi1D.compute_cell_extents(depth, lb=0, ub=-1, fill_value=np.nan)
+        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=0, ub=-1, fill_value=np.nan)
         array([3.75, 3.  , 2.25,  nan])
 
-        >>> Voronoi1D.compute_cell_extents(depth, lb=-1, ub=-1, fill_value=np.nan)
+        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=-1, ub=-1, fill_value=np.nan)
         array([ nan, 3.  , 2.25,  nan])
 
-        >>> Voronoi1D.compute_cell_extents(depth, lb=0, ub=15, fill_value=np.nan)
+        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=0, ub=15, fill_value=np.nan)
         array([3.75, 3.  , 2.25, 6.  ])
         """
         return compute_voronoi1d_cell_extents(
             voronoi_sites, lb=lb, ub=ub, fill_value=fill_value
         )
-
+    
     @staticmethod
-    def plot_depth_profile_density(
-        samples_voronoi_cell_extents: np.ndarray,
-        samples_param_values: np.ndarray,
-        depths_bins: Union[int, np.ndarray] = 100, 
-        param_values_bins: Union[int, np.ndarray] = 100,
-        ax=None,
-        **kwargs,
+    def interpolate_tessellation(
+        voronoi_cells, 
+        param_values, 
+        interp_positions, 
+        input_type='nuclei'
     ):
-        """plot a 2D histogram of parameter values density at refined depth positions
+        """interpolates the values of a parameter associated with the given
+        Voronoi tessellation onto the specified positions
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : ndarray
-            A 2D numpy array where each row represents a sample of thicknesses (or
-            Voronoi cell extents)
+        voronoi_cells : np.ndarray
+            either Voronoi-cell extents or Voronoi-site positions (see
+            ``input_type``)
+        param_values : np.ndarray
+            the physical parameter value associated with each Voronoi cell
+        interp_positions : np.ndarray
+            the positions at which the parameter values will be returned
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
+        Returns
+        -------
+        np.ndarray
+            the physical parameter values associated with ``interp_positions``
+        """ 
+        if input_type == 'nuclei':
+            return interpolate_nearest_1d(interp_positions, voronoi_cells, param_values)
+        elif input_type == 'extents':
+            return interpolate_depth_profile(
+                np.array(voronoi_cells), 
+                np.array(param_values), 
+                interp_positions
+                )
+        raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
+
+    @staticmethod
+    def _interpolate_tessellations(
+        samples_voronoi_cells, 
+        samples_param_values, 
+        interp_positions, 
+        input_type='nuclei'
+    ):
+        interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
+        for i, (sample_cells, sample_values) in enumerate(
+            zip(samples_voronoi_cells, samples_param_values)
+        ):
+            interp_params[i, :] = Voronoi1D.interpolate_tessellation(
+                np.array(sample_cells), 
+                np.array(sample_values), 
+                interp_positions,
+                input_type=input_type
+            )
+        return interp_params
+
+    @staticmethod
+    def get_tessellation_statistics(
+        samples_voronoi_cells: list,
+        samples_param_values: list,
+        interp_positions: np.ndarray,
+        percentiles: tuple = (10, 90),
+        input_type: str = 'nuclei'
+    ) -> dict:
+        """get the mean, median, std and percentiles of the given ensemble
+
+        Parameters
+        ----------
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions 
+            (see ``input_type``)
+        samples_param_values : list
+            a list of parameter values to draw statistics from
+        interp_positions : np.ndarray
+            points to interpolate
+        percentiles : tuple, optional
+            percentiles to calculate, by default (10, 90)
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
+
+        Returns
+        -------
+        dict
+            a dictionary with these keys: "mean", "median", "std" and "percentile"
+        """
+        interp_params = Voronoi1D._interpolate_tessellations(
+            samples_voronoi_cells, 
+            samples_param_values, 
+            interp_positions,
+            input_type=input_type
+        )
+        statistics = {
+            "mean": np.mean(interp_params, axis=0),
+            "median": np.median(interp_params, axis=0),
+            "std": np.std(interp_params, axis=0),
+            "percentiles": np.percentile(interp_params, percentiles, axis=0),
+        }
+        return statistics
+
+    @staticmethod
+    def plot_tessellation_density(
+        samples_voronoi_cells: np.ndarray,
+        samples_param_values: np.ndarray,
+        position_bins: Union[int, np.ndarray] = 100, 
+        param_value_bins: Union[int, np.ndarray] = 100,
+        ax=None,
+        swap_xy_axes=True,
+        input_type='nuclei',
+        **kwargs,
+    ):
+        """plot a 2D density histogram of the Voronoi tessellation
+
+        Parameters
+        ----------
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions 
+            (see ``input_type``)
         samples_param_values : ndarray
-            A 2D numpy array where each row represents a sample of parameter values
-            (e.g., velocities)
-        depths_bins: int or np.ndarray, optional
-            The depth bins or their number, default to 100
-        param_values_bins: int or np.ndarray, optional
-            The parameter value bins or their number, default to 100
+            a 2D numpy array where each row contains the parameter values 
+            associated with each Voronoi discretization found
+            in ``samples_voronoi_cell_extents`` at the same row index
+        position_bins: int or np.ndarray, optional
+            the position bins or their number, default to 100
+        param_value_bins: int or np.ndarray, optional
+            the parameter value bins or their number, default to 100
         ax : Axes, optional
-            An optional Axes object to plot on
+            an optional Axes object to plot on
+        bounds : tuple, optional
+        swap_xy_axes : bool
+            if True (default), the x axis is swapped with the y axis so as to display
+            the parameter value associated with each Voronoi cell on the x axis
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
         kwargs : dict, optional
             Additional keyword arguments to pass to ax.hist2d
 
@@ -749,105 +871,146 @@ class Voronoi1D(Voronoi):
             
             # plot
             results = inversion.get_results()
-            samples_voronoi_cell_extents = [
-                Voronoi1D.compute_cell_extents(d) for d in results["my_voronoi.discretization"]
-            ]
-            samples_param_values = results["vs"]
-            ax = Voronoi1D.plot_depth_profile_density(
-                samples_voronoi_cell_extents, samples_param_values
+            samples_voronoi_sites = results["my_voronoi.discretization"]
+            samples_param_values = results["my_voronoi.my_param_value"]
+            ax = Voronoi1D.plot_tessellation_density(
+                samples_voronoi_sites, samples_param_values
             )
         """
+        if input_type not in ['nuclei', 'extents']:
+            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
+        if isinstance(position_bins, int):
+            lb = 0
+            if input_type == 'nuclei':
+                ub = max([np.max(nuclei) for nuclei in samples_voronoi_cells])
+            else:
+                ub = 0
+                for cell_extents in samples_voronoi_cells:
+                    ub = max(ub, np.max(np.cumsum(np.array(cell_extents))))
+            interp_positions = np.linspace(lb, ub, position_bins)
+        elif isinstance(position_bins, np.ndarray):
+            interp_positions = position_bins
+        else:
+            raise TypeError("`position_bins` should either be int or np.ndarray")
+        interp_param_values = Voronoi1D._interpolate_tessellations(
+            samples_voronoi_cells, 
+            samples_param_values, 
+            interp_positions,
+            input_type=input_type
+        )
         if ax is None:
             _, ax = plt.subplots()
-        
-        if isinstance(depths_bins, int):
-            depths = []
-            for cell_extents in samples_voronoi_cell_extents:
-                depths.extend(np.cumsum(np.array(cell_extents)))
-            depth_max = np.max(depths)
-            depth_min = 0
-            new_depths = np.linspace(depth_min, depth_max, depths_bins)
-        elif isinstance(depths_bins, np.ndarray):
-            new_depths = depths_bins
-        else:
-            raise TypeError("depths_bins should be either an int or np.ndarray")
-
-        new_param_values = Voronoi1D._interpolate_depth_profiles(
-            samples_voronoi_cell_extents, samples_param_values, new_depths
-        )
-        
-        # plotting the 2D histogram
+            
         cax = ax.hist2d(
-            new_param_values.ravel(), 
-            np.tile(new_depths, new_param_values.shape[0]), 
-            bins=(param_values_bins, len(new_depths)), 
+            interp_param_values.ravel(), 
+            np.tile(interp_positions, interp_param_values.shape[0]), 
+            bins=(param_value_bins, len(interp_positions)), 
             **kwargs
         )
         # colorbar (for the histogram density)
         cbar = plt.colorbar(cax[3], ax=ax, aspect=35, pad=0.02)
         cbar.set_label("Counts")
-        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+        if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
             ax.invert_yaxis()
-        ax.set_xlabel("Prior values")
-        ax.set_ylabel("Depth")
+        if swap_xy_axes:
+            if not ax.get_xlabel():
+                ax.set_xlabel("Parameter values")
+        else:
+            if not ax.get_ylabel():
+                ax.set_ylabel("Parameter values")
         return ax, cbar
 
     @staticmethod
     def plot_interface_hist(
-        samples_voronoi_cell_extents,
+        samples_voronoi_cells: np.ndarray,
         bins=100,
         ax=None,
+        swap_xy_axes=True,
+        input_type='nuclei',
         **kwargs,
     ):
-        """plot the 1D depth histogram of interfaces
+        """plot the 1D histogram of Voronoi-interface positions
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : list
-            a list of voronoi cell extents (thicknesses in the 1D case)
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions 
+            (see ``input_type``)
         bins : int, optional
-            number of vertical bins, by default 100
+            number of histogram bins, by default 100
         ax : matplotlib.axes.Axes, optional
             an optional user-provided ax, by default None
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
+        swap_xy_axes : bool
+            if True (default), the x axis is swapped with the y axis so as to display
+            the parameter value associated with each Voronoi cell on the x axis
 
         Returns
         -------
         matplotlib.axes.Axes
-            the resulting plot that has the depth distribution on it
         """
+        positions = []
+        for voronoi_cells in samples_voronoi_cells:
+            if input_type == 'nuclei':
+                cells_extent = Voronoi1D.compute_cell_extents(voronoi_cells)
+            elif input_type == 'extents':
+                cells_extent = voronoi_cells
+            positions.extend(np.cumsum(cells_extent)[:-1])
+
         if ax is None:
             _, ax = plt.subplots()
-        depths = []
-        for thicknesses in samples_voronoi_cell_extents:
-            depths.extend(np.cumsum(thicknesses))
-        # calculate 1D histogram
-        h, e = np.histogram(depths, bins=bins, density=True)
-        # plot the histogram
-        ax.barh(e[:-1], h, height=np.diff(e), align="edge", label="histogram", **kwargs)
-        if ax.get_ylim()[0] < ax.get_ylim()[1]:
-            ax.invert_yaxis()
-        ax.set_xlabel("Probability density")
-        ax.set_ylabel("Depth")
+        hist, edges = np.histogram(positions, bins=bins, density=True)
+        if swap_xy_axes:
+            ax.barh(edges[:-1], 
+                    hist, 
+                    height=np.diff(edges), 
+                    align="edge",  
+                    **kwargs)
+            if ax.get_ylim()[0] < ax.get_ylim()[1]:
+                ax.invert_yaxis()
+            if not ax.get_xlabel():
+                ax.set_xlabel("Probability density")
+        else:
+            plt.bar(edges[:-1], hist, width=np.diff(edges), align='edge')
+            if not ax.get_ylabel():
+                ax.set_ylabel("Probability density")
         return ax
 
     @staticmethod
-    def plot_depth_profile(
-        voronoi_cell_extents: list,
+    def plot_tessellation(
+        voronoi_cells: list,
         param_values: list,
         ax=None,
-        max_depth=None,
+        bounds=(0, None),
+        swap_xy_axes=True,
+        input_type='nuclei',
         **kwargs,
     ):
         """plot multiple 1D Earth models based on sampled parameters.
 
         Parameters
         ----------
-        voronoi_cell_extents : list
-            Voronoi cell extents (thickness of a 1D layered model)
+        voronoi_cells : list
+            either Voronoi-cell extents or Voronoi-site positions (see
+            ``input_type``)
         param_values : ndarray
-            parameter values (e.g., velocity) associated with each Voronoi cell
+            parameter values associated with each Voronoi cell
         ax : Axes, optional
             an optional Axes object to plot on
+        bounds : tuple, optional
+            lower and upper boundaries within which the tessellation will be
+            displayed. Default is (0, None). When the upper boundary is None 
+            (default), this is determined by the maximum value in `voronoi_cells`
+        swap_xy_axes : bool
+            if True (default), the x axis is swapped with the y axis so as to display
+            the parameter value associated with each Voronoi cell on the x axis
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
         kwargs : dict, optional
             additional keyword arguments to pass to ax.step
 
@@ -856,6 +1019,27 @@ class Voronoi1D(Voronoi):
         ax : Axes
             The Axes object containing the plot
         """
+        lb, ub = bounds
+        if input_type == 'nuclei':
+            voronoi_cell_extents = Voronoi1D.compute_cell_extents(voronoi_cells, lb=lb)
+        elif input_type == 'extents':
+            voronoi_cell_extents = voronoi_cells
+        else:
+            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
+        interface_positions = np.cumsum(voronoi_cell_extents[:-1])
+        if ub is not None:
+            assert ub > interface_positions[-1], ("`bounds[1]` should be greater"
+                                            " than the sum of Voronoi"
+                                            f" cell extents (here, {interface_positions[-1]})")
+            end_position = ub
+        else:
+            end_position = interface_positions[-1] + max(voronoi_cell_extents)
+            
+        x = np.insert(np.append(interface_positions, end_position), 0, lb)
+        y = np.insert(param_values, 0, param_values[0])
+        if swap_xy_axes:
+            x, y = y, x
+
         if ax is None:
             _, ax = plt.subplots()
 
@@ -868,47 +1052,51 @@ class Voronoi1D(Voronoi):
             ),  # Fixed color for the sample lines
         }
         sample_style.update(kwargs)  # Override with any provided kwargs
-        
-        depths = np.cumsum(voronoi_cell_extents[:-1])
-        if max_depth is not None:
-            assert max_depth > depths[-1], ("`max_depth` should be greater"
-                                            " than the sum of Voronoi site"
-                                            f" cell extents (here, {depths[-1]})")
-            final_depth = max_depth
-        else:
-            final_depth = depths[-1] + max(voronoi_cell_extents)
-            
-        y = np.insert(np.append(depths, final_depth), 0, 0)
-        x = np.insert(param_values, 0, param_values[0])
         ax.step(x, y, where="post", **sample_style)
-        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+        if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
             ax.invert_yaxis()
-        if not ax.get_xlabel():
-            ax.set_xlabel("Prior values")
-        if not ax.get_ylabel():
-            ax.set_ylabel("Depth")
+        if swap_xy_axes:
+            if not ax.get_xlabel():
+                ax.set_xlabel("Parameter values")
+        else:
+            if not ax.get_ylabel():
+                ax.set_ylabel("Parameter values")
         return ax
 
     @staticmethod
-    def plot_depth_profiles(
-        samples_voronoi_cell_extents: list,
+    def plot_tessellations(
+        samples_voronoi_cells: list,
         samples_param_values: list,
         ax=None,
-        max_depth=None,
+        bounds=(0, None),
+        swap_xy_axes=True,
+        input_type='nuclei',
         **kwargs,
     ):
         """plot multiple 1D Earth models based on sampled parameters.
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : list
-            a list of voronoi cell extents (thicknesses of 1D layered models)
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions 
+            (see ``input_type``)
         samples_param_values : ndarray
             a 2D numpy array where each row contains the parameter values 
-            (e.g., velocity) associated with the Voronoi discretization found
+            associated with each Voronoi discretization found
             in ``samples_voronoi_cell_extents`` at the same row index
         ax : Axes, optional
             an optional Axes object to plot on
+        bounds : tuple, optional
+            lower and upper boundaries within which the tessellation will be
+            displayed. Default is (0, None). When the upper boundary is None 
+            (default), this is determined by the maximum value in `voronoi_cells`
+        swap_xy_axes : bool
+            if True (default), the x axis is swapped with the y axis so as to display
+            the parameter value associated with each Voronoi cell on the x axis
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
         kwargs : dict, optional
             additional keyword arguments to pass to ax.step
 
@@ -917,10 +1105,20 @@ class Voronoi1D(Voronoi):
         ax : Axes
             The Axes object containing the plot
         """
+        lb, ub = bounds
+        if input_type == 'nuclei':
+            samples_voronoi_cell_extents = [
+                Voronoi1D.compute_cell_extents(nuclei, lb=lb) \
+                    for nuclei in samples_voronoi_cells]
+        elif input_type == 'extents':
+            samples_voronoi_cell_extents = samples_voronoi_cells
+        else:
+            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
+        
         if ax is None:
             _, ax = plt.subplots()
-        if max_depth is not None:
-            ax.set_ylim(0, max_depth)
+        if ub is not None:
+            ax.set_ylim(0, ub)
         # Default plotting style for samples
         sample_style = {
             "linewidth": kwargs.pop("linewidth", kwargs.pop("lw", 0.5)),
@@ -931,154 +1129,113 @@ class Voronoi1D(Voronoi):
         }
         sample_style.update(kwargs)  # Override with any provided kwargs
 
-        for thicknesses, values in zip(
+        for extents, values in zip(
             samples_voronoi_cell_extents, samples_param_values
         ):
-            Voronoi1D.plot_depth_profile(thicknesses, 
-                                         values, 
-                                         **sample_style, 
-                                         ax=ax)
+            Voronoi1D.plot_tessellation(extents, 
+                                        values, 
+                                        **sample_style, 
+                                        ax=ax,
+                                        bounds=bounds,
+                                        input_type='extents')
 
-        if ax.get_ylim()[0] < ax.get_ylim()[1]:
+        if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
             ax.invert_yaxis()
-        if not ax.get_xlabel():
-            ax.set_xlabel("Prior values")
-        if not ax.get_ylabel():
-            ax.set_ylabel("Depth")
-
+        if swap_xy_axes:
+            if not ax.get_xlabel():
+                ax.set_xlabel("Parameter values")
+        else:
+            if not ax.get_ylabel():
+                ax.set_ylabel("Parameter values")
         return ax
-    
-    @staticmethod
-    def interpolate_depth_profile(
-        voronoi_cell_extents, param_values, interp_positions
-    ):
-        """interpolates the values of a physical parameter that is a function of depth
-        as defined by the Voronoi discretization onto the specified depth positions
-
-        Parameters
-        ----------
-        voronoi_cell_extents : np.ndarray
-            the extent of each Voronoi cell
-        param_values : np.ndarray
-            the physical parameter value associated with each Voronoi cell
-        interp_positions : np.ndarray
-            the depths at which the parameter values will be returned
-
-        Returns
-        -------
-        np.ndarray
-            the physical parameter values associated with ``interp_positions``
-        """ 
-        return interpolate_depth_profile(
-            np.array(voronoi_cell_extents),
-            np.array(param_values), 
-            interp_positions, 
-        )
 
     @staticmethod
-    def _interpolate_depth_profiles(
-        samples_voronoi_cell_extents, samples_param_values, interp_positions
-    ):
-        interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
-        for i, (sample_extents, sample_values) in enumerate(
-            zip(samples_voronoi_cell_extents, samples_param_values)
-        ):
-            interp_params[i, :] = interpolate_depth_profile(
-                np.array(sample_extents), np.array(sample_values), interp_positions
-            )
-        return interp_params
-
-    @staticmethod
-    def get_depth_profiles_statistics(
-        samples_voronoi_cell_extents: list,
-        samples_param_values: list,
-        interp_positions: np.ndarray,
-        percentiles: tuple = (10, 90),
-    ) -> dict:
-        """get the mean, median, std and percentiles of the given ensemble
-
-        Parameters
-        ----------
-        samples_voronoi_cell_extents : list
-            a list of voronoi cell extents (thicknesses in the 1D case)
-        samples_param_values : list
-            a list of physical parameter values to draw statistics from
-        interp_positions : np.ndarray
-            points to interpolate
-        percentiles : tuple, optional
-            percentiles to calculate, by default (10, 90)
-
-        Returns
-        -------
-        dict
-            a dictionary with these keys: "mean", "median", "std" and "percentile"
-        """
-        interp_params = Voronoi1D._interpolate_depth_profiles(
-            samples_voronoi_cell_extents, samples_param_values, interp_positions
-        )
-        statistics = {
-            "mean": np.mean(interp_params, axis=0),
-            "median": np.median(interp_params, axis=0),
-            "std": np.std(interp_params, axis=0),
-            "percentiles": np.percentile(interp_params, percentiles, axis=0),
-        }
-        return statistics
-
-    @staticmethod
-    def plot_depth_profiles_statistics(
-        samples_voronoi_cell_extents: list,
+    def plot_tessellation_statistics(
+        samples_voronoi_cells: list,
         samples_param_values: list,
         interp_positions: np.ndarray,
         percentiles=(10, 90),
         ax=None,
+        input_type: str = 'nuclei',
+        swap_xy_axes: bool = True
     ):
         """plot the mean, median, std and percentiles from the given samples
 
         Parameters
         ----------
-        samples_voronoi_cell_extents : list
-            a list of voronoi cell extents (thicknesses in the 1D case)
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions 
+            (see ``input_type``)
         samples_param_values : list
-            a list of physical parameter values to draw statistics from
+            a list of parameter values to draw statistics from
         interp_positions : _type_
             points to interpolate
         percentiles : tuple, optional
             percentiles to calculate, by default (10, 90)
         ax : matplotlib.axes.Axes, optional
             an optional user-provided ax, by default None
-
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be 
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
+        swap_xy_axes : bool
+            if True (default), the x axis is swapped with the y axis so as to display
+            the parameter value associated with each Voronoi cell on the x axis
         Returns
         -------
         matplotlib.axes.Axes
             the resulting plot that has the statistics on it
         """
-        statistics = Voronoi1D.get_depth_profiles_statistics(
-            samples_voronoi_cell_extents,
+        statistics = Voronoi1D.get_tessellation_statistics(
+            samples_voronoi_cells,
             samples_param_values,
             interp_positions,
             percentiles,
-        )
-        mean = statistics["mean"]
-        std = statistics["std"]
-        percentiles = statistics["percentiles"]
+            input_type=input_type
+        ) 
+
         if ax is None:
             _, ax = plt.subplots()
-        ax.plot(mean, interp_positions, color="b", label="Mean")
-        ax.plot(mean - std, interp_positions, "b--")
-        ax.plot(mean + std, interp_positions, "b--")
-        ax.plot(statistics["median"], interp_positions, color="orange", label="Median")
-        ax.plot(
-            percentiles[0],
-            interp_positions,
-            color="orange",
-            ls="--",
-        )
-        ax.plot(
-            percentiles[1],
-            interp_positions,
-            color="orange",
-            ls="--",
-        )
+        _plot(interp_positions, 
+              statistics["mean"], 
+              ax,
+              swap_xy_axes=swap_xy_axes, 
+              color='b', 
+              label="Mean")
+        _plot(interp_positions, 
+              statistics["mean"]-statistics["std"], 
+              ax,
+              swap_xy_axes=swap_xy_axes, 
+              color='b',
+              ls='--',
+              label='STD')
+        _plot(interp_positions, 
+              statistics["mean"]+statistics["std"],
+              ax,
+              swap_xy_axes=swap_xy_axes, 
+              color='b',
+              ls='--')
+        _plot(interp_positions,
+              statistics["median"],
+              ax,
+              swap_xy_axes=swap_xy_axes,
+              color="orange",
+              label="Median")
+        _plot(interp_positions,
+              statistics["percentiles"][0],
+              ax,
+              swap_xy_axes=swap_xy_axes,
+              color="orange",
+              ls='--',
+              label=f'{percentiles[0]}-{percentiles[1]}th percentiles')
+        _plot(interp_positions,
+              statistics["percentiles"][1],
+              ax,
+              swap_xy_axes=swap_xy_axes,
+              color="orange",
+              ls='--')
+        if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
+            ax.invert_yaxis()
         ax.legend()
         return ax
 
@@ -1227,7 +1384,90 @@ class Voronoi2D(Voronoi):
         if self.compute_kdtree:
             new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
         return new_ps_state, log_prob_ratio_death
-    
+
+    @staticmethod
+    def interpolate_tessellation(
+        voronoi_sites: np.ndarray, 
+        param_values: np.ndarray, 
+        interp_positions: np.ndarray
+    ):
+        r"""nearest neighbour interpolation based on Voronoi-site
+        positions and values associated with them.
+
+        Parameters
+        ----------
+        voronoi_sites : (n, 2) np.ndarray
+            the positions of the Voronoi sites
+        param_values : (n,) np.ndarray
+            the parameter values associated with each Voronoi cell
+        query_points : (m, 2) np.ndarray
+            the positions where interpolation is performed
+
+        Returns
+        -------
+        np.ndarray
+            interpolated values
+        """ 
+        kdtree = scipy.spatial.KDTree(voronoi_sites)
+        inearest = kdtree.query(interp_positions)[1]
+        return param_values[inearest]
+
+    @staticmethod
+    def _interpolate_tessellations(
+        samples_voronoi_sites, 
+        samples_param_values, 
+        interp_positions
+    ):
+        interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
+        for i, (sample_sites, sample_values) in enumerate(
+            zip(samples_voronoi_sites, samples_param_values)
+        ):
+            interp_params[i, :] = Voronoi2D.interpolate_tessellation(
+                np.array(sample_sites), 
+                np.array(sample_values), 
+                interp_positions
+            )
+        return interp_params
+
+    @staticmethod
+    def get_tessellation_statistics(
+        samples_voronoi_cells: list,
+        samples_param_values: list,
+        interp_positions: np.ndarray,
+        percentiles: tuple = (10, 90)
+    ) -> dict:
+        """get the mean, median, std and percentiles of the given ensemble
+
+        Parameters
+        ----------
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions 
+            (see ``input_type``)
+        samples_param_values : list
+            a list of parameter values to draw statistics from
+        interp_positions : np.ndarray
+            points to interpolate
+        percentiles : tuple, optional
+            percentiles to calculate, by default (10, 90)
+
+        Returns
+        -------
+        dict
+            a dictionary with these keys: "mean", "median", "std" and "percentile"
+        """
+        interp_params = Voronoi2D._interpolate_tessellations(
+            samples_voronoi_cells, 
+            samples_param_values, 
+            interp_positions
+        )
+        statistics = {
+            "mean": np.mean(interp_params, axis=0),
+            "median": np.median(interp_params, axis=0),
+            "std": np.std(interp_params, axis=0),
+            "percentiles": np.percentile(interp_params, percentiles, axis=0),
+        }
+        return statistics
+
     @staticmethod
     def plot_tessellation(
         voronoi_sites: np.ndarray,
@@ -1360,31 +1600,5 @@ class Voronoi2D(Voronoi):
                           pad=0.02)
         cbar.set_label('Parameter Values')
         return ax, cbar
-    
-    @staticmethod
-    def interpolate_tessellation(
-        voronoi_sites: np.ndarray, 
-        param_values: np.ndarray, 
-        query_points: np.ndarray
-    ):
-        r"""nearest neighbour interpolation based on Voronoi-site
-        positions and values associated with them.
 
-        Parameters
-        ----------
-        voronoi_sites : (n, 2) np.ndarray
-            the positions of the Voronoi sites
-        param_values : (n,) np.ndarray
-            the parameter values associated with each Voronoi cell
-        query_points : (m, 2) np.ndarray
-            the positions where interpolation is performed
-
-        Returns
-        -------
-        np.ndarray
-            interpolated values
-        """ 
-        kdtree = scipy.spatial.KDTree(voronoi_sites)
-        inearest = kdtree.query(query_points)[1]
-        return param_values[inearest]
 
