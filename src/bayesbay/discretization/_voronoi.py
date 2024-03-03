@@ -1227,7 +1227,7 @@ class Voronoi1D(Voronoi):
               swap_xy_axes=swap_xy_axes,
               color="orange",
               ls='--',
-              label=f'{percentiles[0]}-{percentiles[1]}th percentiles')
+              label=f'{percentiles[0]}-{percentiles[1]}th Perc.')
         _plot(interp_positions,
               statistics["percentiles"][1],
               ax,
