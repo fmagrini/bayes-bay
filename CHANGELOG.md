@@ -2,6 +2,19 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.2 (04/03/2024)
+- New feature: `Voronoi2D`
+    - `Voronoi2D.get_tessellation_statistics()` added
+- API change: `Voronoi1D`
+    - generalized all static methods:
+        - interpolate_tessellation
+        - _interpolate_tessellations
+        - get_tessellation_statistics
+        - plot_tessellation
+        - plot_tessellations
+        - plot_tessellation_statistics
+        - plot_tessellation_density
+
 ## v0.2.1 (27/02/2024)
 - New feature: `Voronoi2D`
     - `Voronoi2D.interpolate_tessellation()` added
