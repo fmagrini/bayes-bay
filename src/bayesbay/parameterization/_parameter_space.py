@@ -8,6 +8,7 @@ from ..exceptions import DimensionalityException
 from ..prior import Prior
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
+from ..perturbations._param_space import ParamSpacePerturbation
 from .._utils_1d import delete_1d, insert_1d
 
 
@@ -111,11 +112,11 @@ class ParameterSpace:
         self, position: np.ndarray = None
     ) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
         """initializes the parameter space including its parameter values
-        
+
         Paramters
         ---------
         position : np.ndarray, optional
-            initial position of the parameter space, by default None. The type is 
+            initial position of the parameter space, by default None. The type is
             np.ndarray so as to align with other instances to be initialized, such as
             the priors; here only the length of ``position`` is used.
 
@@ -128,7 +129,7 @@ class ParameterSpace:
             return self.sample()
         else:
             return [self.sample() for _ in position]
-        
+
     def sample(self) -> ParameterSpaceState:
         """Randomly generate a new parameter space state
 
@@ -281,7 +282,9 @@ class ParameterSpace:
             if isinstance(param_vals, np.ndarray):
                 new_param_values[param_name] = delete_1d(param_vals, i_to_remove)
             else:
-                new_param_values[param_name] = param_vals[:i_to_remove] + param_vals[i_to_remove + 1:]
+                new_param_values[param_name] = (
+                    param_vals[:i_to_remove] + param_vals[i_to_remove + 1 :]
+                )
         new_state = ParameterSpaceState(n_dims - 1, new_param_values)
         prob_ratio = 0
         return new_state, prob_ratio
@@ -289,22 +292,35 @@ class ParameterSpace:
     def _init_perturbation_funcs(self):
         self._perturbation_funcs = []
         self._perturbation_weights = []
+        _ps_perturbation_funcs = []
+        _ps_perturbation_weights = []
+        if self.trans_d:
+            _ps_perturbation_funcs.append(BirthPerturbation(self))
+            _ps_perturbation_funcs.append(DeathPerturbation(self))
+            _ps_perturbation_weights.append(1)
+            _ps_perturbation_weights.append(1)
         if self.parameters:
             # initialize parameter values perturbation
             _params = self.parameters.values()
             _prior_pars = [p for p in _params if isinstance(p, Prior)]
-            self._perturbation_funcs.append(ParamPerturbation(self.name, _prior_pars))
-            self._perturbation_weights.append(3)
+            if _prior_pars:
+                _ps_perturbation_funcs.append(ParamPerturbation(self.name, _prior_pars))
+                _ps_perturbation_weights.append(3)
             # initialize nested parameter space perturbations
             _ps_pars = [p for p in _params if isinstance(p, ParameterSpace)]
             for ps in _ps_pars:
-                self._perturbation_funcs.extend(ps.perturbation_functions)
+                _funcs = ps.perturbation_functions
+                # for f in _funcs:
+                #     if f.parent_param_space_name is None:
+                #         f.parent_param_space_name = self.name
+                self._perturbation_funcs.extend(_funcs)
                 self._perturbation_weights.extend(ps.perturbation_weights)
-        if self.trans_d:
-            self._perturbation_funcs.append(BirthPerturbation(self))
-            self._perturbation_funcs.append(DeathPerturbation(self))
-            self._perturbation_weights.append(1)
-            self._perturbation_weights.append(1)
+        self._perturbation_funcs.append(
+            ParamSpacePerturbation(
+                self.name, _ps_perturbation_funcs, _ps_perturbation_weights
+            )
+        )
+        self._perturbation_weights.append(sum(_ps_perturbation_weights))
 
     def _init_repr_args(self):
         self._repr_args = {

@@ -98,6 +98,8 @@ class ParameterSpaceState:
                 else:
                     new_param_values[name] = [param_vals[i].copy() for i in idx]
             return ParameterSpaceState(len(idx), new_param_values)
+        else:
+            raise TypeError("`idx` should be either a string or a list")
 
     def set_param_values(
         self, param_name: str, values: Union[np.ndarray, List["ParameterSpaceState"]]
@@ -194,7 +196,10 @@ class ParameterSpaceState:
         """
         new_param_values = dict()
         for name, param_vals in self.param_values.items():
-            new_param_values[name] = param_vals.copy()
+            if isinstance(param_vals, np.ndarray):
+                new_param_values[name] = param_vals.copy()
+            elif isinstance(param_vals, list):
+                new_param_values[name] = [param_val.copy() for param_val in param_vals]
         new_ps_state = ParameterSpaceState(self.n_dimensions, new_param_values)
         new_ps_state.cache = self.cache.copy()
         return new_ps_state

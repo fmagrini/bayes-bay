@@ -14,22 +14,20 @@ class NoisePerturbation(Perturbation):
     ----------
     targets : List[Target]
     """
-    def __init__(
-        self,
-        targets: List[Target]
-    ):
+
+    def __init__(self, targets: List[Target]):
         self.targets = targets
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         r"""proposes a new state by perturbing the data noise of the given
-        state and calculates the log of the corresponding partial acceptance probability 
-        
+        state and calculates the log of the corresponding partial acceptance probability
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
-        
+
         which in this case equals zero since a uniform probability distribution is
         inherently assumed for the noise properties.
 
@@ -44,7 +42,7 @@ class NoisePerturbation(Perturbation):
             the proposed new state and
             :math:`\alpha_{p} = \log(
             \frac{p({\bf m'})}{p({\bf m})}
-            \frac{q\left({\bf m} 
+            \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert) = 0`
         """
@@ -56,7 +54,7 @@ class NoisePerturbation(Perturbation):
         new_state = state.copy(keep_dpred=True)
         new_state.param_values.update(new_data_noise_all)
         return new_state, 0
-    
+
     def _perturb_target(
         self, target: Target, data_noise_state: DataNoiseState
     ) -> DataNoiseState:

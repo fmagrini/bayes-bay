@@ -5,6 +5,7 @@ from ._birth_death import (
     BirthPerturbation,
     DeathPerturbation,
 )
+from ._param_space import ParamSpacePerturbation
 
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "ParamPerturbation",
     "BirthPerturbation",
     "DeathPerturbation",
+    "ParamSpacePerturbation",
 ]
