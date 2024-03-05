@@ -112,6 +112,12 @@ class ParameterSpace:
         self, position: np.ndarray = None
     ) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
         """initializes the parameter space including its parameter values
+        
+        If ``position`` is None, a single parameter space state is initialized; 
+        otherwise, a list of parameter space states is initialized randomly.
+        
+        If ``self._n_dimensions_init_range`` is not None, the number of dimensions
+        will be initialized randomly within the range defined by the init range.
 
         Paramters
         ---------
@@ -126,12 +132,32 @@ class ParameterSpace:
             an initial parameter space state
         """
         if position is None:
-            return self.sample()
+            return self._initialize()
         else:
-            return [self.sample() for _ in position]
-
+            return [self._initialize() for _ in position]
+        
+    def _initialize(self) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
+        # initialize number of dimensions
+        if not self.trans_d:
+            n_dimensions = self._n_dimensions
+        else:
+            n_dims_min = self._n_dimensions_min
+            n_dims_max = self._n_dimensions_max
+            init_range = self._n_dimensions_init_range
+            init_max = int((n_dims_max - n_dims_min) * init_range + n_dims_min)
+            n_dimensions = random.randint(n_dims_min, init_max)
+        # initialize parameter values
+        parameter_vals = dict()
+        for name, param in self.parameters.items():
+            parameter_vals[name] = param.initialize(np.empty(n_dimensions))
+        return ParameterSpaceState(n_dimensions, parameter_vals)
+    
     def sample(self) -> ParameterSpaceState:
         """Randomly generate a new parameter space state
+        
+        The new value is sampled from (the full range of) the prior distribution of 
+        each parameter, regardless of the value of ``self._n_dimensions_init_range`` 
+        set during initialization.
 
         Returns
         -------
@@ -142,11 +168,9 @@ class ParameterSpace:
         if not self.trans_d:
             n_dimensions = self._n_dimensions
         else:
-            init_range = self._n_dimensions_init_range
             n_dims_min = self._n_dimensions_min
             n_dims_max = self._n_dimensions_max
-            init_max = int((n_dims_max - n_dims_min) * init_range + n_dims_min)
-            n_dimensions = random.randint(n_dims_min, init_max)
+            n_dimensions = random.randint(n_dims_min, n_dims_max)
         # initialize parameter values
         parameter_vals = dict()
         for name, param in self.parameters.items():

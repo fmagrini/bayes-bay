@@ -1,4 +1,3 @@
-import pprint
 import numpy as np
 import matplotlib.pyplot as plt
 import bayesbay as bb
@@ -50,7 +49,7 @@ inversion = bb.BayesianInversion(
 )
 inversion.run(
     sampler=None, 
-    n_iterations=50_000, 
+    n_iterations=1_000_000, 
     burnin_iterations=0, 
     save_every=3, 
     print_every=200, 
