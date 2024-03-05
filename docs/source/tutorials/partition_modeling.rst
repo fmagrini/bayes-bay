@@ -15,11 +15,11 @@ In this tutorial, we apply BayesBay to a regression task involving observed data
         -20 & \quad 6 < x \leq 6.5 \\
         25 & \quad 6.5 < x \leq 8 \\
         0 & \quad 8 < x \leq 9 \\
-        10 & \quad 9 < x \leq 10 \\
+        10 & \quad 9 < x \leq 10, \\
         \end{array}
     \right.
     
-consisting of nine segments. Our goal is to infer :math:`f(x)` from noisy observations :math:`\mathbf{d}_obs = f(x_i) + \mathcal{N}(0, \sigma)` via Bayesian sampling.
+Our goal is to infer :math:`f(x)` from noisy observations :math:`\mathbf{d}_{obs} = f(x_i) + \mathcal{N}(0, \sigma)` via Bayesian sampling.
 
 This tutorial comprises:
 
