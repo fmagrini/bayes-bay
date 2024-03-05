@@ -9,6 +9,7 @@ Created on Thu Feb 29 15:29:47 2024
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from bayesbay.discretization import Voronoi1D
 from bayesbay.prior import UniformPrior
 from bayesbay.parameterization import Parameterization
@@ -107,8 +108,7 @@ inversion.run(
     sampler=None, 
     n_iterations=300_000, 
     burnin_iterations=75_000, 
-    save_every=200,
-    print_every=10_000,
+    save_every=20,
     verbose=False
 )
 
@@ -116,36 +116,89 @@ inversion.run(
 #%%
 
 results = inversion.get_results(concatenate_chains=True)
-sampled_nuclei = results['voronoi.discretization']
-sampled_extents = [Voronoi1D.compute_cell_extents(n) for n in sampled_nuclei]
-sampled_y = results['voronoi.y']
-statistics = Voronoi1D.get_depth_profiles_statistics(
-    sampled_extents, sampled_y, X_DATA, percentiles=(10, 90)
+percentiles = 10, 90
+statistics = Voronoi1D.get_tessellation_statistics(
+    results['voronoi.discretization'], 
+    results['voronoi.y'], 
+    X_DATA, 
+    percentiles=percentiles
     )
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+
+
+fig = plt.figure(figsize=(10, 6))
+gs = gridspec.GridSpec(2, 2, height_ratios=[1.5, 1])
+
+ax1 = plt.subplot(gs[0, :]) # First row, spans all columns
+ax2 = plt.subplot(gs[1, 0]) # Second row, first column
+ax3 = plt.subplot(gs[1, 1]) # Second row, second column
+
 ax1.step(X_DATA, piecewise_function(X_DATA), 'gray', lw=3, label='True model')
-ax1.plot(X_DATA, statistics['median'], 'b', label='Inferred (median) model')
+ax1.plot(X_DATA, statistics['median'], 'b', label='Ensemble median')
 ax1.fill_between(X_DATA, 
                 *statistics['percentiles'], 
                 color='b', 
                 alpha=0.2, 
-                label='Uncertainty (10th-90th percentiles)')
+                label='Uncertainty (%s-%sth perc.)'%(percentiles))
 ax1.plot(X_DATA, d_obs, 'ro', markeredgecolor='k', label='Obs. data')
-ax1.legend(framealpha=0)
+ax1.set_xlabel('x')
+ax1.set_ylabel('y')
+ax1.legend(framealpha=0.5)
 ax1.grid()
+ax1.set_title('Inferred model')
 
-pdf, bins, _ = ax2.hist(results['d_obs.std'], density=True, bins=20, ec='w', label='Posterior')
-ax2.axvline(x=NOISE_STD, color='r', lw=3, alpha=1, label='True data noise', zorder=100)
-ax2.fill_between([target.std_min, target.std_max], 
-                 1 / (target.std_max - target.std_min), 
-                 alpha=0.2, 
+
+ndim_min, ndim_max = voronoi._n_dimensions_min, voronoi._n_dimensions_max
+ax2.fill_between([ndim_min, ndim_max], 
+                 1 / (ndim_max - ndim_min), 
+                 alpha=0.3, 
+                 color='orange',
                  label='Prior')
-ax2.set_xlabel('Noise standard deviation')
-# ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+ax2.set_xlabel('No. partitions')
+ax2.hist(results['voronoi.n_dimensions'], 
+         bins=np.arange(ndim_min-0.5, ndim_max+0.5), 
+         color='b',
+         alpha=0.8, 
+         density=True, 
+         ec='w', 
+         label='Posterior')
+ax2.axvline(x=9, color='r', lw=2, alpha=1, label='True', zorder=100)
+ax2.legend(framealpha=0)
+ax2.set_title('Partitions')
+
 ax2.legend(framealpha=0.9)
+
+ax3.fill_between([target.std_min, target.std_max], 
+                 1 / (target.std_max - target.std_min), 
+                 alpha=0.3, 
+                 color='orange',
+                 label='Prior')
+ax3.hist(results['d_obs.std'], 
+         color='b',
+         alpha=0.8, 
+         density=True, 
+         bins=10, 
+         ec='w', 
+         label='Posterior')
+ax3.axvline(x=NOISE_STD, color='r', lw=2, alpha=1, label='True', zorder=100)
+ax3.set_xlabel('Noise standard deviation')
+ax3.legend(framealpha=0.9)
+ax3.set_title('Data noise')
 plt.tight_layout()
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
