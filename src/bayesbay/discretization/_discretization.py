@@ -78,17 +78,17 @@ class Discretization(Prior, ParameterSpace):
         self.birth_from = birth_from
         self._update_repr_args(kwargs)
     
-    def sample(self, *args):
-        raise NotImplementedError("Discretization doesn't need the ``sample`` method")
+    def sample(self, *args) -> ParameterSpaceState:
+        raise NotImplementedError
     
     @abstractmethod
-    def initialize(self, *args) -> ParameterSpaceState:
+    def initialize(self, *args) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
         """initializes the values of this discretization including its paramter values
 
         Returns
         -------
-        ParameterSpaceState
-            an initial parameter space state
+        Union[ParameterSpaceState, List[ParameterSpaceState]
+            an initial parameter space state, or a list of paramtere space states
         """
         raise NotImplementedError
 

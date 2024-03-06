@@ -27,8 +27,8 @@ ps0 = bb.parameterization.ParameterSpace(
 )
 parameterization = bb.parameterization.Parameterization(ps0)
 
-# define dumb log likelihood
-targets = [bb.Target("dumb_data", np.array([1], dtype=float), 1)]
+# define dummy log likelihood
+targets = [bb.Target("dummy_data", np.array([1], dtype=float), 1)]
 fwd_functions = [lambda _: np.array([1], dtype=float)]
 log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 
@@ -38,7 +38,6 @@ inversion = bb.BayesianInversion(
     log_likelihood=log_likelihood,  
     n_chains=1, 
 )
-inversion.set_perturbation_funcs([inversion.perturbation_funcs[0], inversion.perturbation_funcs[2]])
 inversion.run(
     sampler=None, 
     n_iterations=100_000, 

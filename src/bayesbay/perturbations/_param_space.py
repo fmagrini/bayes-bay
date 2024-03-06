@@ -15,6 +15,9 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
         perturbation_weights: List[Number],
     ):
         self.param_space_name = param_space_name
+        assert len(perturbations) == len(perturbation_weights), (
+            "The number of perturbations and perturbation weights must be equal"
+        )
         self._perturbations_functions = perturbations
         self._perturbation_weights = perturbation_weights
 

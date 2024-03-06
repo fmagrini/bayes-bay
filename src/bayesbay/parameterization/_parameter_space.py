@@ -136,7 +136,7 @@ class ParameterSpace:
         else:
             return [self._initialize() for _ in position]
         
-    def _initialize(self) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
+    def _initialize(self) -> ParameterSpaceState:
         # initialize number of dimensions
         if not self.trans_d:
             n_dimensions = self._n_dimensions
@@ -152,7 +152,7 @@ class ParameterSpace:
             parameter_vals[name] = param.initialize(np.empty(n_dimensions))
         return ParameterSpaceState(n_dimensions, parameter_vals)
     
-    def sample(self) -> ParameterSpaceState:
+    def sample(self, *args) -> ParameterSpaceState:
         """Randomly generate a new parameter space state
         
         The new value is sampled from (the full range of) the prior distribution of 
@@ -174,7 +174,9 @@ class ParameterSpace:
         # initialize parameter values
         parameter_vals = dict()
         for name, param in self.parameters.items():
-            parameter_vals[name] = param.initialize(np.empty(n_dimensions))
+            parameter_vals[name] = [param.sample() for _ in range(n_dimensions)]
+            if isinstance(param, Prior):
+                parameter_vals[name] = np.array(parameter_vals[name])
         return ParameterSpaceState(n_dimensions, parameter_vals)
 
     def log_prior(self, param_space_state: ParameterSpaceState) -> Number:
@@ -255,8 +257,7 @@ class ParameterSpace:
                 new_param_values[param_name] = insert_1d(
                     param_vals, i_insert, self.parameters[param_name].sample()
                 )
-            else:
-                # insert newly sampled value at i_insert
+            else:   # insert newly sampled parameter space state at i_insert
                 new_param_values[param_name] = (
                     param_vals[:i_insert]
                     + [self.parameters[param_name].sample()]
@@ -326,7 +327,7 @@ class ParameterSpace:
         if self.parameters:
             # initialize parameter values perturbation
             _params = self.parameters.values()
-            _prior_pars = [p for p in _params if isinstance(p, Prior)]
+            _prior_pars = [p for p in _params if not isinstance(p, ParameterSpace)]
             if _prior_pars:
                 _ps_perturbation_funcs.append(ParamPerturbation(self.name, _prior_pars))
                 _ps_perturbation_weights.append(3)
@@ -334,9 +335,6 @@ class ParameterSpace:
             _ps_pars = [p for p in _params if isinstance(p, ParameterSpace)]
             for ps in _ps_pars:
                 _funcs = ps.perturbation_functions
-                # for f in _funcs:
-                #     if f.parent_param_space_name is None:
-                #         f.parent_param_space_name = self.name
                 self._perturbation_funcs.extend(_funcs)
                 self._perturbation_weights.extend(ps.perturbation_weights)
         self._perturbation_funcs.append(

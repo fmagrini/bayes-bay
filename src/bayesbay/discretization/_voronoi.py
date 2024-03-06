@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 from ..parameterization._parameter_space import ParameterSpace
 from ..perturbations._param_values import ParamPerturbation
+from ..perturbations._param_space import ParamSpacePerturbation
+from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
 from ._discretization import Discretization
 from ..exceptions import DimensionalityException
 from ..prior import Prior
@@ -102,18 +104,48 @@ class Voronoi(Discretization):
             assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
             assert isinstance(n_dimensions, int), msg % "maximum" + "`n_dimensions`, should be an integer"
 
-    def sample(self):
+    def sample_new_site(self) -> np.ndarray:
         """draws a Voronoi-site position at random within the discretization domain"""
         return np.random.uniform(self.vmin, self.vmax, self.spatial_dimensions)
     
-    def initialize(self) -> ParameterSpaceState:
+    def sample(self, *args) -> ParameterSpaceState:
+        """sample a random ParameterSpaceState instance, including the number of
+        dimensions, the Voronoi sites, and the parameter values"""
+        # initialize number of dimensions
+        if not self.trans_d:
+            n_voronoi_cells = self._n_dimensions
+        else:
+            n_dims_min = self._n_dimensions_min
+            n_dims_max = self._n_dimensions_max
+            n_voronoi_cells = random.randint(n_dims_min, n_dims_max)
+        
+        # initialize Voronoi sites
+        voronoi_sites = np.array([self.sample_new_site() for _ in range(n_voronoi_cells)])
+        if self.spatial_dimensions == 1:
+            voronoi_sites = np.sort(np.ravel(voronoi_sites))
+        
+        # initialize parameter values
+        parameter_vals = {"discretization": voronoi_sites}
+        for name, param in self.parameters.items():
+            parameter_vals[name] = param.initialize(voronoi_sites)
+        return ParameterSpaceState(n_voronoi_cells, parameter_vals)  
+
+    def initialize(
+        self, position: np.ndarray = None
+    ) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
         """initializes the parameter space linked to the Voronoi tessellation
 
         Returns
         -------
-        ParameterSpaceState
-            an initial parameter space state
+        Union[ParameterSpaceState, List[ParameterSpaceState]
+            an initial parameter space state, or a list of parameter space states
         """
+        if position is None:
+            return self._initialize()
+        else:
+            return [self._initialize() for _ in position]
+    
+    def _initialize(self) -> ParameterSpaceState:
         # initialize number of dimensions
         if not self.trans_d:
             n_voronoi_cells = self._n_dimensions
@@ -125,7 +157,7 @@ class Voronoi(Discretization):
             n_voronoi_cells = random.randint(n_dims_min, init_max)
 
         # initialize Voronoi sites
-        voronoi_sites = np.array([self.sample() for cell in range(n_voronoi_cells)])
+        voronoi_sites = np.array([self.sample_new_site() for _ in range(n_voronoi_cells)])
         if self.spatial_dimensions == 1:
             voronoi_sites = np.sort(np.ravel(voronoi_sites))
 
@@ -440,7 +472,7 @@ class Voronoi(Discretization):
         if n_cells == self._n_dimensions_max:
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
-        new_site = self.sample()
+        new_site = self.sample_new_site()
         old_sites = old_ps_state["discretization"]
         initialized_values, i_nearest = self._initialize_newborn_params(
             new_site, old_sites, old_ps_state
@@ -452,14 +484,22 @@ class Voronoi(Discretization):
             new_values["discretization"] = new_sites
             for name, value in initialized_values.items():
                 old_values = old_ps_state[name]
-                new_values[name] = insert_1d(old_values, idx_insert, value)
+                if isinstance(old_values, np.ndarray):
+                    new_values[name] = insert_1d(old_values, idx_insert, value)
+                else:
+                    new_values[name] = (
+                        old_values[:idx_insert] + [value] + old_values[idx_insert:]
+                    )
         else:
             idx_insert = n_cells
             new_sites = np.row_stack((old_sites, new_site))
             new_values["discretization"] = new_sites
             for name, value in initialized_values.items():
                 old_values = old_ps_state[name]
-                new_values[name] = np.append(old_values, value)
+                if isinstance(old_values, np.ndarray):
+                    new_values[name] = np.append(old_values, value)
+                else:
+                    new_values[name] = old_values + [value]
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, self._log_probability_ratio_birth(
             i_nearest, old_ps_state, idx_insert, new_ps_state
@@ -537,10 +577,13 @@ class Voronoi(Discretization):
         # remove parameter values for the removed site
         new_values = dict()
         for name, old_values in old_ps_state.param_values.items():
-            if self.spatial_dimensions == 1:
-                new_values[name] = delete_1d(old_values, iremove)
+            if isinstance(old_values, np.ndarray):
+                if self.spatial_dimensions == 1:
+                    new_values[name] = delete_1d(old_values, iremove)
+                else:
+                    new_values[name] = np.delete(old_values, iremove, axis=0)
             else:
-                new_values[name] = np.delete(old_values, iremove, axis=0)
+                new_values[name] = (old_values[:iremove] + old_values[iremove + 1:])
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
         return new_ps_state, self._log_probability_ratio_death(
             iremove, old_ps_state, new_ps_state
@@ -562,9 +605,36 @@ class Voronoi(Discretization):
         raise NotImplementedError
 
     def _init_perturbation_funcs(self):
-        ParameterSpace._init_perturbation_funcs(self)
-        self._perturbation_funcs.append(ParamPerturbation(self.name, [self]))
-        self._perturbation_weights.append(1)
+        self._perturbation_funcs = []
+        self._perturbation_weights = []
+        _ps_perturbation_funcs = []
+        _ps_perturbation_weights = []
+        if self.trans_d:
+            _ps_perturbation_funcs.append(BirthPerturbation(self))
+            _ps_perturbation_funcs.append(DeathPerturbation(self))
+            _ps_perturbation_weights.append(1)
+            _ps_perturbation_weights.append(1)
+        if self.parameters:
+            # initialize parameter values perturbation
+            _params = self.parameters.values()
+            _prior_pars = [p for p in _params if not isinstance(p, ParameterSpace)]
+            if _prior_pars:
+                _ps_perturbation_funcs.append(ParamPerturbation(self.name, _prior_pars))
+                _ps_perturbation_weights.append(3)
+            _ps_perturbation_funcs.append(ParamPerturbation(self.name, [self]))
+            _ps_perturbation_weights.append(1)
+            # initialize nested parameter space perturbations
+            _ps_pars = [p for p in _params if isinstance(p, ParameterSpace)]
+            for ps in _ps_pars:
+                _funcs = ps.perturbation_functions
+                self._perturbation_funcs.extend(_funcs)
+                self._perturbation_weights.extend(ps.perturbation_weights)
+        self._perturbation_funcs.append(
+            ParamSpacePerturbation(
+                self.name, _ps_perturbation_funcs, _ps_perturbation_weights
+            )
+        )
+        self._perturbation_weights.append(sum(_ps_perturbation_weights))
 
     @property
     def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
@@ -1164,18 +1234,18 @@ class Voronoi2D(Voronoi):
             birth_from=birth_from
         )    
         self.compute_kdtree = compute_kdtree
-
-    def sample(self):
+        
+    def sample_new_site(self) -> np.ndarray:
         if self.polygon is not None:
             while True:
-                new_site = super().sample()
+                new_site = super().sample_new_site()
                 point = shapely.geometry.Point(new_site)
                 if self.polygon.contains(point):
                     return new_site
-        return super().sample()
+        return super().sample_new_site()
     
-    def initialize(self):
-        ps_state = super().initialize()
+    def _initialize(self) -> ParameterSpaceState:
+        ps_state = super()._initialize()
         if self.compute_kdtree:
             return self._add_kdtree_to_ps_state(ps_state)
         return ps_state

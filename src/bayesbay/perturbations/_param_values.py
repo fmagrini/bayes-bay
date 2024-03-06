@@ -54,7 +54,7 @@ class ParamPerturbation(Perturbation, ParamSpaceMixin):
         ps_state = state[self.param_space_name]
         new_ps_state, log_prob_ratio = self.perturb_param_space_state(ps_state)
         new_state = state.copy()
-        new_state[self.param_space_name] = new_ps_state
+        new_state.set_param_values(self.param_space_name, new_ps_state)
         return new_state, log_prob_ratio
 
     def perturb_param_space_state(
