@@ -3,8 +3,8 @@ Prior
 
 This module facilitates the definition of prior probabilities for model 
 parameters within Bayesian inversion problems. It offers out-of-the-box 
-support for free parameters described by uniform and normal probability 
-distributions, along with high-level functionalities for custom prior 
+support for free parameters described by uniform, Gaussian, and Laplace 
+probability distributions, along with high-level functionalities for custom prior 
 definitions. When used in conjunction with a discretized spatial domain 
 (see :doc:`api_standard_discretization`), these prior distributions can 
 also be tailored to vary as a function of position within the domain.
@@ -15,6 +15,7 @@ also be tailored to vary as a function of position within the domain.
    graph TD;
        Prior-->UniformPrior;
        Prior-->GaussianPrior;
+       Prior-->LaplacePrior;
        Prior-->CustomPrior;
 
 .. autosummary::
@@ -24,4 +25,5 @@ also be tailored to vary as a function of position within the domain.
     bayesbay.prior.Prior
     bayesbay.prior.UniformPrior
     bayesbay.prior.GaussianPrior
+    bayesbay.prior.LaplacePrior
     bayesbay.prior.CustomPrior

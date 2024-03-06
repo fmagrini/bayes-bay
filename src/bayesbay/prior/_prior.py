@@ -24,7 +24,9 @@ SQRT_TWO_PI = math.sqrt(TWO_PI)
 
 
 class Prior(ABC):
-    """Base class for an unknown parameter"""
+    """Base class for defining the prior probability associated with a free parameter
+    in the inference problem
+    """
 
     def __init__(self, **kwargs):
         self._name = kwargs["name"]
@@ -272,8 +274,8 @@ class Prior(ABC):
 
 
 class UniformPrior(Prior):
-    r"""Class for defining a free parameter according to a uniform probability
-    distribution
+    r"""Class for defining the prior probability of a free parameter distributed
+    according to a uniform probability distribution
 
     Parameters
     ----------
@@ -445,9 +447,9 @@ class UniformPrior(Prior):
 
 
 class GaussianPrior(Prior):
-    """Class for defining a free parameter using a Gaussian probability density
-    function :math:`\mathcal{N}(\mu, \sigma)`, where :math:`\mu` denotes 
-    the mean and :math:`\sigma` the standard deviation of the Gaussian
+    r"""Class for defining the prior probability of a free parameter distributed
+    according to a Gaussian distribution, :math:`\mathcal{N}(\mu, \sigma)`, 
+    where :math:`\mu` denotes the mean and :math:`\sigma` the standard deviation
 
     Parameters
     ----------
@@ -506,7 +508,7 @@ class GaussianPrior(Prior):
     def get_std(
         self, position: Union[Number, np.ndarray] = None
     ) -> Number:
-        """get the standard deviation of the Gaussian parameter, which may be 
+        """get the standard deviation of the Gaussian, which may be 
         dependent on position in the discretization domain
 
         Parameters
@@ -616,7 +618,7 @@ class GaussianPrior(Prior):
             \exp \Big \lbrace -\frac{\left( v - \mu \right)^2}
             {2\sigma^2} \Big \rbrace`, where :math:`\mu` and :math:`\sigma`
             denote the (prior) mean and standard deviation of the 
-            Gaussian parameter and :math:`v` the ``value`` at which the prior
+            Gaussian and :math:`v` the ``value`` at which the prior
             probability is to be retrieved. :math:`\mu` and :math:`\sigma` may
             be dependent on position in the discretization domain.
         """
@@ -624,6 +626,184 @@ class GaussianPrior(Prior):
         std = self.get_std(position)
         return -0.5 * np.log(2 * np.pi) - np.log(std) - 0.5 * ((value - mean) / std)**2
 
+class LaplacePrior(Prior):
+    r"""Class for defining the prior probability of a free parameter distributed
+    according to a Laplace distribution, with probability density function 
+    :math:`p(v) = \frac{1}{2b} \exp \Big \lbrace -\frac{|v - \mu|}{b} \Big \rbrace`, 
+    where :math:`\mu` denotes the mean and :math:`b` the scale.
+
+    Parameters
+    ----------
+    name : str
+        name of the parameter, for display and storing purposes
+    mean : Union[Number, np.ndarray]
+        mean of the Gaussian. This can either be a scalar or an array
+        if the defined probability distribution is a function of ``position``
+        in the discretization domain
+    std : Union[Number, np.ndarray]
+        standard deviation of the Gaussian. This can either be a scalar or an array
+        if the defined probability distribution is a function of ``position``
+        in the discretization domain
+    perturb_std : Union[Number, np.ndarray]
+        standard deviation of the Gaussians used to randomly perturb the parameter. 
+        This can either be a scalar or an array if the defined probability distribution 
+        is a function of ``position`` in the discretization domain
+    position : np.ndarray, optional
+        position in the discretization domain, used to define a position-dependent
+        probability distribution. None by default
+    """
+
+    def __init__(self, name, mean, scale, perturb_std, position=None):
+        super().__init__(
+            name=name,
+            position=position,
+            mean=mean,
+            scale=scale,
+            perturb_std=perturb_std,
+        )
+        self.add_hyper_params({
+            "mean": mean, 
+            "scale": scale, 
+            "perturb_std": perturb_std, 
+        })
+
+    def get_mean(
+        self, position: Union[Number, np.ndarray] = None
+    ) -> Number:
+        """get the mean of the Laplace parameter, which may be dependent on
+        position in the discretization domain
+
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray], optional
+            position in the discretization domain at which the mean of the 
+            Laplace distribution will be returned. None by default
+
+        Returns
+        -------
+        Number
+            mean at the given position
+        """
+        return self.get_hyper_param("mean", position)
+    
+    def get_scale(
+        self, position: Union[Number, np.ndarray] = None
+    ) -> Number:
+        """get the scale of the Laplace distribution, which may be 
+        dependent on position in the discretization domain
+
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray], optional
+            position in the discretization domain at which the scale
+            of the Laplace distribution will be returned. None by default
+
+        Returns
+        -------
+        Number
+            scale at the given position
+        """
+        return self.get_hyper_param("scale", position)
+    
+    def sample(self, position: Number = None) -> Number:
+        mean = self.get_mean(position)
+        scale = self.get_scale(position)
+        return np.random.laplace(mean, scale)
+
+    def initialize(self, positions: np.ndarray = None) -> np.ndarray:
+        r"""initialize the parameter, possibly at specific positions in the 
+        discretization domain
+        
+        Parameters
+        ----------
+        positions: np.ndarray, optional
+            the positions in the discretization domain at which the parameter is 
+            initialized. None by default
+
+        Returns
+        -------
+        np.ndarray
+            an array of values or one value corresponding to the given positions,
+            chosen according to the Laplace distribution defined
+            by :attr:`mean` and :attr:`scale` at the given positions
+        """
+        mean = self.get_mean(positions)
+        scale = self.get_scale(positions)
+        values = np.random.laplace(mean, scale, len(positions))
+        return values
+    
+    def perturb_value(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Tuple[Number, Number]:
+        r"""perturbs the given value, in a way that may depend on the position 
+        in the discretization, and calculates the log of the corresponding 
+        partial acceptance probability,
+        
+        .. math::
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
+
+        where :math:`\bf m'` denotes the perturbed model as obtained through a 
+        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`, 
+        where :math:`v` denotes the original ``value`` and :math:`\theta` the 
+        standard deviation of the Gaussian used for the perturbation. 
+        :math:`\theta` may be dependent on the specified position 
+        (:attr:`LaplacePrior.perturb_std`).
+        
+        Parameters
+        ----------
+        value : Number
+            the current value to be perturbed from
+        position : Number
+            the position of the value to be perturbed
+        
+        Returns
+        -------
+        Tuple[Number, Number]
+            the perturbed value and
+            :math:`\alpha_{p} = \log(
+            \frac{p({\bf m'})}{p({\bf m})}
+            \frac{q\left({\bf m} 
+            \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
+            \lvert \mathbf{J} \rvert)`
+        """
+        perturb_std = self.get_perturb_std(position)
+        random_deviate = random.normalvariate(0, perturb_std)
+        new_value = value + random_deviate
+        mean = self.get_mean(position)
+        scale = self.get_scale(position)
+        ratio = (abs(value - mean) - abs(new_value -  mean)) / scale
+        return new_value, ratio
+    
+    def log_prior(self, value: Number, position: Union[Number, np.ndarray] = None) -> Number:
+        r"""calculates the log of the prior probability density for the given 
+        value, which may be dependent on the position in the discretization
+        domain
+
+        Parameters
+        ----------
+        value : Number
+            the value to calculate the probability density for
+        position : Union[Number, np.ndarray], optional
+            the position in the discretization domain at which the prior
+            probability of the parameter ``value`` is to be retrieved
+        
+        Returns
+        -------
+        Number
+            the log of the prior probability :math:`p(v) = \frac{1}{2b} 
+            \exp \Big \lbrace -\frac{|v - \mu|}
+            {b} \Big \rbrace`, where :math:`\mu` and :math:`b`
+            denote the mean and scale of the Laplace distribution 
+            and :math:`v` the ``value`` at which the prior
+            probability is to be retrieved. :math:`\mu` and :math:`b` may
+            be dependent on position in the discretization domain.
+        """
+        mean = self.get_mean(position)
+        scale = self.get_scale(position)
+        return -math.log(2) - math.log(scale) - abs(value - mean) / scale
 
 class CustomPrior(Prior):
     """Class enabling the definition of an arbitrary prior for a free parameter
