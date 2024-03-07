@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.3 (_/03/2024)
+- New feature: `bayesbay.prior.LaplacePrior`
+- New feature: `bayesbay.LogLikelihood.__repr__`
+- New feature: `bayesbay.Target.__repr__`
+
 ## v0.2.2 (04/03/2024)
 - New feature: `Voronoi2D`
     - `Voronoi2D.get_tessellation_statistics()` added
