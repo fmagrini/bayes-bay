@@ -1,11 +1,15 @@
 from abc import abstractmethod
 from typing import Union, List, Tuple
 from numbers import Number
+import math
 import numpy as np
 
 from ..prior._prior import Prior
 from ..parameterization._parameter_space import ParameterSpace
 from .._state import ParameterSpaceState
+
+
+SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
 
 class Discretization(Prior, ParameterSpace):
@@ -79,6 +83,22 @@ class Discretization(Prior, ParameterSpace):
         self._update_repr_args(kwargs)
     
     def sample(self, *args) -> ParameterSpaceState:
+        """sample a random ParameterSpaceState instance, including the number of
+        dimensions, the Voronoi sites, and the parameter values"""
+        # initialize a new ps state with number of dimensions and discretization
+        ps_state = self.sample_discretization()
+        
+        # initialize parameter values
+        for name, param in self.parameters.items():
+            new_values = [param.sample(p) for p in ps_state["discretization"]]
+            if not isinstance(param, ParameterSpace):
+                new_values = np.array(new_values)
+            ps_state.set_param_values(name, new_values)
+        return ps_state
+    
+    @abstractmethod
+    def sample_discretization(self, *args) -> ParameterSpaceState:
+        """sample a parameter space state that only contains the discretization"""
         raise NotImplementedError
     
     @abstractmethod
@@ -200,6 +220,84 @@ class Discretization(Prior, ParameterSpace):
     @abstractmethod
     def log_prior(self, param_space_state: ParameterSpaceState) -> Number:
         raise NotImplementedError
+    
+    @abstractmethod
+    def nearest_neighbour(
+        self, discretization: np.ndarray, query_point: Union[Number, np.ndarray]
+    ) -> int:
+        r"""returns the index of the nearest neighbour of a given query point in the 
+        discretization
+        
+        Parameters
+        ----------
+        discretization : np.ndarray
+            the discretization
+        query_point : Union[Number, np.ndarray]
+            the query point
+
+        Returns
+        -------
+        int
+            the index of the nearest neighbour point
+        """
+        raise NotImplementedError
+    
+    def sample_from_neighbour(
+        self, 
+        old_ps_state: ParameterSpaceState, 
+        new_ps_state: ParameterSpaceState, 
+    ):
+        r"""samples a new parameter space state from the neighbour of the given one
+        
+        Parameters
+        ----------
+        old_ps_state : ParameterSpaceState
+            the old parameter space state to sample from
+        new_ps_state : ParameterSpaceState
+            the new parameter space state that needs to be updated with underlying
+            parameter values sampled from the neighbour of the old one
+        """
+        log_prob_ratio = 0
+        # fill in the parameters with initial values
+        for param_name, param in self.parameters.items():
+            if isinstance(param, Discretization):
+                init_values = [
+                    param.sample_discretization() \
+                        for _ in range(new_ps_state.n_dimensions)
+                ]
+                # TODO log_prob_ratio += ?
+            elif isinstance(param, Prior):
+                init_values = np.empty((new_ps_state.n_dimensions))
+            else:    # ParameterSpace that is not Discretization -> birth from prior
+                init_values = [
+                    param.sample() for _ in range(new_ps_state.n_dimensions)
+                ]
+                log_prob_ratio += 0
+            new_ps_state.set_param_values(param_name, init_values)
+        
+        # fill in the parameters with nearest neighbour values
+        for i_point, point in enumerate(new_ps_state["discretization"]):
+            i_nb_point = self.nearest_neighbour(old_ps_state["discretization"], point)
+            nb_point = old_ps_state["discretization"][i_nb_point]
+            for param_name, param in self.parameters.items():
+                if isinstance(param, Discretization):
+                    _log_prob = param.sample_from_neighbour(
+                        old_ps_state[param_name][i_nb_point], 
+                        new_ps_state[param_name][i_point], 
+                    )
+                    log_prob_ratio += _log_prob
+                elif isinstance(param, Prior):
+                    nb_value = old_ps_state[param_name][i_nb_point]
+                    new_value, _ = param.perturb_value(nb_value, nb_point)
+                    new_ps_state[param_name][i_point] = new_value
+                    _log_prior_ratio += param.log_prior(new_value, point)
+                    _perturb_std = param.get_perturb_std(point)
+                    _log_proposal_ratio = (
+                        math.log(_perturb_std * SQRT_TWO_PI)
+                        + (new_value - nb_value) ** 2 / (2 * _perturb_std ** 2)
+                    )
+                    log_prob_ratio += _log_prior_ratio + _log_proposal_ratio
+        return log_prob_ratio
 
     def get_perturb_std(self, *args) -> Number:
         """get the standard deviation of the Gaussian used to perturb the 

@@ -26,7 +26,6 @@ from .._utils_1d import (
 )
 
 
-SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
 
 class Voronoi(Discretization):
@@ -104,13 +103,11 @@ class Voronoi(Discretization):
             assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
             assert isinstance(n_dimensions, int), msg % "maximum" + "`n_dimensions`, should be an integer"
 
-    def sample_new_site(self) -> np.ndarray:
+    def sample_site(self) -> np.ndarray:
         """draws a Voronoi-site position at random within the discretization domain"""
         return np.random.uniform(self.vmin, self.vmax, self.spatial_dimensions)
     
-    def sample(self, *args) -> ParameterSpaceState:
-        """sample a random ParameterSpaceState instance, including the number of
-        dimensions, the Voronoi sites, and the parameter values"""
+    def sample_discretization(self) -> ParameterSpaceState:
         # initialize number of dimensions
         if not self.trans_d:
             n_voronoi_cells = self._n_dimensions
@@ -120,15 +117,13 @@ class Voronoi(Discretization):
             n_voronoi_cells = random.randint(n_dims_min, n_dims_max)
         
         # initialize Voronoi sites
-        voronoi_sites = np.array([self.sample_new_site() for _ in range(n_voronoi_cells)])
+        voronoi_sites = np.array([self.sample_site() for _ in range(n_voronoi_cells)])
         if self.spatial_dimensions == 1:
             voronoi_sites = np.sort(np.ravel(voronoi_sites))
         
         # initialize parameter values
         parameter_vals = {"discretization": voronoi_sites}
-        for name, param in self.parameters.items():
-            parameter_vals[name] = param.initialize(voronoi_sites)
-        return ParameterSpaceState(n_voronoi_cells, parameter_vals)  
+        return ParameterSpaceState(n_voronoi_cells, parameter_vals)
 
     def initialize(
         self, position: np.ndarray = None
@@ -157,7 +152,7 @@ class Voronoi(Discretization):
             n_voronoi_cells = random.randint(n_dims_min, init_max)
 
         # initialize Voronoi sites
-        voronoi_sites = np.array([self.sample_new_site() for _ in range(n_voronoi_cells)])
+        voronoi_sites = np.array([self.sample_site() for _ in range(n_voronoi_cells)])
         if self.spatial_dimensions == 1:
             voronoi_sites = np.sort(np.ravel(voronoi_sites))
 
@@ -194,7 +189,9 @@ class Voronoi(Discretization):
                 if all((new_site >= self.vmin) & (new_site <= self.vmax)):
                     return new_site
 
-    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
+    def perturb_value(
+        self, old_ps_state: ParameterSpaceState, isite: int
+    ) -> Tuple[ParameterSpaceState, Number]:
         r"""perturbs the value of one Voronoi site and calculates the log of the
         partial acceptance probability
         
@@ -300,6 +297,7 @@ class Voronoi(Discretization):
         -------
         Tuple[Dict[str, np.ndarray], None]
             key value pairs that map parameter names to values of the ``new_site``
+            # TODO the second returningt type now should be log prob ratio
         """
         new_born_values = dict()
         for param_name, param in self.parameters.items():
@@ -312,7 +310,7 @@ class Voronoi(Discretization):
         new_site: Union[Number, np.ndarray], 
         old_sites: np.ndarray, 
         param_space_state: ParameterSpaceState
-        ) -> Tuple[Dict[str, np.ndarray], Number]:
+    ) -> Tuple[Dict[str, np.ndarray], Number]:
         """initialize the newborn parameter values by perturbing the nearest 
         Voronoi cell
     
@@ -330,55 +328,63 @@ class Voronoi(Discretization):
         Tuple[Dict[str, np.ndarray], Number]
             key value pairs that map parameter names to values of the ``new_site``
             and the index of the Voronoi neighbour
+        # TODO change the second returning type
         """
-        if self.spatial_dimensions == 1:
-            isite = nearest_neighbour_1d(
-                xp=new_site, x=old_sites, xlen=old_sites.size
-                )
-        else:
-            isite = np.argmin(np.linalg.norm(old_sites - new_site, axis=1))
+        i_nearest = self.nearest_neighbour(old_sites, new_site)
+        log_prob_ratio = 0
         new_born_values = dict()
         for param_name, param in self.parameters.items():
-            old_values = param_space_state[param_name]
-            new_value, _ = param.perturb_value(old_values[isite], new_site)
-            new_born_values[param_name] = new_value
-        return new_born_values, isite
+            if isinstance(param, Discretization):
+                neighbour_ps_state = param_space_state[param.name][i_nearest]
+                new_ps_state = param.sample_discretization()
+                log_prob_ratio = param.sample_from_neighbour(
+                    neighbour_ps_state, new_ps_state
+                )
+                new_born_values[param_name] = new_ps_state
+            elif isinstance(param, Prior):
+                old_values = param_space_state[param_name]
+                new_value, _ = param.perturb_value(old_values[i_nearest], new_site)
+                new_born_values[param_name] = new_value
+            else:   # ParameterSpace that is not Discretization -> born from prior
+                new_value, _ = param.sample()
+                new_born_values[param_name] = new_value
+        return new_born_values, log_prob_ratio
 
-    def _log_probability_ratio_birth(
-            self, 
-            old_isite: Number, 
-            old_ps_state: ParameterSpaceState, 
-            new_isite: Number, 
-            new_ps_state: ParameterSpaceState
-            ):
-        if self.birth_from == 'prior':
-            return 0
-        return self._log_probability_ratio_birth_from_neighbour(
-            old_isite, old_ps_state, new_isite, new_ps_state
-        )
+    # def _log_probability_ratio_birth(
+    #         self, 
+    #         old_isite: Number, 
+    #         old_ps_state: ParameterSpaceState, 
+    #         new_isite: Number, 
+    #         new_ps_state: ParameterSpaceState
+    #         ):
+    #     if self.birth_from == 'prior':
+    #         return 0
+    #     return self._log_probability_ratio_birth_from_neighbour(
+    #         old_isite, old_ps_state, new_isite, new_ps_state
+    #     )
 
-    def _log_probability_ratio_birth_from_neighbour(
-            self, 
-            old_isite: Number, 
-            old_ps_state: ParameterSpaceState, 
-            new_isite: Number, 
-            new_ps_state: ParameterSpaceState
-    ):
-        old_site = old_ps_state["discretization"][old_isite]
-        new_site = new_ps_state["discretization"][new_isite]
-        log_prior_ratio = 0
-        log_proposal_ratio = 0
-        for param_name, param in self.parameters.items():
-            new_value = new_ps_state[param_name][new_isite]
-            log_prior_ratio += param.log_prior(new_value, new_site)
+    # def _log_probability_ratio_birth_from_neighbour(
+    #         self, 
+    #         old_isite: Number, 
+    #         old_ps_state: ParameterSpaceState, 
+    #         new_isite: Number, 
+    #         new_ps_state: ParameterSpaceState
+    # ):
+    #     old_site = old_ps_state["discretization"][old_isite]
+    #     new_site = new_ps_state["discretization"][new_isite]
+    #     log_prior_ratio = 0
+    #     log_proposal_ratio = 0
+    #     for param_name, param in self.parameters.items():
+    #         new_value = new_ps_state[param_name][new_isite]
+    #         log_prior_ratio += param.log_prior(new_value, new_site)
             
-            old_value = old_ps_state[param_name][old_isite]
-            perturb_std = param.get_perturb_std(old_site)
-            log_proposal_ratio += (
-                math.log(perturb_std * SQRT_TWO_PI)
-                + (new_value - old_value) ** 2 / (2 * perturb_std**2)
-            )
-        return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1 
+    #         old_value = old_ps_state[param_name][old_isite]
+    #         perturb_std = param.get_perturb_std(old_site)
+    #         log_proposal_ratio += (
+    #             math.log(perturb_std * SQRT_TWO_PI)
+    #             + (new_value - old_value) ** 2 / (2 * perturb_std**2)
+    #         )
+    #     return log_prior_ratio + log_proposal_ratio # log_det_jacobian is 1 
     
     def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
         r"""creates a new Voronoi cell, initializes all free parameters 
@@ -472,7 +478,7 @@ class Voronoi(Discretization):
         if n_cells == self._n_dimensions_max:
             raise DimensionalityException("Birth")
         # randomly choose a new Voronoi site position
-        new_site = self.sample_new_site()
+        new_site = self.sample_site()
         old_sites = old_ps_state["discretization"]
         initialized_values, i_nearest = self._initialize_newborn_params(
             new_site, old_sites, old_ps_state
@@ -666,6 +672,15 @@ class Voronoi(Discretization):
         """
         return self._perturbation_weights
     
+    def nearest_neighbour(
+        self, discretization: np.ndarray, query_point: Union[Number, np.ndarray]
+    ) -> Union[Number, np.ndarray]: 
+        if self.spatial_dimensions == 1:
+            return nearest_neighbour_1d(
+                xp=query_point, x=discretization, xlen=discretization.size
+            )
+        return np.argmin(np.linalg.norm(discretization - query_point, axis=1))
+
 
 class Voronoi1D(Voronoi):
     r"""Utility class for Voronoi tessellation in 1D
@@ -1235,14 +1250,14 @@ class Voronoi2D(Voronoi):
         )    
         self.compute_kdtree = compute_kdtree
         
-    def sample_new_site(self) -> np.ndarray:
+    def sample_site(self) -> np.ndarray:
         if self.polygon is not None:
             while True:
-                new_site = super().sample_new_site()
+                new_site = super().sample_site()
                 point = shapely.geometry.Point(new_site)
                 if self.polygon.contains(point):
                     return new_site
-        return super().sample_new_site()
+        return super().sample_site()
     
     def _initialize(self) -> ParameterSpaceState:
         ps_state = super()._initialize()

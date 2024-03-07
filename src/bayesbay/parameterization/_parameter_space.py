@@ -60,6 +60,9 @@ class ParameterSpace:
         if parameters is not None:
             for param in parameters:
                 self._parameters[param.name] = param
+        self._is_leaf = not any(
+            isinstance(p, ParameterSpace) for p in self._parameters.values()
+        )
         self._init_perturbation_funcs()
         self._init_repr_args()
 
@@ -74,6 +77,10 @@ class ParameterSpace:
         dimensionality
         """
         return self._trans_d
+    
+    @property
+    def is_leaf(self) -> bool:
+        return self._is_leaf
 
     @property
     def parameters(self) -> Dict[str, Prior]:
