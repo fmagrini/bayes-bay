@@ -70,6 +70,26 @@ class Target:
         else:
             self.covariance_mat_inv = None
 
+    def __repr__(self):
+        _repr_args = [f"name='{self.name}",
+                      f"dobs=ndarray of shape {self.dobs.shape}",
+                      f"is_hierarchical={self.is_hierarchical}"]
+        if not self.is_hierarchical:
+            _str = f"ndarray of shape {self.covariance_mat_inv.shape}" \
+                if isinstance(self.covariance_mat_inv, np.ndarray) \
+                    else self.covariance_mat_inv
+            _repr_args.append(
+                f"covariance_mat_inv={_str}"
+                )
+        else:
+            for k, v in vars(self).items():
+                if not k.startswith("_") and k not in ["dobs", "covariance_mat_inv"] \
+                    and v is not None:
+                    if not self.noise_is_correlated and k.startswith("correlation"):
+                        continue
+                    _repr_args.append(f"{k}={v}")
+        return f"{self.__class__.__name__}({', '.join(_repr_args)})"
+
     @property
     def name(self) -> str:
         return self._name
@@ -166,6 +186,3 @@ class Target:
         n = self.dobs.size
         log_det = (2 * n) * math.log(std) + (n - 1) * math.log(1 - r**2)
         return log_det
-
-    def __repr__(self) -> str:
-        return self.name
