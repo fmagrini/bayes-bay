@@ -2,7 +2,7 @@
 
 <!--next-version-placeholder-->
 
-## v0.2.3 (_/03/2024)
+## v0.2.3 (07/03/2024)
 - New feature: `bayesbay.prior.LaplacePrior`
 - New feature: `bayesbay.LogLikelihood.__repr__`
 - New feature: `bayesbay.Target.__repr__`
