@@ -36,7 +36,13 @@ class Prior(ABC):
             self.position = None
         assert "perturb_std" in kwargs
         self._repr_args = kwargs
-        
+
+    def __repr__(self) -> str:
+        string = f"{self.__class__.__name__}("
+        for k, v in self._repr_args.items():
+            string += f"{k}={v}, "
+        return f"{string[:-2]})"
+
     @property
     def name(self) -> str:
         return self._name
@@ -265,12 +271,6 @@ class Prior(ABC):
                 points=self.position, values=hyper_param,
             )
             return _interpolate_linear_nd(self.name, interpolator)
-
-    def __repr__(self) -> str:
-        string = f"{self._repr_args['name']}("
-        for k, v in self._repr_args.items():
-            string += f"{k}={v}, " if k != "name=" else ""
-        return f"{string[:-2]})"
 
 
 class UniformPrior(Prior):
