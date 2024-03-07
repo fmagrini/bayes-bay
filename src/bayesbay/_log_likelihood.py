@@ -77,6 +77,25 @@ class LogLikelihood:
         self.log_like_func = log_like_func
         self._init_log_likelihood_ratio()
         
+    def __repr__(self):
+        _repr_args = []
+        if self.targets is not None:
+            _repr_args.append(
+                f"targets=[{', '.join([repr(target) for target in self.targets])}]"
+            )
+            _repr_args.append(
+                f"fwd_functions=[{', '.join([repr(f.__name__) for f in self.fwd_functions])}]"
+            )
+        if self.log_like_ratio_func is not None:
+            _repr_args.append(
+                f"log_likelihood_ratio_func={self.log_like_ratio_func.__name__!r}"
+            )
+        elif self.log_like_func is not None:  
+            _repr_args.append(
+                f"log_likelihood_func={self.log_like_func.__name__!r}"
+            )
+        return f"{self.__class__.__name__}({', '.join(_repr_args)})"
+            
     @property
     def targets(self) -> List[Target]:
         """list of targets associated with the current log likelihood instance"""
