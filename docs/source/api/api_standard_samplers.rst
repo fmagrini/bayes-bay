@@ -5,6 +5,12 @@ This module facilitates the definition of arbitrary Bayesian sampling criteria. 
 
 A ``Sampler`` instance allows the user to insert callback functions at either the beginning or the end of a Markov chain iteration, and even to customize complex sampling behaviors such as those involving interactions between different Markov chains that are run in parallel. (This capability is leveraged in our implementation of parallel tempering.) Furthermore, through the insertion of callback functions, users can augment our predefined classes (listed below) with their own, integrating custom functionalities seamlessly.
 
+.. mermaid::
+
+   graph TD;
+       Sampler-->VanillaSampler;
+       Sampler-->ParallelTempering;
+       Sampler-->SimulatedAnnealing;
 
 .. autosummary::
     :toctree: generated/
