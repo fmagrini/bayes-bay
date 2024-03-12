@@ -51,25 +51,25 @@ inversion.run(
     print_every=200, 
 )
 
-# # get results and plot
-# results = inversion.get_results()
-# n_dims_v_horizontal = results["v_horizontal.n_dimensions"]
-# n_dims_v_vertical = []
-# sites_v_horizontal = np.concatenate(results["v_horizontal.discretization"])
-# sites_v_vertical = []
-# velocities = []
-# for v_horizontal_sample in results["v_horizontal.v_vertical"]:
-#     for v_vertical in v_horizontal_sample:
-#         n_dims_v_vertical.append(v_vertical["v_horizontal.v_vertical.n_dimensions"])
-#         sites_v_vertical.extend(v_vertical["v_horizontal.v_vertical.discretization"])
-#         velocities.extend(v_vertical["v_horizontal.v_vertical.velocity"])
+# get results and plot
+results = inversion.get_results()
+n_dims_v_horizontal = results["v_horizontal.n_dimensions"]
+n_dims_v_vertical = []
+sites_v_horizontal = np.concatenate(results["v_horizontal.discretization"])
+sites_v_vertical = []
+velocities = []
+for v_horizontal_sample in results["v_horizontal.v_vertical"]:
+    for v_vertical in v_horizontal_sample:
+        n_dims_v_vertical.append(v_vertical["v_horizontal.v_vertical.n_dimensions"])
+        sites_v_vertical.extend(v_vertical["v_horizontal.v_vertical.discretization"])
+        velocities.extend(v_vertical["v_horizontal.v_vertical.velocity"])
 
-# fig, axes = plt.subplots(1, 3, figsize=(10, 5))
-# axes[0].hist(n_dims_v_horizontal, bins=10, ec="w")
-# axes[0].set_title("v_horizontal")
-# axes[1].hist(n_dims_v_vertical, bins=10, ec="w")
-# axes[1].set_title("v_vertical")
-# axes[2].hist(velocities, bins=20, ec="w")
-# axes[2].set_title("velocity")
-# fig.tight_layout()
-# fig.savefig("11_nested_voronoi")
+fig, axes = plt.subplots(1, 3, figsize=(10, 5))
+axes[0].hist(n_dims_v_horizontal, bins=10, ec="w")
+axes[0].set_title("v_horizontal")
+axes[1].hist(n_dims_v_vertical, bins=10, ec="w")
+axes[1].set_title("v_vertical")
+axes[2].hist(velocities, bins=20, ec="w")
+axes[2].set_title("velocity")
+fig.tight_layout()
+fig.savefig("11_nested_voronoi")

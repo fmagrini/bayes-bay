@@ -368,39 +368,6 @@ class Voronoi(Discretization):
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, log_prob_ratio
     
-    # def _log_probability_ratio_death(
-    #         self, 
-    #         iremove: Number, 
-    #         old_ps_state: ParameterSpaceState, 
-    #         new_ps_state: ParameterSpaceState
-    #         ):
-    #     if self.birth_from == 'prior':
-    #         return 0
-    #     return self._log_probability_ratio_death_from_neighbour(
-    #         iremove, old_ps_state, new_ps_state
-    #     )
-
-    # def _log_probability_ratio_death_from_neighbour(
-    #         self, 
-    #         iremove: Number, 
-    #         old_ps_state: ParameterSpaceState, 
-    #         new_ps_state: ParameterSpaceState
-    #         ):
-    #     old_sites = old_ps_state["discretization"]
-    #     new_sites = new_ps_state["discretization"]
-    #     if self.spatial_dimensions == 1:
-    #         i_nearest = nearest_neighbour_1d(
-    #             xp=old_sites[iremove], x=new_sites, xlen=new_sites.size
-    #         )
-    #     else:
-    #         i_nearest = np.argmin(
-    #             np.linalg.norm(new_sites - old_sites[iremove], axis=1)
-    #         )
-
-    #     return - self._log_probability_ratio_birth(
-    #         i_nearest, new_ps_state, iremove, old_ps_state
-    #     )
-    
     def death(self, old_ps_state: ParameterSpaceState):
         r"""removes a new Voronoi cell and returns the pertubed state along with 
         the log of the corresponding partial acceptance probability,
@@ -448,9 +415,7 @@ class Voronoi(Discretization):
             else:
                 new_values[name] = old_values[:iremove] + old_values[iremove + 1:]
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
-        return new_ps_state, self._log_probability_ratio_death(
-            iremove, old_ps_state, new_ps_state
-        )
+        return new_ps_state, self._log_prob_death_parameters(old_ps_state, iremove)
 
     def log_prior(self, *args):
         r"""
