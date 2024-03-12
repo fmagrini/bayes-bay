@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Dict
 from numbers import Number
 import math
 import numpy as np
@@ -242,7 +242,133 @@ class Discretization(Prior, ParameterSpace):
         """
         raise NotImplementedError
     
-    def sample_from_neighbour(
+    @abstractmethod
+    def log_prob_birth_discretization(self, ps_state: ParameterSpaceState) -> Number:
+        """The log of the partial acceptance probability of the birth of the 
+        discretization. This includes only the discretization but not the parameter
+        values.
+        
+        :math:`\frac{p(k')}{p(k)} \frac{p(c'|k')}{p(c|k)} \frac{q(c'|m)}{q(c|m')}`
+
+        Parameters
+        ----------
+        ps_state : ParameterSpaceState
+            the newly-born parameter space state
+
+        Returns
+        -------
+        Number
+            the log of the partial acceptance probability of the birth of the discretization
+        """
+        raise NotImplementedError
+    
+    def _initialize_newborn_params(
+        self, 
+        new_position: Union[Number, np.ndarray],
+        old_positions: np.ndarray, 
+        old_ps_state: ParameterSpaceState
+    ) -> Tuple[Dict[str, Union[float, ParameterSpaceState]], float]:
+        """initialize the parameter values in the newborn dimension
+    
+        :math:`\frac{p(v'|c')}{p(v|c)} \frac{q(v|c')}{q(v'|c)}`
+        
+        Parameters
+        ----------
+        new_position : Union[Number, np.ndarray]
+            the newborn position in the discretization
+        old_positions : np.ndarray
+            the current discretization
+        old_ps_state : ParameterSpaceState
+            the current parameter space state
+    
+        Returns
+        -------
+        Tuple[Dict[str, Union[float, ParameterSpaceState]], float]
+            key value pairs that map parameter names to values of the ``new_position``, 
+            and the log of the partial acceptance probability of this birth
+        """
+        if self.birth_from == 'prior':
+            return self._initialize_params_from_prior(new_position)
+        return self._initialize_params_from_neighbour(
+            new_position, old_positions, old_ps_state
+        )
+        
+    def _initialize_params_from_prior(
+        self, 
+        new_position: Union[Number, np.ndarray]
+    ) -> Dict:
+        """initialize the newborn dimension by randomly drawing parameter values
+        from the prior
+    
+        Parameters
+        ----------
+        new_position : Union[Number, np.ndarray]
+            the newborn position in the discretization
+    
+        Returns
+        -------
+        Tuple[Dict[str, Union[float, ParameterSpaceState]], float]
+            key value pairs that map parameter names to values of the ``new_position``, 
+            and the log of the partial acceptance probability of this birth
+        """
+        new_born_values = dict()
+        for param_name, param in self.parameters.items():
+            new_value = param.sample(new_position)
+            new_born_values[param_name] = new_value
+        log_prob_ratio = 0
+        return new_born_values, log_prob_ratio
+    
+    def _initialize_params_from_neighbour(
+        self, 
+        new_position: Union[Number, np.ndarray],
+        old_positions: np.ndarray, 
+        old_ps_state: ParameterSpaceState
+    ) -> Tuple[Dict[str, Union[float, ParameterSpaceState]], float]:
+        """initialize the parameter values in the newborn dimension from neighbour
+    
+        Parameters
+        ----------
+        new_position : Union[Number, np.ndarray]
+            the newborn position in the discretization
+        old_positions : np.ndarray
+            the current discretization
+        old_ps_state : ParameterSpaceState
+            the current parameter space state
+    
+        Returns
+        -------
+        Tuple[Dict[str, Union[float, ParameterSpaceState]], float]
+            key value pairs that map parameter names to values of the ``new_position``, 
+            and the log of the partial acceptance probability of this birth
+        """
+        i_nearest = self.nearest_neighbour(old_positions, new_position)
+        log_prob_ratio = 0
+        new_born_values = dict()
+        for param_name, param in self.parameters.items():
+            if isinstance(param, Discretization):
+                neighbour_ps_state = old_ps_state[param.name][i_nearest]
+                new_ps_state = param.sample_discretization()
+                log_prob_ratio += param._sample_from_neighbour(
+                    neighbour_ps_state, new_ps_state
+                )
+                new_born_values[param_name] = new_ps_state
+            elif isinstance(param, Prior):
+                old_values = old_ps_state[param_name]
+                new_value, _ = param.perturb_value(old_values[i_nearest], new_position)
+                new_born_values[param_name] = new_value
+                _perturb_std = param.get_perturb_std(new_position)
+                log_prob_ratio += param.log_prior(new_value, new_position)
+                log_prob_ratio += (
+                    math.log(_perturb_std * SQRT_TWO_PI) +
+                    (new_value - old_values[i_nearest]) ** 2 / (2 * _perturb_std ** 2)
+                )
+            else:   # ParameterSpace that is not Discretization -> born from prior
+                new_value, _ = param.sample()
+                new_born_values[param_name] = new_value
+                # log_prob_ratio += 0
+        return new_born_values, log_prob_ratio
+    
+    def _sample_from_neighbour(
         self, 
         old_ps_state: ParameterSpaceState, 
         new_ps_state: ParameterSpaceState, 
@@ -265,14 +391,17 @@ class Discretization(Prior, ParameterSpace):
                     param.sample_discretization() \
                         for _ in range(new_ps_state.n_dimensions)
                 ]
-                # TODO log_prob_ratio += ?
+                log_prob_ratio += sum([
+                    param.log_prob_birth_discretization(ps_state) \
+                        for ps_state in init_values
+                ])
             elif isinstance(param, Prior):
                 init_values = np.empty((new_ps_state.n_dimensions))
             else:    # ParameterSpace that is not Discretization -> birth from prior
                 init_values = [
                     param.sample() for _ in range(new_ps_state.n_dimensions)
                 ]
-                log_prob_ratio += 0
+                # log_prob_ratio += 0
             new_ps_state.set_param_values(param_name, init_values)
         
         # fill in the parameters with nearest neighbour values
@@ -281,7 +410,7 @@ class Discretization(Prior, ParameterSpace):
             nb_point = old_ps_state["discretization"][i_nb_point]
             for param_name, param in self.parameters.items():
                 if isinstance(param, Discretization):
-                    _log_prob = param.sample_from_neighbour(
+                    _log_prob = param._sample_from_neighbour(
                         old_ps_state[param_name][i_nb_point], 
                         new_ps_state[param_name][i_point], 
                     )
@@ -290,7 +419,7 @@ class Discretization(Prior, ParameterSpace):
                     nb_value = old_ps_state[param_name][i_nb_point]
                     new_value, _ = param.perturb_value(nb_value, nb_point)
                     new_ps_state[param_name][i_point] = new_value
-                    _log_prior_ratio += param.log_prior(new_value, point)
+                    _log_prior_ratio = param.log_prior(new_value, point)
                     _perturb_std = param.get_perturb_std(point)
                     _log_proposal_ratio = (
                         math.log(_perturb_std * SQRT_TWO_PI)
@@ -298,6 +427,18 @@ class Discretization(Prior, ParameterSpace):
                     )
                     log_prob_ratio += _log_prior_ratio + _log_proposal_ratio
         return log_prob_ratio
+    
+    # def _log_prob_death_parameters(
+    #     self, 
+    #     old_ps_state: ParameterSpaceState, 
+    #     new_ps_state: ParameterSpaceState, 
+    #     i_death: int = None
+    # ) -> float:
+    #     log_prob_ratio = 0
+    #     # calculate the discretization part
+    #     for param_name, param in self.parameters.items():
+    #         if isinstance(param, Discretization):
+    #             log_prob_ratio += param.log_prob_birth_discretization(old_ps_state[])
 
     def get_perturb_std(self, *args) -> Number:
         """get the standard deviation of the Gaussian used to perturb the 
