@@ -63,7 +63,7 @@ class BirthPerturbation(Perturbation, ParamSpaceMixin):
 
     def perturb_param_space_state(
         self, ps_state: State
-    ) -> Tuple[ParameterSpaceState | Number]:
+    ) -> Tuple[ParameterSpaceState, Number]:
         return self.param_space.birth(ps_state)
 
     @property
@@ -130,7 +130,7 @@ class DeathPerturbation(Perturbation, ParamSpaceMixin):
 
     def perturb_param_space_state(
         self, ps_state: State
-    ) -> Tuple[ParameterSpaceState | Number]:
+    ) -> Tuple[ParameterSpaceState, Number]:
         return self.param_space.death(ps_state)
 
     @property

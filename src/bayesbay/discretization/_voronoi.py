@@ -415,7 +415,9 @@ class Voronoi(Discretization):
             else:
                 new_values[name] = old_values[:iremove] + old_values[iremove + 1:]
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values) 
-        return new_ps_state, self._log_prob_death_parameters(old_ps_state, iremove)
+        return new_ps_state, self._log_prob_death_parameters(
+            old_ps_state, new_ps_state, iremove
+        )
 
     def log_prior(self, *args):
         r"""
@@ -449,14 +451,14 @@ class Voronoi(Discretization):
             if _prior_pars:
                 _ps_perturbation_funcs.append(ParamPerturbation(self.name, _prior_pars))
                 _ps_perturbation_weights.append(3)
-            _ps_perturbation_funcs.append(ParamPerturbation(self.name, [self]))
-            _ps_perturbation_weights.append(1)
             # initialize nested parameter space perturbations
             _ps_pars = [p for p in _params if isinstance(p, ParameterSpace)]
             for ps in _ps_pars:
                 _funcs = ps.perturbation_functions
                 self._perturbation_funcs.extend(_funcs)
                 self._perturbation_weights.extend(ps.perturbation_weights)
+        _ps_perturbation_funcs.append(ParamPerturbation(self.name, [self]))
+        _ps_perturbation_weights.append(1)
         self._perturbation_funcs.append(
             ParamSpacePerturbation(
                 self.name, _ps_perturbation_funcs, _ps_perturbation_weights
@@ -536,7 +538,7 @@ class Voronoi1D(Voronoi):
         the maximum number of dimensions at the initialization is::
             
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
-            
+     
     parameters : List[Prior], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional

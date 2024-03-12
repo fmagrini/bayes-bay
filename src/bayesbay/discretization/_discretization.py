@@ -359,14 +359,17 @@ class Discretization(Prior, ParameterSpace):
                 new_value, _ = param.perturb_value(old_values[i_nearest], new_position)
                 new_born_values[param_name] = new_value
                 _perturb_std = param.get_perturb_std(new_position)
-                log_prob_ratio += param.log_prior(new_value, new_position)
-                log_prob_ratio += math.log(_perturb_std * SQRT_TWO_PI) + (
+                log_prior_ratio = param.log_prior(new_value, new_position)
+                log_proposal_ratio = math.log(_perturb_std * SQRT_TWO_PI) + (
                     new_value - old_values[i_nearest]
                 ) ** 2 / (2 * _perturb_std**2)
-            else:  # ParameterSpace that is not Discretization -> born from prior
+                log_prob_ratio += log_prior_ratio + log_proposal_ratio
+            elif isinstance(param, ParameterSpace):     # birth from prior
                 new_value, _ = param.sample()
                 new_born_values[param_name] = new_value
                 # log_prob_ratio += 0
+            else:
+                raise RuntimeError("this is not reachable")
         return new_born_values, log_prob_ratio
 
     def _sample_from_neighbour(
@@ -431,26 +434,27 @@ class Discretization(Prior, ParameterSpace):
     def _log_prob_death_parameters(
         self, 
         old_ps_state: ParameterSpaceState,
-        i_removed: int,
+        new_ps_state: ParameterSpaceState, 
+        i_remove: int,
     ) -> float:
         log_prob_ratio = 0
-        removed_point = old_ps_state["discretization"][i_removed]
-        i_nb_point = self.nearest_neighbour(
-            old_ps_state["discretization"], removed_point
+        position_to_remove = old_ps_state["discretization"][i_remove]
+        i_nearest = self.nearest_neighbour(
+            new_ps_state["discretization"], position_to_remove
         )
         for param_name, param in self.parameters.items():
-            value = old_ps_state[param_name][i_removed]
-            nb_value = old_ps_state[param_name][i_nb_point]
+            value_to_remove = old_ps_state[param_name][i_remove]
+            nearest_value = new_ps_state[param_name][i_nearest]
             if isinstance(param, Discretization):
                 log_prob_ratio -= param.log_prob_birth_discretization(
-                    old_ps_state[param_name][i_removed]
+                    old_ps_state[param_name][i_remove]
                 )
-                log_prob_ratio += param._log_prob_death_ps_state(value, nb_value)
+                log_prob_ratio += param._log_prob_death_ps_state(value_to_remove, nearest_value)
             elif isinstance(param, Prior):
-                _perturb_std = param.get_perturb_std(removed_point)
-                log_prob_ratio -= param.log_prior(value, removed_point)
+                _perturb_std = param.get_perturb_std(position_to_remove)
+                log_prob_ratio -= param.log_prior(value_to_remove, position_to_remove)
                 log_prob_ratio -= math.log(_perturb_std * SQRT_TWO_PI) + ( 
-                    value - nb_value
+                    value_to_remove - nearest_value
                 ) ** 2 / (2 * _perturb_std**2)
             # else: # ParameterSpace that is not Discretization -> death from prior
             #     log_prob_ratio += 0
