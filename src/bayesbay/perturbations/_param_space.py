@@ -66,6 +66,10 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
     @property
     def perturbation_functions(self) -> List[Perturbation]:
         return self._perturbations_functions
+    
+    @perturbation_functions.setter
+    def perturbation_functions(self, perturbations: List[Perturbation]):
+        self._perturbations_functions = perturbations
 
     @property
     def perturbation_weights(self) -> List[Number]:

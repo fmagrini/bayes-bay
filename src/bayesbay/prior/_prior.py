@@ -407,11 +407,9 @@ class UniformPrior(Prior):
         # randomly perturb the value until within range
         std = self.get_perturb_std(position)
         vmin, vmax = self.get_vmin_vmax(position)
-        while True:
-            random_deviate = random.normalvariate(0, std)
-            new_value = value + random_deviate
-            if new_value >= vmin and new_value <= vmax:
-                return new_value, 0
+        random_deviate = random.normalvariate(0, std)
+        new_value = value + random_deviate
+        return new_value, 0 if vmin <= new_value <= vmax else float("-inf")
 
     def log_prior(
         self, value: Number, position: Union[Number, np.ndarray] = None

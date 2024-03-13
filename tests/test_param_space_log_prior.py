@@ -9,10 +9,7 @@ gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
 custom_param = bb.prior.CustomPrior(
     name="custom_param",
     log_prior=lambda v: 0 if 0 <= v <= 1 else float("-inf"), 
-    sample=(lambda p: \
-        np.random.uniform(0,1,len(p)) \
-            if (not np.isscalar(p) and p is not None) \
-                else random.uniform(0,1)), 
+    sample=lambda _: random.uniform(0,1), 
     perturb_std=1, 
 )
 

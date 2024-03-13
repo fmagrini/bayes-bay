@@ -6,15 +6,12 @@ import bayesbay as bb
 
 
 # define parameter: uniform, gaussian, custom
-uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
-gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
+uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 1)
+gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 1)
 custom_param = bb.prior.CustomPrior(
     "custom_param",
     lambda v: - math.log(10) if 0 <= v <= 10 else float("-inf"), 
-    lambda p: \
-        np.random.uniform(0,10,len(p)) \
-            if (not np.isscalar(p) and p is not None) \
-                else random.uniform(0,10), 
+    lambda _: random.uniform(0,10), 
     1, 
 )
 
@@ -45,13 +42,13 @@ log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 inversion = bb.BayesianInversion(
     parameterization=parameterization, 
     log_likelihood=log_likelihood,  
-    n_chains=1, 
+    n_chains=10, 
 )
 inversion.run(
     sampler=None, 
-    n_iterations=1_000_000, 
+    n_iterations=500_000, 
     burnin_iterations=0, 
-    save_every=200, 
+    save_every=100, 
     print_every=2000, 
 )
 

@@ -11,7 +11,7 @@ parameterization = bb.parameterization.Parameterization(
     bb.discretization.Voronoi1D(
         name="my_voronoi", 
         vmin=0, 
-        vmax=100, 
+        vmax=1, 
         perturb_std=10, 
         n_dimensions=None, 
         n_dimensions_min=1, 
@@ -31,6 +31,7 @@ inversion = bb.BayesianInversion(
     log_likelihood=log_likelihood,  
     n_chains=1, 
 )
+inversion.set_perturbation_funcs(inversion.perturbation_funcs[0].perturbation_functions)
 inversion.run(
     sampler=None, 
     n_iterations=500_000, 

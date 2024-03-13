@@ -9,10 +9,7 @@ import bayesbay as bb
 custom_param = bb.prior.CustomPrior(
     "custom_param",
     lambda v: - math.log(10) if 0 <= v <= 10 else float("-inf"), 
-    lambda p: \
-        np.random.uniform(0,10,len(p)) \
-            if (not np.isscalar(p) and p is not None) \
-                else random.uniform(0,10), 
+    lambda _: random.uniform(0,10), 
     1, 
 )
 
