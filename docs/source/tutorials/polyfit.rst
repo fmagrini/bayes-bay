@@ -15,5 +15,5 @@ This tutorial comprises two parts:
 .. toctree::
    :maxdepth: 1
 
-   01_linregr
-   02_hierarchical_linregr
+   01_polyfit
+   02_hierarchical_polyfit

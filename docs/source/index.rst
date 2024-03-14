@@ -63,8 +63,9 @@ considered inverse problem.
    :maxdepth: 1
    :caption: Examples
 
-   tutorials/linregr
+   tutorials/polyfit
    tutorials/gmm
+   tutorials/partition_modeling
    tutorials/sw
    tutorials/tomography
 

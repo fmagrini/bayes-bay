@@ -201,8 +201,6 @@ class Sampler(ABC):
         ----------
         n_iterations : int
             the number of iterations to advance
-        n_cpus : int, optional
-            the number of CPUs to use
         burnin_iterations : int, optional
             the iteration number from which we start to save samples, by default 0
         save_every : int, optional

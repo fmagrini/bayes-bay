@@ -37,3 +37,4 @@ cmake-build-debug/
 # Others
 refs
 examples/results
+.vscode/
