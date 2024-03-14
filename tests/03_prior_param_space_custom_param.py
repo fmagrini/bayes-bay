@@ -15,11 +15,8 @@ custom_param = bb.prior.CustomPrior(
 
 # define parameter space
 parameterization = bb.parameterization.Parameterization(
-    bb.discretization.Voronoi1D(
-        name="my_voronoi", 
-        vmin=0, 
-        vmax=100, 
-        perturb_std=10, 
+    bb.parameterization.ParameterSpace(
+        name="my_param_space", 
         n_dimensions=None, 
         n_dimensions_min=1, 
         n_dimensions_max=10, 
@@ -48,11 +45,9 @@ inversion.run(
 
 # get results and plot
 results = inversion.get_results()
-n_dims = results["my_voronoi.n_dimensions"]
-sites = results["my_voronoi.discretization"]
-param_values = results["my_voronoi.custom_param"]
-fig, axes = plt.subplots(1, 3)
+n_dims = results["my_param_space.n_dimensions"]
+param_values = results["my_param_space.custom_param"]
+fig, axes = plt.subplots(1, 2)
 axes[0].hist(n_dims, bins=10, ec="w")
-axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")
-axes[2].hist(np.concatenate(param_values), bins=20, ec="w")
-fig.savefig("7_prior_voronoi_custom_param")
+axes[1].hist(np.concatenate(param_values), bins=20, ec="w")
+fig.savefig("03_prior_param_space_custom_param")

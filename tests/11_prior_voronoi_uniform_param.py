@@ -3,17 +3,20 @@ import matplotlib.pyplot as plt
 import bayesbay as bb
 
 
-# define parameter space: Voronoi1D
+# define parameter: uniform
+uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
+
+# define parameter space
 parameterization = bb.parameterization.Parameterization(
     bb.discretization.Voronoi1D(
         name="my_voronoi", 
         vmin=0, 
-        vmax=100, 
+        vmax=1, 
         perturb_std=10, 
         n_dimensions=None, 
         n_dimensions_min=1, 
         n_dimensions_max=10, 
-        parameters=[], 
+        parameters=[uniform_param], 
     )
 )
 
@@ -28,6 +31,7 @@ inversion = bb.BayesianInversion(
     log_likelihood=log_likelihood,  
     n_chains=1, 
 )
+inversion.set_perturbation_funcs(inversion.perturbation_funcs[0].perturbation_functions)
 inversion.run(
     sampler=None, 
     n_iterations=500_000, 
@@ -40,7 +44,9 @@ inversion.run(
 results = inversion.get_results()
 n_dims = results["my_voronoi.n_dimensions"]
 sites = results["my_voronoi.discretization"]
-fig, axes = plt.subplots(1, 2)
+param_values = results["my_voronoi.uniform_param"]
+fig, axes = plt.subplots(1, 3)
 axes[0].hist(n_dims, bins=10, ec="w")
 axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")
-fig.savefig("1_prior_voronoi")
+axes[2].hist(np.concatenate(param_values), bins=20, ec="w")
+fig.savefig("11_prior_voronoi_uniform_param")

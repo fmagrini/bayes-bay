@@ -3,20 +3,20 @@ import matplotlib.pyplot as plt
 import bayesbay as bb
 
 
-# define parameter: uniform
-uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
+# define parameter: Gaussian
+gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
 
 # define parameter space
 parameterization = bb.parameterization.Parameterization(
     bb.discretization.Voronoi1D(
         name="my_voronoi", 
         vmin=0, 
-        vmax=1, 
+        vmax=100, 
         perturb_std=10, 
         n_dimensions=None, 
         n_dimensions_min=1, 
         n_dimensions_max=10, 
-        parameters=[uniform_param], 
+        parameters=[gaussian_param], 
     )
 )
 
@@ -31,7 +31,6 @@ inversion = bb.BayesianInversion(
     log_likelihood=log_likelihood,  
     n_chains=1, 
 )
-inversion.set_perturbation_funcs(inversion.perturbation_funcs[0].perturbation_functions)
 inversion.run(
     sampler=None, 
     n_iterations=500_000, 
@@ -44,9 +43,9 @@ inversion.run(
 results = inversion.get_results()
 n_dims = results["my_voronoi.n_dimensions"]
 sites = results["my_voronoi.discretization"]
-param_values = results["my_voronoi.uniform_param"]
+param_values = results["my_voronoi.gaussian_param"]
 fig, axes = plt.subplots(1, 3)
 axes[0].hist(n_dims, bins=10, ec="w")
 axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")
 axes[2].hist(np.concatenate(param_values), bins=20, ec="w")
-fig.savefig("3_prior_voronoi_uniform_param")
+fig.savefig("12_prior_voronoi_gaussian_param")

@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 import bayesbay as bb
 
 
-# define parameter: Gaussian
-gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
+# define parameter: uniform
+uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
 
 # define parameter space
 parameterization = bb.parameterization.Parameterization(
     bb.parameterization.ParameterSpace(
-        name="my_param_space", 
+        name="my_param_space",  
         n_dimensions=None, 
         n_dimensions_min=1, 
         n_dimensions_max=10, 
-        parameters=[gaussian_param], 
+        parameters=[uniform_param], 
     )
 )
 
@@ -39,8 +39,8 @@ inversion.run(
 # get results and plot
 results = inversion.get_results()
 n_dims = results["my_param_space.n_dimensions"]
-param_values = results["my_param_space.gaussian_param"]
+param_values = results["my_param_space.uniform_param"]
 fig, axes = plt.subplots(1, 2)
 axes[0].hist(n_dims, bins=10, ec="w")
 axes[1].hist(np.concatenate(param_values), bins=20, ec="w")
-fig.savefig("4_prior_param_space_gaussian_param")
+fig.savefig("01_prior_param_space_uniform_param")

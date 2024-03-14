@@ -3,10 +3,7 @@ import matplotlib.pyplot as plt
 import bayesbay as bb
 
 
-# define parameter: Gaussian
-gaussian_param = bb.prior.GaussianPrior("gaussian_param", 0, 1, 0.1)
-
-# define parameter space
+# define parameter space: Voronoi1D
 parameterization = bb.parameterization.Parameterization(
     bb.discretization.Voronoi1D(
         name="my_voronoi", 
@@ -16,7 +13,7 @@ parameterization = bb.parameterization.Parameterization(
         n_dimensions=None, 
         n_dimensions_min=1, 
         n_dimensions_max=10, 
-        parameters=[gaussian_param], 
+        parameters=[], 
     )
 )
 
@@ -43,9 +40,7 @@ inversion.run(
 results = inversion.get_results()
 n_dims = results["my_voronoi.n_dimensions"]
 sites = results["my_voronoi.discretization"]
-param_values = results["my_voronoi.gaussian_param"]
-fig, axes = plt.subplots(1, 3)
+fig, axes = plt.subplots(1, 2)
 axes[0].hist(n_dims, bins=10, ec="w")
 axes[1].hist(np.concatenate(sites), bins=50, ec="w", orientation="horizontal")
-axes[2].hist(np.concatenate(param_values), bins=20, ec="w")
-fig.savefig("5_prior_voronoi_gaussian_param")
+fig.savefig("10_prior_voronoi")

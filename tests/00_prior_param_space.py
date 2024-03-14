@@ -38,4 +38,4 @@ results = inversion.get_results()
 n_dims = results["my_param_space.n_dimensions"]
 fig, ax = plt.subplots()
 ax.hist(n_dims, bins=10, ec="w")
-fig.savefig("0_prior_param_space")
+fig.savefig("00_prior_param_space")
