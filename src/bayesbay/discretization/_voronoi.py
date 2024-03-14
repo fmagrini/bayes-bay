@@ -423,12 +423,12 @@ class Voronoi(Discretization):
         # remove parameter values for the removed site
         new_values = dict()
         for name, old_values in old_ps_state.param_values.items():
-            if isinstance(old_values, np.ndarray):
+            if isinstance(old_values, np.ndarray):      # pure Prior
                 if self.spatial_dimensions == 1:
                     new_values[name] = delete_1d(old_values, iremove)
                 else:
                     new_values[name] = np.delete(old_values, iremove, axis=0)
-            else:
+            else:                                       # ParameterSpace
                 new_values[name] = old_values[:iremove] + old_values[iremove + 1 :]
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values)
         return new_ps_state, self._log_prob_death_parameters(
@@ -521,7 +521,7 @@ class Voronoi(Discretization):
             )
         return np.argmin(np.linalg.norm(discretization - query_point, axis=1))
 
-    def log_prob_birth_discretization(self, ps_state: ParameterSpaceState) -> Number:
+    def log_prob_initialize_discretization(self, ps_state: ParameterSpaceState) -> Number:
         return 0
 
 

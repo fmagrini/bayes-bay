@@ -1,5 +1,6 @@
 from typing import List, Tuple
 from numbers import Number
+from collections import defaultdict
 import random
 
 from .._state import State, ParameterSpaceState
@@ -24,30 +25,35 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
     def perturb(self, state: State) -> Tuple[State, Number]:
         new_state = state.copy()
         states_queue = [(new_state, state)]
+        stats = defaultdict(int)
         log_prob_ratio = 0
         while states_queue:
             new_ps_state, old_ps_state = states_queue.pop(0)
             for k, v in old_ps_state.param_values.items():
                 if k == self.param_space_name and isinstance(v, ParameterSpaceState):
-                    new_v, ratio = self.perturb_param_space_state(v)
+                    new_v, ratio, perturb_type = self.perturb_param_space_state(v)
                     log_prob_ratio += ratio
                     new_ps_state.set_param_values(k, new_v)
+                    stats[perturb_type] += 1
                 elif k == self.param_space_name and isinstance(v, list):
                     new_vv_list = []
                     for vv in v:
-                        new_vv, ratio = self.perturb_param_space_state(vv)
+                        new_vv, ratio, perturb_type = self.perturb_param_space_state(vv)
                         log_prob_ratio += ratio
                         new_vv_list.append(new_vv)
+                        stats[perturb_type] += 1
                     new_ps_state.set_param_values(k, new_vv_list)
                 elif isinstance(v, ParameterSpaceState):
                     states_queue.append((new_ps_state[k], v))
                 elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
                     states_queue.extend(zip(new_ps_state[k], v))
+        stats = {k: v / sum(stats.values()) for k, v in stats.items()}
+        new_state.save_to_cache("perturb_stats", stats)
         return new_state, log_prob_ratio
 
     def perturb_param_space_state(
         self, ps_state: ParameterSpaceState
-    ) -> Tuple[ParameterSpaceState, Number]:
+    ) -> Tuple[ParameterSpaceState, Number, str]:
         while True:
             # randomly choose a perturbation function for the current ps_state
             i_perturb = random.choices(
@@ -61,7 +67,7 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
                 )
             except DimensionalityException:
                 continue
-            return new_ps_state, log_prob_ratio
+            return new_ps_state, log_prob_ratio, perturb_func.__name__
 
     @property
     def perturbation_functions(self) -> List[Perturbation]:

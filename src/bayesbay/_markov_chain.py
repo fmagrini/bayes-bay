@@ -102,8 +102,8 @@ class BaseMarkovChain:
 
     def _init_statistics(self):
         self._statistics = {
-            "n_proposed_models": defaultdict(int),
-            "n_accepted_models": defaultdict(int),
+            "n_proposed_models": defaultdict(lambda: defaultdict(float)),
+            "n_accepted_models": defaultdict(lambda: defaultdict(float)),
             "n_proposed_models_total": 0,
             "n_accepted_models_total": 0,
             "exceptions": defaultdict(int),
@@ -128,10 +128,20 @@ class BaseMarkovChain:
         else:
             self.saved_states.append(self.current_state)
 
-    def _save_statistics(self, perturb_i, accepted):
+    def _save_statistics(self, perturb_i: int, accepted: bool, proposed_state: State):
         perturb_type = self.perturbation_types[perturb_i]
-        self._statistics["n_proposed_models"][perturb_type] += 1
-        self._statistics["n_accepted_models"][perturb_type] += 1 if accepted else 0
+        if perturb_type.startswith("ParamSpacePerturbation"):
+            perturb_stats = proposed_state.load_from_cache("perturb_stats")
+            for k, v in perturb_stats.items():
+                self._statistics["n_proposed_models"][perturb_type][k] += v
+                self._statistics["n_accepted_models"][perturb_type][k] += v if accepted else 0
+        else:
+            try:
+                self._statistics["n_proposed_models"][perturb_type] += 1
+                self._statistics["n_accepted_models"][perturb_type] += 1 if accepted else 0
+            except:
+                self._statistics["n_proposed_models"][perturb_type] = 1
+                self._statistics["n_accepted_models"][perturb_type] = 1 if accepted else 0
         self._statistics["n_proposed_models_total"] += 1
         self._statistics["n_accepted_models_total"] += 1 if accepted else 0
 
@@ -158,11 +168,22 @@ class BaseMarkovChain:
         for perturb_type in sorted(self.statistics["n_proposed_models"]):
             _explored = _explored_all[perturb_type]
             _accepted = _accepted_all[perturb_type]
-            acceptance_rate = _accepted / _explored * 100
-            print(
-                "\t%s: %d/%d (%.2f%%)"
-                % (perturb_type, _accepted, _explored, acceptance_rate)
-            )
+            if isinstance(_explored, dict):
+                print(f"\t{perturb_type}:")
+                for sub_perturb_type in sorted(_explored):
+                    _sub_explored = _explored[sub_perturb_type]
+                    _sub_accepted = _accepted[sub_perturb_type]
+                    acceptance_rate = _sub_accepted / _sub_explored * 100
+                    print(
+                        f"\t\t{sub_perturb_type}: "
+                        f"{_sub_accepted:.2f}/{_sub_explored:.2f} ({acceptance_rate:.2f}%)"
+                    )
+            else:
+                acceptance_rate = _accepted / _explored * 100
+                print(
+                    "\t%s: %d/%d (%.2f%%)"
+                    % (perturb_type, _accepted, _explored, acceptance_rate)
+                )
 
     def _log_likelihood_ratio(self, new_state):
         return self.log_likelihood.log_likelihood_ratio(
@@ -203,7 +224,7 @@ class BaseMarkovChain:
                 self.current_state = new_state
 
             # save statistics and current state
-            self._save_statistics(i_perturb, accepted)
+            self._save_statistics(i_perturb, accepted, new_state)
             if self.save_current_iteration and self.temperature == 1.0:
                 self._save_state()
             return

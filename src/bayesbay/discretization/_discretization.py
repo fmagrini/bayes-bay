@@ -246,7 +246,7 @@ class Discretization(Prior, ParameterSpace):
         raise NotImplementedError
 
     @abstractmethod
-    def log_prob_birth_discretization(self, ps_state: ParameterSpaceState) -> Number:
+    def log_prob_initialize_discretization(self, ps_state: ParameterSpaceState) -> Number:
         """The log of the partial acceptance probability of the birth of the
         discretization. This includes only the discretization but not the parameter
         values.
@@ -397,7 +397,7 @@ class Discretization(Prior, ParameterSpace):
                 ]
                 log_prob_ratio += sum(
                     [
-                        param.log_prob_birth_discretization(ps_state)
+                        param.log_prob_initialize_discretization(ps_state)
                         for ps_state in init_values
                     ]
                 )
@@ -438,6 +438,8 @@ class Discretization(Prior, ParameterSpace):
         i_remove: int,
     ) -> float:
         log_prob_ratio = 0
+        if self.birth_from == "prior":
+            return log_prob_ratio
         position_to_remove = old_ps_state["discretization"][i_remove]
         i_nearest = self.nearest_neighbour(
             new_ps_state["discretization"], position_to_remove
@@ -446,7 +448,7 @@ class Discretization(Prior, ParameterSpace):
             value_to_remove = old_ps_state[param_name][i_remove]
             nearest_value = new_ps_state[param_name][i_nearest]
             if isinstance(param, Discretization):
-                log_prob_ratio -= param.log_prob_birth_discretization(
+                log_prob_ratio -= param.log_prob_initialize_discretization(
                     old_ps_state[param_name][i_remove]
                 )
                 log_prob_ratio += param._log_prob_death_ps_state(value_to_remove, nearest_value)
@@ -458,6 +460,7 @@ class Discretization(Prior, ParameterSpace):
                 ) ** 2 / (2 * _perturb_std**2)
             # else: # ParameterSpace that is not Discretization -> death from prior
             #     log_prob_ratio += 0
+        
         return log_prob_ratio
 
     def _log_prob_death_ps_state(
@@ -470,7 +473,7 @@ class Discretization(Prior, ParameterSpace):
             i_nb_point = self.nearest_neighbour(new_ps_state["discretization"], point)
             for param_name, param in self.parameters.items():
                 if isinstance(param, Discretization):
-                    log_prob_ratio -= param.log_prob_birth_discretization(
+                    log_prob_ratio -= param.log_prob_initialize_discretization(
                         new_ps_state[param_name][i_nb_point]
                     )
                     log_prob_ratio += param._log_prob_death_parameters(
