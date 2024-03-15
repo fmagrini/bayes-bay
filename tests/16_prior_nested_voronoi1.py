@@ -4,12 +4,16 @@ import bayesbay as bb
 
 
 # define parameter space
-uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.5)
+uniform_param = bb.prior.UniformPrior(name="uniform_param", 
+                                      vmin=-1, 
+                                      vmax=1, 
+                                      perturb_std=0.1,
+                                      perturb_std_birth=0.6)
 voronoi1 = bb.discretization.Voronoi1D(
     name="my_voronoi1", 
     vmin=0, 
     vmax=1, 
-    perturb_std=0.4, 
+    perturb_std=0.1, 
     n_dimensions=None, 
     n_dimensions_min=1, 
     n_dimensions_max=10, 
@@ -21,7 +25,7 @@ voronoi2 = bb.discretization.Voronoi1D(
     name="my_voronoi2", 
     vmin=0, 
     vmax=1, 
-    perturb_std=0.4, 
+    perturb_std=0.1, 
     n_dimensions=None, 
     n_dimensions_min=1, 
     n_dimensions_max=10, 
@@ -46,7 +50,7 @@ inversion.run(
     n_iterations=500_000, 
     burnin_iterations=0, 
     save_every=100, 
-    print_every=1000, 
+    print_every=10000, 
 )
 
 # get results and plot
@@ -70,4 +74,4 @@ axes[1].set_title("voronoi1")
 axes[2].hist(uniform_param_values, bins=20, ec="w")
 axes[2].set_title("uniform_param")
 fig.tight_layout()
-fig.savefig("16_nested_voronoi1")
+# fig.savefig("16_nested_voronoi1")

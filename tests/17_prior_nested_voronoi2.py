@@ -11,8 +11,8 @@ vs = bb.prior.UniformPrior(
     vmin=[2.2, 2.8, 3.3, 4], 
     vmax=[3.9, 4.6, 4.8, 5], 
     position=[0, 20, 60, 150],
-    perturb_std=0.5, 
-    perturb_std_birth=0.9
+    perturb_std=0.1, 
+    # perturb_std_birth=0.2
 )
 v_vertical = bb.discretization.Voronoi1D(
     name="v_vertical", 
@@ -23,7 +23,7 @@ v_vertical = bb.discretization.Voronoi1D(
     n_dimensions_min=5,
     n_dimensions_max=20,
     parameters=[vs], 
-    # birth_from="prior"
+    birth_from="prior"
 )
 v_horizontal = bb.discretization.Voronoi2D(
     name="v_horizontal",
@@ -34,7 +34,7 @@ v_horizontal = bb.discretization.Voronoi2D(
     n_dimensions_min=1, 
     n_dimensions_max=10,
     parameters=[v_vertical],
-    # birth_from="prior"
+    birth_from="prior"
 )
 parameterization = bb.parameterization.Parameterization(v_horizontal)
 

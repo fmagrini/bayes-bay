@@ -1,7 +1,6 @@
 from ._exceptions import (
     InitException,
     ForwardException,
-    DimensionalityException,
     UserFunctionException,
 )
 
@@ -9,6 +8,5 @@ from ._exceptions import (
 __all__ = [
     "InitException",
     "ForwardException",
-    "DimensionalityException",
     "UserFunctionException",
 ]

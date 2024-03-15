@@ -1,10 +1,10 @@
 from typing import List, Dict, Callable, Tuple, Union
 from numbers import Number
+import math
 import random
 import numpy as np
 
 from .._state import State, ParameterSpaceState
-from ..exceptions import DimensionalityException
 from ..prior import Prior
 from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
@@ -256,7 +256,7 @@ class ParameterSpace:
         """
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_max:
-            raise DimensionalityException("Birth")
+            return ps_state, -math.inf
         i_insert = random.randint(0, n_dims)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():
@@ -307,7 +307,7 @@ class ParameterSpace:
         """
         n_dims = ps_state.n_dimensions
         if n_dims == self._n_dimensions_min:
-            raise DimensionalityException("Death")
+            return ps_state, -math.inf
         i_to_remove = random.randint(0, n_dims - 1)
         new_param_values = dict()
         for param_name, param_vals in ps_state.param_values.items():

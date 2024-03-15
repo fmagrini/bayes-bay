@@ -447,7 +447,7 @@ class UniformPrior(Prior):
         vmin, vmax = self.get_vmin_vmax(position)
         random_deviate = random.normalvariate(0, std)
         new_value = value + random_deviate
-        return new_value, 0 if vmin <= new_value <= vmax else float("-inf")
+        return new_value, 0 if vmin <= new_value <= vmax else -math.inf
 
     def log_prior(
         self, value: Number, position: Union[Number, np.ndarray] = None

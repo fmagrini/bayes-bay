@@ -86,12 +86,9 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
             )[0]
             perturb_func = self.perturbation_functions[i_perturb]
             # perturb and get the log of the partial acceptance probability
-            try:
-                new_ps_state, log_prob_ratio = perturb_func.perturb_param_space_state(
+            new_ps_state, log_prob_ratio = perturb_func.perturb_param_space_state(
                     ps_state
-                )
-            except DimensionalityException:
-                continue
+                    )
             return new_ps_state, log_prob_ratio, perturb_func.__name__
 
     @property

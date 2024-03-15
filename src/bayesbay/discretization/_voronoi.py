@@ -14,7 +14,6 @@ from ..perturbations._param_values import ParamPerturbation
 from ..perturbations._param_space import ParamSpacePerturbation
 from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
 from ._discretization import Discretization
-from ..exceptions import DimensionalityException
 from ..prior import Prior
 from .._state import State, ParameterSpaceState
 from .._utils_1d import (
@@ -362,7 +361,7 @@ class Voronoi(Discretization):
         # prepare for birth perturbation
         n_cells = old_ps_state.n_dimensions
         if n_cells == self._n_dimensions_max:
-            raise DimensionalityException("Birth")
+            return old_ps_state, -math.inf
         # randomly choose a new Voronoi site position
         new_site = self.sample_site()
         old_sites = old_ps_state["discretization"]
@@ -428,7 +427,7 @@ class Voronoi(Discretization):
         # prepare for death perturbation
         n_cells = old_ps_state.n_dimensions
         if n_cells == self._n_dimensions_min:
-            raise DimensionalityException("Death")
+            return old_ps_state, -math.inf
         # randomly choose an existing Voronoi site to kill
         iremove = random.randint(0, n_cells - 1)
         # remove parameter values for the removed site

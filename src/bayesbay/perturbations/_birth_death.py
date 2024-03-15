@@ -48,12 +48,6 @@ class BirthPerturbation(Perturbation, ParamSpaceMixin):
             \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
-
-        Raises
-        ------
-        DimensionalityException
-            when the current state has already reached the maximum number of Voronoi
-            cells
         """
         old_ps_state = state[self.param_space_name]
         new_ps_state, log_prob_ratio = self.perturb_param_space_state(old_ps_state)
@@ -115,12 +109,6 @@ class DeathPerturbation(Perturbation, ParamSpaceMixin):
             \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
-
-        Raises
-        ------
-        DimensionalityException
-            when the current state has already reached the minimum number of Voronoi
-            cells
         """
         old_ps_state = state[self.param_space_name]
         new_ps_state, log_prob_ratio = self.param_space.death(old_ps_state)

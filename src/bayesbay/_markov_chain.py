@@ -8,7 +8,7 @@ from ._log_likelihood import LogLikelihood
 from .parameterization import Parameterization
 from ._state import State
 from ._target import Target
-from .exceptions import DimensionalityException, ForwardException, UserFunctionException
+from .exceptions import ForwardException, UserFunctionException
 
 
 class BaseMarkovChain:
@@ -204,18 +204,21 @@ class BaseMarkovChain:
             # likelihood ratio
             try:
                 new_state, log_prob_ratio = perturb_func(self.current_state)
-            except (DimensionalityException, UserFunctionException) as e:
+            except UserFunctionException as e:
                 _last_exception = e
                 self._statistics["exceptions"][e.__class__.__name__] += 1
                 continue
-
-            # calculate the log likelihood ratio
-            try:
-                log_likelihood_ratio = self._log_likelihood_ratio(new_state)
-            except (ForwardException, UserFunctionException) as e:
-                _last_exception = e
-                self._statistics["exceptions"][e.__class__.__name__] += 1
-                continue
+            
+            if math.isinf(log_prob_ratio):
+                log_likelihood_ratio = 0
+            else:
+                # calculate the log likelihood ratio
+                try:
+                    log_likelihood_ratio = self._log_likelihood_ratio(new_state)
+                except (ForwardException, UserFunctionException) as e:
+                    _last_exception = e
+                    self._statistics["exceptions"][e.__class__.__name__] += 1
+                    continue
 
             # decide whether to accept
             acceptance_probability = log_prob_ratio + log_likelihood_ratio
