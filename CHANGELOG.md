@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (15/03/2024)
+
+- New feature: Nested parameter space (and discretization)
+
+## v0.2.4 (07/03/2024)
+
+- Enhancement: `__repr__` in some classes
+
 ## v0.2.3 (07/03/2024)
 - New feature: `bayesbay.prior.LaplacePrior`
 - New feature: `bayesbay.LogLikelihood.__repr__`
