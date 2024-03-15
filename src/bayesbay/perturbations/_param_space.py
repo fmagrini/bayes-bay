@@ -24,29 +24,74 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         new_state = state.copy()
-        states_queue = [(new_state, state)]
-        stats = defaultdict(int)
-        log_prob_ratio = 0
+        
+        n_ps_states_to_perturb = 0
+        states_queue = [state]
         while states_queue:
+            old_ps_state = states_queue.pop(0)
+            for k, v in old_ps_state.param_values.items():
+                if k == self.param_space_name and isinstance(v, ParameterSpaceState):
+                    n_ps_states_to_perturb += 1
+                elif k == self.param_space_name and isinstance(v, list):
+                    n_ps_states_to_perturb += len(v)
+                elif isinstance(v, ParameterSpaceState):
+                    states_queue.append(v)
+                elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
+                    states_queue.extend(v)
+        
+        i_to_perturb = random.randint(0, n_ps_states_to_perturb - 1)
+        i_ps_state = 0
+        
+        log_prob_ratio = 0
+        stats = defaultdict(int)
+        states_queue = [(new_state, state)]
+        while states_queue and i_ps_state <= i_to_perturb:
             new_ps_state, old_ps_state = states_queue.pop(0)
             for k, v in old_ps_state.param_values.items():
                 if k == self.param_space_name and isinstance(v, ParameterSpaceState):
-                    new_v, ratio, perturb_type = self.perturb_param_space_state(v)
-                    log_prob_ratio += ratio
-                    new_ps_state.set_param_values(k, new_v)
-                    stats[perturb_type] += 1
+                    if i_ps_state == i_to_perturb:
+                        new_v, ratio, perturb_type = self.perturb_param_space_state(v)
+                        new_ps_state.set_param_values(k, new_v)
+                        log_prob_ratio += ratio
+                        stats[perturb_type] += 1
+                    i_ps_state += 1
                 elif k == self.param_space_name and isinstance(v, list):
                     new_vv_list = []
                     for vv in v:
-                        new_vv, ratio, perturb_type = self.perturb_param_space_state(vv)
-                        log_prob_ratio += ratio
-                        new_vv_list.append(new_vv)
-                        stats[perturb_type] += 1
+                        if i_ps_state == i_to_perturb:
+                            new_vv, ratio, perturb_type = self.perturb_param_space_state(vv)
+                            new_vv_list.append(new_vv)
+                            log_prob_ratio += ratio
+                            stats[perturb_type] += 1
+                        else:
+                            new_vv_list.append(vv.copy())
+                        i_ps_state += 1
                     new_ps_state.set_param_values(k, new_vv_list)
                 elif isinstance(v, ParameterSpaceState):
                     states_queue.append((new_ps_state[k], v))
                 elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
                     states_queue.extend(zip(new_ps_state[k], v))
+        
+        # while states_queue:
+        #     new_ps_state, old_ps_state = states_queue.pop(0)
+        #     for k, v in old_ps_state.param_values.items():
+        #         if k == self.param_space_name and isinstance(v, ParameterSpaceState):
+        #             new_v, ratio, perturb_type = self.perturb_param_space_state(v)
+        #             log_prob_ratio += ratio
+        #             new_ps_state.set_param_values(k, new_v)
+        #             stats[perturb_type] += 1
+        #         elif k == self.param_space_name and isinstance(v, list):
+        #             new_vv_list = []
+        #             for vv in v:
+        #                 new_vv, ratio, perturb_type = self.perturb_param_space_state(vv)
+        #                 log_prob_ratio += ratio
+        #                 new_vv_list.append(new_vv)
+        #                 stats[perturb_type] += 1
+        #             new_ps_state.set_param_values(k, new_vv_list)
+        #         elif isinstance(v, ParameterSpaceState):
+        #             states_queue.append((new_ps_state[k], v))
+        #         elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
+        #             states_queue.extend(zip(new_ps_state[k], v))
         stats = {k: v / sum(stats.values()) for k, v in stats.items()}
         new_state.save_to_cache("perturb_stats", stats)
         return new_state, log_prob_ratio
@@ -87,8 +132,5 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
 
     @property
     def __name__(self) -> str:
-        name = "ParamSpacePerturbation("
-        name += f"param_space_name={self.param_space_name}, "
-        name += f"perturbations={self.perturbation_functions}, "
-        name += f"perturbation_weights={self.perturbation_weights})"
+        name = f"ParamSpacePerturbation(param_space_name={self.param_space_name})"
         return name

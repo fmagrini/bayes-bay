@@ -409,9 +409,8 @@ class Discretization(Prior, ParameterSpace):
             new_ps_state.set_param_values(param_name, init_values)
 
         # fill in the parameters with nearest neighbour values
-        for i_point, point in enumerate(new_ps_state["discretization"]):
-            i_nb_point = self.nearest_neighbour(old_ps_state["discretization"], point)
-            nb_point = old_ps_state["discretization"][i_nb_point]
+        for i_point, position in enumerate(new_ps_state["discretization"]):
+            i_nb_point = self.nearest_neighbour(old_ps_state["discretization"], position)
             for param_name, param in self.parameters.items():
                 if isinstance(param, Discretization):
                     _log_prob = param._sample_from_neighbour(
@@ -421,10 +420,10 @@ class Discretization(Prior, ParameterSpace):
                     log_prob_ratio += _log_prob
                 elif isinstance(param, Prior):
                     nb_value = old_ps_state[param_name][i_nb_point]
-                    new_value, _ = param.perturb_value(nb_value, nb_point)
+                    new_value, _ = param.perturb_value(nb_value, position)
                     new_ps_state[param_name][i_point] = new_value
-                    _log_prior_ratio = param.log_prior(new_value, point)
-                    _perturb_std = param.get_perturb_std(point)
+                    _log_prior_ratio = param.log_prior(new_value, position)
+                    _perturb_std = param.get_perturb_std(position)
                     _log_proposal_ratio = math.log(_perturb_std * SQRT_TWO_PI) + (
                         new_value - nb_value
                     ) ** 2 / (2 * _perturb_std**2)
@@ -469,22 +468,22 @@ class Discretization(Prior, ParameterSpace):
         new_ps_state: ParameterSpaceState, 
     ) -> float:
         log_prob_ratio = 0
-        for i_point, point in enumerate(old_ps_state["discretization"]):
-            i_nb_point = self.nearest_neighbour(new_ps_state["discretization"], point)
+        for i_to_remove, position in enumerate(old_ps_state["discretization"]):
+            i_nearest = self.nearest_neighbour(new_ps_state["discretization"], position)
             for param_name, param in self.parameters.items():
                 if isinstance(param, Discretization):
                     log_prob_ratio -= param.log_prob_initialize_discretization(
-                        new_ps_state[param_name][i_nb_point]
+                        old_ps_state[param_name][i_to_remove]
                     )
-                    log_prob_ratio += param._log_prob_death_parameters(
-                        old_ps_state[param_name][i_point],
-                        new_ps_state[param_name][i_nb_point],
+                    log_prob_ratio += param._log_prob_death_ps_state(
+                        old_ps_state[param_name][i_to_remove],
+                        new_ps_state[param_name][i_nearest]
                     )
                 elif isinstance(param, Prior):
-                    old_value = old_ps_state[param_name][i_point]
-                    new_value = new_ps_state[param_name][i_nb_point]
-                    _perturb_std = param.get_perturb_std(point)
-                    log_prob_ratio -= param.log_prior(old_value, point)
+                    old_value = old_ps_state[param_name][i_to_remove]
+                    new_value = new_ps_state[param_name][i_nearest]
+                    _perturb_std = param.get_perturb_std(position)
+                    log_prob_ratio -= param.log_prior(old_value, position)
                     log_prob_ratio -= math.log(_perturb_std * SQRT_TWO_PI) + (
                         old_value - new_value
                     ) ** 2 / (2 * _perturb_std**2)
