@@ -194,6 +194,31 @@ class Prior(ABC):
             return self.get_hyper_param("perturb_std", position)
         else:
             raise NotImplementedError("`get_perturb_std` needs to be implemented")
+    
+    def get_perturb_std_birth(
+        self, position: Union[Number, np.ndarray] = None
+    ) -> Number:
+        r"""get the standard deviation of the Gaussian used to perturb
+        the parameter at birth, which may be dependent on the position in the
+        discretization domain
+        
+        Parameters
+        ----------
+        position: Union[Number, np.ndarray], optional
+            the position in the discretization domain at which the standard
+            deviation of the Gaussian used to perturb the parameter at birth
+            is returned. Default is None
+            
+        Returns
+        -------
+        Number
+            standard deviation of the Gaussian used to perturb the parameter at birth,
+            possibly at the specified position
+        """
+        if self.has_hyper_param("perturb_std_birth"):
+            return self.get_hyper_param("perturb_std_birth", position)
+        else:
+            return self.get_perturb_std(position)
 
     def add_hyper_params(self, hyper_params: Dict[str, Union[Number, np.ndarray]]):
         r"""Sets the attributes from the given dict and checks for errors
@@ -304,6 +329,7 @@ class UniformPrior(Prior):
         vmin: Union[Number, np.ndarray],
         vmax: Union[Number, np.ndarray],
         perturb_std: Union[Number, np.ndarray],
+        perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None,
     ):
         super().__init__(
@@ -312,11 +338,13 @@ class UniformPrior(Prior):
             vmin=vmin,
             vmax=vmax,
             perturb_std=perturb_std,
+            perturb_std_birth=perturb_std_birth
         )
         self.add_hyper_params({
             "vmin": vmin, 
             "vmax": vmax, 
             "perturb_std": perturb_std, 
+            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std,
             "delta": np.array(vmax) - np.array(vmin), 
         })
 
@@ -369,7 +397,10 @@ class UniformPrior(Prior):
         return np.random.uniform(vmin, vmax, len(positions))
 
     def perturb_value(
-        self, value: Number, position: Union[Number, np.ndarray] = None
+        self, 
+        value: Number, 
+        position: Union[Number, np.ndarray] = None, 
+        is_birth: bool = False
     ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization domain and calculates the log of the corresponding 
@@ -395,6 +426,8 @@ class UniformPrior(Prior):
         position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the parameter 
             ``value`` is to be perturbed
+        is_birth : bool, optional
+            whether the perturbation is a birth or not, False by default
 
         Returns
         -------
@@ -407,7 +440,10 @@ class UniformPrior(Prior):
             \lvert \mathbf{J} \rvert) = 0`
         """
         # randomly perturb the value until within range
-        std = self.get_perturb_std(position)
+        if is_birth:
+            std = self.get_perturb_std_birth(position)
+        else:
+            std = self.get_perturb_std(position)
         vmin, vmax = self.get_vmin_vmax(position)
         random_deviate = random.normalvariate(0, std)
         new_value = value + random_deviate
@@ -470,18 +506,28 @@ class GaussianPrior(Prior):
         probability distribution. None by default
     """
 
-    def __init__(self, name, mean, std, perturb_std, position=None):
+    def __init__(
+        self, 
+        name: str, 
+        mean: Union[Number, np.ndarray], 
+        std: Union[Number, np.ndarray],
+        perturb_std: Union[Number, np.ndarray],
+        perturb_std_birth: Union[Number, np.ndarray] = None,
+        position: np.ndarray = None,
+    ):
         super().__init__(
             name=name,
             position=position,
             mean=mean,
             std=std,
             perturb_std=perturb_std,
+            perturb_std_birth=perturb_std_birth
         )
         self.add_hyper_params({
             "mean": mean, 
             "std": std, 
             "perturb_std": perturb_std, 
+            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std, 
         })
     
     def get_mean(
@@ -550,7 +596,10 @@ class GaussianPrior(Prior):
         return values
 
     def perturb_value(
-        self, value: Number, position: Union[Number, np.ndarray] = None
+        self, 
+        value: Number, 
+        position: Union[Number, np.ndarray] = None, 
+        is_birth: bool = False
     ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization, and calculates the log of the corresponding 
@@ -575,6 +624,8 @@ class GaussianPrior(Prior):
             the current value to be perturbed from
         position : Number
             the position of the value to be perturbed
+        is_birth : bool, optional
+            whether the perturbation is a birth or not, False by default
         
         Returns
         -------
@@ -586,7 +637,10 @@ class GaussianPrior(Prior):
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
-        perturb_std = self.get_perturb_std(position)
+        if is_birth:
+            perturb_std = self.get_perturb_std_birth(position)
+        else:
+            perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         new_value = value + random_deviate
         mean = self.get_mean(position)
@@ -651,7 +705,15 @@ class LaplacePrior(Prior):
         probability distribution. None by default
     """
 
-    def __init__(self, name, mean, scale, perturb_std, position=None):
+    def __init__(
+        self, 
+        name: str, 
+        mean: Union[Number, np.ndarray], 
+        scale: Union[Number, np.ndarray], 
+        perturb_std: Union[Number, np.ndarray],
+        perturb_std_birth: Union[Number, np.ndarray] = None,
+        position: np.ndarray = None,
+    ):
         super().__init__(
             name=name,
             position=position,
@@ -663,6 +725,7 @@ class LaplacePrior(Prior):
             "mean": mean, 
             "scale": scale, 
             "perturb_std": perturb_std, 
+            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std
         })
 
     def get_mean(
@@ -731,7 +794,10 @@ class LaplacePrior(Prior):
         return values
     
     def perturb_value(
-        self, value: Number, position: Union[Number, np.ndarray] = None
+        self, 
+        value: Number, 
+        position: Union[Number, np.ndarray] = None, 
+        is_birth: bool = False
     ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization, and calculates the log of the corresponding 
@@ -756,6 +822,8 @@ class LaplacePrior(Prior):
             the current value to be perturbed from
         position : Number
             the position of the value to be perturbed
+        is_birth : bool, optional
+            whether the perturbation is a birth or not, False by default
         
         Returns
         -------
@@ -767,7 +835,10 @@ class LaplacePrior(Prior):
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
-        perturb_std = self.get_perturb_std(position)
+        if is_birth:
+            perturb_std = self.get_perturb_std_birth(position)
+        else:
+            perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         new_value = value + random_deviate
         mean = self.get_mean(position)
@@ -828,6 +899,7 @@ class CustomPrior(Prior):
         log_prior: Callable[[Number, Number], Number],
         sample: Callable[[Number], Number],
         perturb_std: Union[Number, np.ndarray], 
+        perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None, 
     ):
         super().__init__(
@@ -838,7 +910,8 @@ class CustomPrior(Prior):
             position=position, 
         )
         self.add_hyper_params({
-            "perturb_std": perturb_std
+            "perturb_std": perturb_std, 
+            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std,
         })
         self._log_prior = log_prior
         self._sample = sample
@@ -853,7 +926,10 @@ class CustomPrior(Prior):
         return result
     
     def perturb_value(
-        self, value: Number, position: Union[Number, np.ndarray] = None
+        self, 
+        value: Number, 
+        position: Union[Number, np.ndarray] = None, 
+        is_birth: bool = False
     ) -> Tuple[Number, Number]:
         r"""perturbs the given value, in a way that may depend on the position 
         in the discretization domain, and calculates the log of the corresponding 
@@ -878,6 +954,8 @@ class CustomPrior(Prior):
             the current value to be perturbed from
         position : Number, optional
             the position of the value to be perturbed
+        is_birth : bool, optional
+            whether the perturbation is a birth or not, False by default
 
         Returns
         -------
@@ -889,7 +967,8 @@ class CustomPrior(Prior):
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
-        perturb_std = self.get_perturb_std(position)
+        if is_birth:
+            perturb_std = self.get_perturb_std_birth(position)
         random_deviate = random.normalvariate(0, perturb_std)
         new_value = value + random_deviate
         ratio = self.log_prior(new_value, position) - self.log_prior(value, position)

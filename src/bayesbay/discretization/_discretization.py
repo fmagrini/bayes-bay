@@ -356,9 +356,11 @@ class Discretization(Prior, ParameterSpace):
                 new_born_values[param_name] = new_ps_state
             elif isinstance(param, Prior):
                 old_values = old_ps_state[param_name]
-                new_value, _ = param.perturb_value(old_values[i_nearest], new_position)
+                new_value, _ = param.perturb_value(
+                    old_values[i_nearest], new_position, True
+                )
                 new_born_values[param_name] = new_value
-                _perturb_std = param.get_perturb_std(new_position)
+                _perturb_std = param.get_perturb_std_birth(new_position)
                 log_prior_ratio = param.log_prior(new_value, new_position)
                 log_proposal_ratio = math.log(_perturb_std * SQRT_TWO_PI) + (
                     new_value - old_values[i_nearest]
@@ -420,10 +422,10 @@ class Discretization(Prior, ParameterSpace):
                     log_prob_ratio += _log_prob
                 elif isinstance(param, Prior):
                     nb_value = old_ps_state[param_name][i_nb_point]
-                    new_value, _ = param.perturb_value(nb_value, position)
+                    new_value, _ = param.perturb_value(nb_value, position, True)
                     new_ps_state[param_name][i_point] = new_value
                     _log_prior_ratio = param.log_prior(new_value, position)
-                    _perturb_std = param.get_perturb_std(position)
+                    _perturb_std = param.get_perturb_std_birth(position)
                     _log_proposal_ratio = math.log(_perturb_std * SQRT_TWO_PI) + (
                         new_value - nb_value
                     ) ** 2 / (2 * _perturb_std**2)
@@ -452,7 +454,7 @@ class Discretization(Prior, ParameterSpace):
                 )
                 log_prob_ratio += param._log_prob_death_ps_state(value_to_remove, nearest_value)
             elif isinstance(param, Prior):
-                _perturb_std = param.get_perturb_std(position_to_remove)
+                _perturb_std = param.get_perturb_std_birth(position_to_remove)
                 log_prob_ratio -= param.log_prior(value_to_remove, position_to_remove)
                 log_prob_ratio -= math.log(_perturb_std * SQRT_TWO_PI) + ( 
                     value_to_remove - nearest_value
@@ -482,7 +484,7 @@ class Discretization(Prior, ParameterSpace):
                 elif isinstance(param, Prior):
                     old_value = old_ps_state[param_name][i_to_remove]
                     new_value = new_ps_state[param_name][i_nearest]
-                    _perturb_std = param.get_perturb_std(position)
+                    _perturb_std = param.get_perturb_std_birth(position)
                     log_prob_ratio -= param.log_prior(old_value, position)
                     log_prob_ratio -= math.log(_perturb_std * SQRT_TWO_PI) + (
                         old_value - new_value

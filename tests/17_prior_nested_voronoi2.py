@@ -4,30 +4,36 @@ import bayesbay as bb
 
 
 # define parameter space
-velocity = bb.prior.UniformPrior("velocity", -1, 1, 0.5)
+vs = bb.prior.UniformPrior(
+    name="vs", 
+    # vmin=2.2, 
+    # vmax=5, 
+    vmin=[2.2, 2.8, 3.3, 4], 
+    vmax=[3.9, 4.6, 4.8, 5], 
+    position=[0, 20, 60, 150],
+    perturb_std=0.5, 
+    perturb_std_birth=0.9
+)
 v_vertical = bb.discretization.Voronoi1D(
-    name="v_vertical",
+    name="v_vertical", 
     vmin=0,
-    vmax=1,
-    perturb_std=5,
-    n_dimensions=None,
-    n_dimensions_min=1,
-    n_dimensions_max=10,
-    n_dimensions_init_range=0.3,
-    parameters=[velocity],
+    vmax=150,
+    perturb_std=10,
+    n_dimensions=None, 
+    n_dimensions_min=5,
+    n_dimensions_max=20,
+    parameters=[vs], 
     # birth_from="prior"
 )
 v_horizontal = bb.discretization.Voronoi2D(
-    name="v_horizontal", 
+    name="v_horizontal",
     vmin=0, 
-    vmax=1, 
+    vmax=20, 
     polygon=None, 
-    perturb_std=5, 
-    n_dimensions=None, 
+    perturb_std=2, 
     n_dimensions_min=1, 
-    n_dimensions_max=10, 
-    n_dimensions_init_range=0.3, 
-    parameters=[v_vertical], 
+    n_dimensions_max=10,
+    parameters=[v_vertical],
     # birth_from="prior"
 )
 parameterization = bb.parameterization.Parameterization(v_horizontal)
@@ -48,7 +54,7 @@ inversion.run(
     n_iterations=500_000, 
     burnin_iterations=0, 
     save_every=100, 
-    print_every=1000, 
+    print_every=2000, 
 )
 
 # get results and plot
@@ -62,12 +68,12 @@ for v_horizontal_sample in results["v_horizontal.v_vertical"]:
     for v_vertical in v_horizontal_sample:
         n_dims_v_vertical.append(v_vertical["v_horizontal.v_vertical.n_dimensions"])
         sites_v_vertical.extend(v_vertical["v_horizontal.v_vertical.discretization"])
-        velocities.extend(v_vertical["v_horizontal.v_vertical.velocity"])
+        velocities.extend(v_vertical["v_horizontal.v_vertical.vs"])
 
 fig, axes = plt.subplots(1, 3, figsize=(10, 5))
-axes[0].hist(n_dims_v_horizontal, bins=10, ec="w")
+axes[0].hist(n_dims_v_horizontal, bins=np.arange(0.5,10.5), ec="w")
 axes[0].set_title("v_horizontal")
-axes[1].hist(n_dims_v_vertical, bins=10, ec="w")
+axes[1].hist(n_dims_v_vertical, bins=np.arange(4.5,20.5), ec="w")
 axes[1].set_title("v_vertical")
 axes[2].hist(velocities, bins=20, ec="w")
 axes[2].set_title("velocity")

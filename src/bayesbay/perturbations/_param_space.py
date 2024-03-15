@@ -71,27 +71,7 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
                     states_queue.append((new_ps_state[k], v))
                 elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
                     states_queue.extend(zip(new_ps_state[k], v))
-        
-        # while states_queue:
-        #     new_ps_state, old_ps_state = states_queue.pop(0)
-        #     for k, v in old_ps_state.param_values.items():
-        #         if k == self.param_space_name and isinstance(v, ParameterSpaceState):
-        #             new_v, ratio, perturb_type = self.perturb_param_space_state(v)
-        #             log_prob_ratio += ratio
-        #             new_ps_state.set_param_values(k, new_v)
-        #             stats[perturb_type] += 1
-        #         elif k == self.param_space_name and isinstance(v, list):
-        #             new_vv_list = []
-        #             for vv in v:
-        #                 new_vv, ratio, perturb_type = self.perturb_param_space_state(vv)
-        #                 log_prob_ratio += ratio
-        #                 new_vv_list.append(new_vv)
-        #                 stats[perturb_type] += 1
-        #             new_ps_state.set_param_values(k, new_vv_list)
-        #         elif isinstance(v, ParameterSpaceState):
-        #             states_queue.append((new_ps_state[k], v))
-        #         elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
-        #             states_queue.extend(zip(new_ps_state[k], v))
+
         stats = {k: v / sum(stats.values()) for k, v in stats.items()}
         new_state.save_to_cache("perturb_stats", stats)
         return new_state, log_prob_ratio
