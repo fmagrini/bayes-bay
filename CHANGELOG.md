@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.1 (_/03/2024)
+- API change: removed `DimensionalityException`
+    - DimensionalityException replaced with -math.inf log probability in birth and death perturbations
+
 ## v0.3.0 (15/03/2024)
 
 - New feature: Nested parameter space (and discretization)
