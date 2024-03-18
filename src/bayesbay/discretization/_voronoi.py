@@ -243,7 +243,7 @@ class Voronoi(Discretization):
             log_prior_ratio = 0
             for param_name, param in self.parameters.items():
                 values = old_ps_state[param_name]
-                if param.position is not None:
+                if not isinstance(param, ParameterSpace) and param.position is not None:
                     log_prior_old = param.log_prior(values[isite], old_site)
                     log_prior_new = param.log_prior(values[isite], new_site)
                     log_prior_ratio += log_prior_new - log_prior_old
@@ -257,7 +257,7 @@ class Voronoi(Discretization):
             log_prior_ratio = 0
             for param_name, param in self.parameters.items():
                 values = old_ps_state[param_name]
-                if param.position is not None:
+                if not isinstance(param, ParameterSpace) and param.position is not None:
                     log_prior_old = param.log_prior(values[isite], old_site)
                     log_prior_new = param.log_prior(values[isite], new_site)
                     log_prior_ratio += log_prior_new - log_prior_old

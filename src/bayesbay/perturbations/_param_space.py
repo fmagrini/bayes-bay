@@ -5,7 +5,6 @@ import random
 
 from .._state import State, ParameterSpaceState
 from ._base_perturbation import Perturbation, ParamSpaceMixin
-from ..exceptions._exceptions import DimensionalityException
 
 
 class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
