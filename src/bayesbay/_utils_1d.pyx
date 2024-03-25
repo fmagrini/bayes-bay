@@ -7,7 +7,7 @@ from libcpp.vector cimport vector
 from libcpp.utility cimport pair
 from libcpp.algorithm cimport sort
 from libc.stdlib cimport malloc, free
-from libc.math cimport fabs
+from libc.math cimport fabs, INFINITY
 import numpy as np
 cimport numpy as np
     
@@ -27,21 +27,29 @@ cpdef bool_cpp is_sorted(double[:] arr):
 @boundscheck(False)
 @wraparound(False) 
 @cdivision(True)  
-cpdef compute_voronoi1d_cell_extents(double[:] depth, 
-                                     double lb=0, 
-                                     double ub=-1,
-                                     double fill_value=0):
-    cdef size_t size = depth.shape[0]
-    cdef int i
+def compute_voronoi1d_cell_extents(double[:] sites,
+                                   double lb=0, 
+                                   double ub=INFINITY,
+                                   double fill_value=0):
+    cdef size_t size = sites.shape[0]
+    cdef int i, istart
     cdef double d1, d2
-    cdef double[:] thickness = np.zeros(size, dtype=np.double)
-    d1 = lb
-    for i in range(size - 1):
-        d2 = (depth[i] + depth[i+1]) / 2.
-        thickness[i] = d2 - d1 if d1>=0 else fill_value
+    cdef double[:] extent = np.zeros(size, dtype=np.double)
+    size = sites.shape[0]
+    extent = np.zeros(size, dtype=np.double)
+    if not lb == -INFINITY:
+        istart = 0
+        d1 = lb
+    else:
+        istart = 1
+        extent[0] = fill_value
+        d1 = (sites[0] + sites[1]) / 2.
+    for i in range(istart, size - 1):
+        d2 = (sites[i] + sites[i+1]) / 2.
+        extent[i] = d2 - d1
         d1 = d2
-    thickness[i+1] = ub - d2 if ub>=0 else fill_value
-    return np.asarray(thickness)
+    extent[i+1] = ub - d2 if not ub==INFINITY else fill_value
+    return np.asarray(extent)
 
 
 @boundscheck(False)

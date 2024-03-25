@@ -163,9 +163,9 @@ inversion = bb.BayesianInversion(
     n_cpus=N_CHAINS,
 )
 inversion.run(
-    n_iterations=300_000,
-    burnin_iterations=50_000,
-    save_every=1_000,
+    n_iterations=30_000,
+    burnin_iterations=5_000,
+    save_every=20,
     print_every=1_000,
 )
 
@@ -199,5 +199,5 @@ for d in np.cumsum(true_thickness):
 # saving plots, models and targets
 prefix = "inv_sw"
 ax.get_figure().savefig(f"{prefix}_samples")
-fig.savefig(f"{prefix}_density")
+# fig.savefig(f"{prefix}_density")
 np.save(f"{prefix}_saved_states", saved_states)

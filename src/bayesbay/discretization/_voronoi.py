@@ -603,7 +603,7 @@ class Voronoi1D(Voronoi):
         )
 
     @staticmethod
-    def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=-1, fill_value=0):
+    def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=None, fill_value=0):
         r"""compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
         boundaries are first drawn at the midpoint between consecutive Voronoi
         nuclei. The extent is then derived from the distance between consecutive
@@ -616,8 +616,8 @@ class Voronoi1D(Voronoi):
 
         lb, ub : float
             Lower and upper bounds used in the calculation of Voronoi-cell
-            extents. Negative values for `lb` or `ub` denote an unbounded cell.
-            The extent of an unbounded cell is set to `fill_value`
+            extents. `None` values for `lb` or `ub` denote an unbounded cell.
+            The extent of an unbounded cell is set to `fill_value`.
 
         fill_value : float
             Value attributed to unbounded Voronoi cells
@@ -631,19 +631,57 @@ class Voronoi1D(Voronoi):
         --------
         >>> voronoi_sites = np.array([2, 5.5, 8, 10])
 
-        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=0, ub=-1, fill_value=np.nan)
+        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=0, ub=None, fill_value=np.nan)
         array([3.75, 3.  , 2.25,  nan])
 
-        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=-1, ub=-1, fill_value=np.nan)
+        >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=None, ub=None, fill_value=np.nan)
         array([ nan, 3.  , 2.25,  nan])
 
         >>> Voronoi1D.compute_cell_extents(voronoi_sites, lb=0, ub=15, fill_value=np.nan)
         array([3.75, 3.  , 2.25, 6.  ])
         """
+        lb = lb if lb is not None else -np.inf
+        ub = ub if ub is not None else np.inf
         return compute_voronoi1d_cell_extents(
             voronoi_sites, lb=lb, ub=ub, fill_value=fill_value
         )
 
+    @staticmethod
+    def compute_interfaces(        
+        voronoi_cells: np.ndarray,
+        input_type="nuclei",
+        lb_tessellation=None,
+    ):
+        """computes the position of Voronoi-cell interfaces
+
+        Parameters
+        ----------
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions
+            (see ``input_type``)
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
+        lb_tessellation : Number
+            the lower boundary of the 1D tessellation, used to calculate the 
+            interface positions when `input_type` is `'extents'`. Ignored otherwise.
+            
+        Returns
+        -------
+        np.ndarray
+        """
+        if input_type == "nuclei":
+            return (voronoi_cells[:-1] + voronoi_cells[1:]) / 2
+        elif input_type == "extents":
+            assert lb_tessellation is not None, (
+                "`lb_tessellation` should not be None when `input_type` is"
+                "'extents'"
+            )
+            return np.cumsum(voronoi_cells)[:-1] + lb_tessellation
+        else:
+            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
+        
     @staticmethod
     def interpolate_tessellation(
         voronoi_cells, param_values, interp_positions, input_type="nuclei"
@@ -854,6 +892,7 @@ class Voronoi1D(Voronoi):
         ax=None,
         swap_xy_axes=True,
         input_type="nuclei",
+        lb_tessellation=None,
         **kwargs,
     ):
         """plot the 1D histogram of Voronoi-interface positions
@@ -874,19 +913,21 @@ class Voronoi1D(Voronoi):
         swap_xy_axes : bool
             if True (default), the x axis is swapped with the y axis so as to display
             the parameter value associated with each Voronoi cell on the x axis
-
+        lb_tessellation : Number
+            the lower boundary of the 1D tessellation, used to calculate the 
+            interface positions when `input_type` is `'extents'`. Ignored otherwise.
+        kwargs : dict, optional
+            additional keyword arguments to pass to ax.bar
+            
         Returns
         -------
         matplotlib.axes.Axes
         """
         positions = []
         for voronoi_cells in samples_voronoi_cells:
-            if input_type == "nuclei":
-                cells_extent = Voronoi1D.compute_cell_extents(voronoi_cells)
-            elif input_type == "extents":
-                cells_extent = voronoi_cells
-            positions.extend(np.cumsum(cells_extent)[:-1])
-
+            positions.extend(Voronoi1D.compute_interfaces(voronoi_cells, 
+                                                          input_type,
+                                                          lb_tessellation))
         if ax is None:
             _, ax = plt.subplots()
         hist, edges = np.histogram(positions, bins=bins, density=True)
@@ -897,7 +938,7 @@ class Voronoi1D(Voronoi):
             if not ax.get_xlabel():
                 ax.set_xlabel("Probability density")
         else:
-            plt.bar(edges[:-1], hist, width=np.diff(edges), align="edge")
+            ax.bar(edges[:-1], hist, width=np.diff(edges), align="edge", **kwargs)
             if not ax.get_ylabel():
                 ax.set_ylabel("Probability density")
         return ax
@@ -943,13 +984,9 @@ class Voronoi1D(Voronoi):
             The Axes object containing the plot
         """
         lb, ub = bounds
-        if input_type == "nuclei":
-            voronoi_cell_extents = Voronoi1D.compute_cell_extents(voronoi_cells, lb=lb)
-        elif input_type == "extents":
-            voronoi_cell_extents = voronoi_cells
-        else:
-            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
-        interface_positions = np.cumsum(voronoi_cell_extents[:-1])
+        interface_positions = Voronoi1D.compute_interfaces(voronoi_cells, 
+                                                           input_type, 
+                                                           lb)
         if ub is not None:
             assert ub > interface_positions[-1], (
                 "`bounds[1]` should be greater"
@@ -958,7 +995,7 @@ class Voronoi1D(Voronoi):
             )
             end_position = ub
         else:
-            end_position = interface_positions[-1] + max(voronoi_cell_extents)
+            end_position = interface_positions[-1] + np.max(np.abs(interface_positions))/2
 
         x = np.insert(np.append(interface_positions, end_position), 0, lb)
         y = np.insert(param_values, 0, param_values[0])
