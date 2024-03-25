@@ -647,7 +647,7 @@ class Voronoi1D(Voronoi):
         )
 
     @staticmethod
-    def compute_interfaces(        
+    def compute_interface_positions(        
         voronoi_cells: np.ndarray,
         input_type="nuclei",
         lb_tessellation=None,
@@ -925,9 +925,9 @@ class Voronoi1D(Voronoi):
         """
         positions = []
         for voronoi_cells in samples_voronoi_cells:
-            positions.extend(Voronoi1D.compute_interfaces(voronoi_cells, 
-                                                          input_type,
-                                                          lb_tessellation))
+            positions.extend(Voronoi1D.compute_interface_positions(voronoi_cells, 
+                                                                   input_type,
+                                                                   lb_tessellation))
         if ax is None:
             _, ax = plt.subplots()
         hist, edges = np.histogram(positions, bins=bins, density=True)
@@ -984,9 +984,9 @@ class Voronoi1D(Voronoi):
             The Axes object containing the plot
         """
         lb, ub = bounds
-        interface_positions = Voronoi1D.compute_interfaces(voronoi_cells, 
-                                                           input_type, 
-                                                           lb)
+        interface_positions = Voronoi1D.compute_interface_positions(voronoi_cells,
+                                                                    input_type,
+                                                                    lb)
         if ub is not None:
             assert ub > interface_positions[-1], (
                 "`bounds[1]` should be greater"

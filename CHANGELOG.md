@@ -5,6 +5,9 @@
 ## v0.3.1 (_/03/2024)
 - API change: removed `DimensionalityException`
     - DimensionalityException replaced with -math.inf log probability in birth and death perturbations
+- New feature: `Voronoi1D`
+    - `Voronoi1D.compute_interface_positions()` added
+- Enhancement: `Voronoi1D.compute_cell_extents` now deals with negative lower boundaries
 
 ## v0.3.0 (15/03/2024)
 
