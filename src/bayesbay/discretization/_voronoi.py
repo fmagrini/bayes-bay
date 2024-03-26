@@ -870,11 +870,12 @@ class Voronoi1D(Voronoi):
             interp_param_values.ravel(),
             np.tile(interp_positions, interp_param_values.shape[0]),
             bins=(param_value_bins, len(interp_positions)),
+            density=True,
             **kwargs,
         )
         # colorbar (for the histogram density)
         cbar = plt.colorbar(cax[3], ax=ax, aspect=35, pad=0.02)
-        cbar.set_label("Counts")
+        cbar.set_label("Probability density")
         if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
             ax.invert_yaxis()
         if swap_xy_axes:
