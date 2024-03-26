@@ -87,6 +87,14 @@ param_vs = bb.prior.UniformPrior(
     position=VS_UNIFORM_POS, 
 )
 
+param_vp = bb.prior.UniformPrior(
+    name="vp",
+    vmin=VS_UNIFORM_MIN,
+    vmax=VS_UNIFORM_MAX,
+    perturb_std=VS_PERTURB_STD,
+    position=VS_UNIFORM_POS, 
+)
+
 
 def param_vs_initialize(
     param: bb.prior.Prior, 
