@@ -46,7 +46,12 @@ class _FunctionWrapper:
 
     @property
     def __name__(self) -> str:
-        return self.f.__name__
+        if hasattr(self.f, "__name__"):
+            return self.f.__name__
+        elif hasattr(self.f, "__class__"):
+            return self.f.__class__.__name__
+        else:
+            return "function"
 
     def __repr__(self) -> str:
         return self.__name__
