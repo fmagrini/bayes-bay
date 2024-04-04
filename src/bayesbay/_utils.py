@@ -34,22 +34,24 @@ class _FunctionWrapper:
     """Function wrapper to make it pickleable (credit to emcee)"""
 
     def __init__(self, f, args, kwargs):
-        self.f = f
+        self.func = f
         self.args = args or []
         self.kwargs = kwargs or {}
 
     def __call__(self, *args):
         try:
-            return self.f(*args, *self.args, **self.kwargs)
+            return self.func(*args, *self.args, **self.kwargs)
         except Exception as e:
             raise UserFunctionException(e)
 
     @property
     def __name__(self) -> str:
-        if hasattr(self.f, "__name__"):
-            return self.f.__name__
-        elif hasattr(self.f, "__class__"):
-            return self.f.__class__.__name__
+        if hasattr(self.func, "__name__"):
+            return self.func.__name__
+        elif hasattr(self.func, "func") and hasattr(self.func.func, "__name__"):
+            return self.func.func.__name__
+        elif hasattr(self.func, "__class__"):
+            return self.func.__class__.__name__
         else:
             return "function"
 
