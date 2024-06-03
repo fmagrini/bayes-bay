@@ -3,7 +3,7 @@ from typing import Tuple, List
 import random
 
 from .._state import State, DataNoiseState
-from .._target import Target
+from ..likelihood._target import Target
 from ._base_perturbation import Perturbation
 
 

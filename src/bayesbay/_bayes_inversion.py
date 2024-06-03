@@ -8,8 +8,8 @@ from ._markov_chain import MarkovChain, BaseMarkovChain
 from .samplers import VanillaSampler, Sampler
 from .parameterization import Parameterization
 from ._utils import _preprocess_func
-from ._log_likelihood import LogLikelihood
-from ._target import Target
+from .likelihood._log_likelihood import LogLikelihood
+from .likelihood._target import Target
 from .perturbations._birth_death import BirthPerturbation, DeathPerturbation
 
 

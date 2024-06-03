@@ -4,8 +4,8 @@ import random
 import math
 import numpy as np
 
-from ._utils_1d import inverse_covariance
-from ._state import State, DataNoiseState
+from .._utils_1d import inverse_covariance
+from .._state import State, DataNoiseState
 
 
 class Target:
@@ -60,7 +60,11 @@ class Target:
         self.correlation_min = correlation_min
         self.correlation_max = correlation_max
         self.correlation_perturb_std = correlation_perturb_std
+        assert std_min <= std_max, "standard deviation minimum should be less than maximum"
         assert std_min >= 0, "standard deviation should always be positive"
+        assert correlation_min <= correlation_max, "correlation minimum should be less than maximum"
+        assert correlation_min >= 0, "correlation should always be positive"
+        assert correlation_max <= 1, "correlation should always be less than 1"
         if covariance_mat_inv is not None:
             self._perturbation_func = None
             if np.isscalar(covariance_mat_inv):

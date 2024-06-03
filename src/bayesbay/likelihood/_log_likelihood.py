@@ -3,11 +3,11 @@ from typing import Any, List, Callable, Tuple, Union
 from numbers import Number
 import numpy as np
 
-from .exceptions import ForwardException
-from ._state import State
+from ..exceptions import ForwardException
+from .._state import State
 from ._target import Target
-from .perturbations._data_noise import NoisePerturbation
-from ._utils import _preprocess_func
+from ..perturbations._data_noise import NoisePerturbation
+from .._utils import _preprocess_func
 
 
 class LogLikelihood:
