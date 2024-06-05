@@ -480,7 +480,7 @@ class Voronoi(Discretization):
             # initialize nested parameter space perturbations
             _ps_pars = [p for p in _params if isinstance(p, ParameterSpace)]
             for ps in _ps_pars:
-                _funcs = ps.perturbation_functions
+                _funcs = ps.perturbation_funcs
                 self._perturbation_funcs.extend(_funcs)
                 self._perturbation_weights.extend(ps.perturbation_weights)
         _ps_perturbation_funcs.append(ParamPerturbation(self.name, [self]))
@@ -493,7 +493,7 @@ class Voronoi(Discretization):
         self._perturbation_weights.append(sum(_ps_perturbation_weights))
 
     @property
-    def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
+    def perturbation_funcs(self) -> List[Callable[[State], Tuple[State, Number]]]:
         r"""the list of perturbation functions allowed in the parameter space linked to
         the Voronoi discretization. Each function takes in a state (see :class:`State`)
         and returns a new state along with the corresponding partial acceptance
@@ -511,7 +511,7 @@ class Voronoi(Discretization):
     @property
     def perturbation_weights(self) -> List[Number]:
         """a list of perturbation weights, corresponding to each of the
-        :meth:`perturbation_functions` that determines the probability of each of them
+        :meth:`perturbation_funcs` that determines the probability of each of them
         to be chosen during each step
 
         The weights are not normalized and have the following default values:

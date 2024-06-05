@@ -41,7 +41,7 @@ class Parameterization:
         self._perturbation_funcs = []
         self._perturbation_weights = []
         for ps in self.parameter_spaces.values():
-            self._perturbation_funcs.extend(ps.perturbation_functions)
+            self._perturbation_funcs.extend(ps.perturbation_funcs)
             self._perturbation_weights.extend(ps.perturbation_weights)
     
     def initialize(self) -> State:
@@ -59,7 +59,7 @@ class Parameterization:
         return State(param_values)
     
     @property
-    def perturbation_functions(self) -> List[Perturbation]:
+    def perturbation_funcs(self) -> List[Perturbation]:
         """the list of perturbation functions allowed to perturb the
         parameterization
         """

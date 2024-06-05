@@ -31,7 +31,7 @@ inversion = bb.BayesianInversion(
     log_likelihood=log_likelihood,  
     n_chains=1, 
 )
-inversion.set_perturbation_funcs(inversion.perturbation_funcs[0].perturbation_functions)
+inversion.set_perturbation_funcs(inversion.perturbation_funcs[0].perturbation_funcs)
 inversion.run(
     sampler=None, 
     n_iterations=500_000, 

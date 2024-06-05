@@ -112,7 +112,7 @@ class LogLikelihood:
         return self._fwd_functions
 
     @property
-    def perturbation_functions(self) -> List[Callable[[State], Tuple[State, Number]]]:
+    def perturbation_funcs(self) -> List[Callable[[State], Tuple[State, Number]]]:
         """A list of perturbation functions associated with the data noise of the
         provided targets.
 
@@ -124,7 +124,7 @@ class LogLikelihood:
     @property
     def perturbation_weights(self) -> List[Number]:
         """a list of perturbation weights, corresponding to each of the 
-        :meth:`perturbation_functions` that determines the probability of each of them
+        :meth:`perturbation_funcs` that determines the probability of each of them
         to be chosen during each step
         
         The weights are not normalized and have a following default value of 1 for 

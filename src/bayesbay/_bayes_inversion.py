@@ -444,8 +444,8 @@ class BayesianInversion(BaseBayesianInversion):
         self._repr_args["parameterization"] = _parameterization
 
     def _init_perturbation_funcs(self) -> list:
-        funcs_from_parameterization = self.parameterization.perturbation_functions
-        funcs_from_log_likelihood = self.log_likelihood.perturbation_functions
+        funcs_from_parameterization = self.parameterization.perturbation_funcs
+        funcs_from_log_likelihood = self.log_likelihood.perturbation_funcs
         weights_from_parameterization = self.parameterization.perturbation_weights
         weights_from_log_likelihood = self.log_likelihood.perturbation_weights
         return funcs_from_parameterization + funcs_from_log_likelihood, \

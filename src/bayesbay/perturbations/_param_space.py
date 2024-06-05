@@ -81,9 +81,9 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
         while True:
             # randomly choose a perturbation function for the current ps_state
             i_perturb = random.choices(
-                range(len(self.perturbation_functions)), self.perturbation_weights
+                range(len(self.perturbation_funcs)), self.perturbation_weights
             )[0]
-            perturb_func = self.perturbation_functions[i_perturb]
+            perturb_func = self.perturbation_funcs[i_perturb]
             # perturb and get the log of the partial acceptance probability
             new_ps_state, log_prob_ratio = perturb_func.perturb_param_space_state(
                     ps_state
@@ -91,11 +91,11 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
             return new_ps_state, log_prob_ratio, perturb_func.__name__
 
     @property
-    def perturbation_functions(self) -> List[Perturbation]:
+    def perturbation_funcs(self) -> List[Perturbation]:
         return self._perturbations_functions
     
-    @perturbation_functions.setter
-    def perturbation_functions(self, perturbations: List[Perturbation]):
+    @perturbation_funcs.setter
+    def perturbation_funcs(self, perturbations: List[Perturbation]):
         self._perturbations_functions = perturbations
 
     @property
