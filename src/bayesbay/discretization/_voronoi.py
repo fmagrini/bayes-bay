@@ -780,12 +780,96 @@ class Voronoi1D(Voronoi):
         return statistics
 
     @staticmethod
+    def get_tessellation_density(
+        samples_voronoi_cells: np.ndarray,
+        samples_param_values: np.ndarray,
+        position_bins: Union[int, np.ndarray] = 100,
+        param_value_bins: Union[int, np.ndarray] = 100,
+        input_type="nuclei"
+    ):
+        """plot a 2D density histogram of the Voronoi tessellation
+
+        Parameters
+        ----------
+        samples_voronoi_cells : list
+            either a list of Voronoi-cell extents or of Voronoi-site positions
+            (see ``input_type``)
+        samples_param_values : ndarray
+            a 2D numpy array where each row contains the parameter values
+            associated with each Voronoi discretization found
+            in ``samples_voronoi_cell_extents`` at the same row index
+        position_bins: int or np.ndarray, optional
+            the position bins or their number, default to 100
+        param_value_bins: int or np.ndarray, optional
+            the parameter value bins or their number, default to 100
+        input_type : str, {'nuclei', 'extents'}
+            argument determining whether each entry of `voronoi_cells` should be
+            interpreted as a Voronoi-site position (``'nuclei'``) or as the
+            extent of the Voronoi cell (``'extents'``)
+
+        Returns
+        -------
+        density : ndarray, shape(nx, ny)
+            The bi-dimensional histogram of samples x and y. Values in x are 
+            histogrammed along the first dimension and values in y are histogrammed 
+            along the second dimension
+        X : ndarray, shape(nx+1,)
+            The bin edges along the first dimension.
+        Y : ndarray, shape(ny+1,)
+            The bin edges along the second dimension.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            from bayesbay.discretization import Voronoi1D
+
+            # define and run the Bayesian inversion
+            ...
+
+            # plot
+            results = inversion.get_results()
+            samples_voronoi_sites = results["my_voronoi.discretization"]
+            samples_param_values = results["my_voronoi.my_param_value"]
+            density, X, Y = Voronoi1D.get_tessellation_density(
+                samples_voronoi_sites, samples_param_values
+            )
+        """
+        if input_type not in ["nuclei", "extents"]:
+            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
+        if isinstance(position_bins, int):
+            lb = 0
+            if input_type == "nuclei":
+                ub = max([np.max(nuclei) for nuclei in samples_voronoi_cells])
+            else:
+                ub = 0
+                for cell_extents in samples_voronoi_cells:
+                    ub = max(ub, np.max(np.cumsum(np.array(cell_extents))))
+            interp_positions = np.linspace(lb, ub, position_bins)
+        elif isinstance(position_bins, np.ndarray):
+            interp_positions = position_bins
+        else:
+            raise TypeError("`position_bins` should either be int or np.ndarray")
+        interp_param_values = Voronoi1D._interpolate_tessellations(
+            samples_voronoi_cells,
+            samples_param_values,
+            interp_positions,
+            input_type=input_type,
+        )
+        density, X, Y = np.histogram2d(np.tile(interp_positions, interp_param_values.shape[0]),
+                                       interp_param_values.ravel(),
+                                       bins=(len(interp_positions), param_value_bins),
+                                       density=True)
+        return density, X, Y
+
+    @staticmethod
     def plot_tessellation_density(
         samples_voronoi_cells: np.ndarray,
         samples_param_values: np.ndarray,
         position_bins: Union[int, np.ndarray] = 100,
         param_value_bins: Union[int, np.ndarray] = 100,
         ax=None,
+        colorbar=True,
         swap_xy_axes=True,
         input_type="nuclei",
         **kwargs,
@@ -807,7 +891,6 @@ class Voronoi1D(Voronoi):
             the parameter value bins or their number, default to 100
         ax : Axes, optional
             an optional Axes object to plot on
-        bounds : tuple, optional
         swap_xy_axes : bool
             if True (default), the x axis is swapped with the y axis so as to display
             the parameter value associated with each Voronoi cell on the x axis
@@ -842,48 +925,26 @@ class Voronoi1D(Voronoi):
                 samples_voronoi_sites, samples_param_values
             )
         """
-        if input_type not in ["nuclei", "extents"]:
-            raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
-        if isinstance(position_bins, int):
-            lb = 0
-            if input_type == "nuclei":
-                ub = max([np.max(nuclei) for nuclei in samples_voronoi_cells])
-            else:
-                ub = 0
-                for cell_extents in samples_voronoi_cells:
-                    ub = max(ub, np.max(np.cumsum(np.array(cell_extents))))
-            interp_positions = np.linspace(lb, ub, position_bins)
-        elif isinstance(position_bins, np.ndarray):
-            interp_positions = position_bins
-        else:
-            raise TypeError("`position_bins` should either be int or np.ndarray")
-        interp_param_values = Voronoi1D._interpolate_tessellations(
-            samples_voronoi_cells,
-            samples_param_values,
-            interp_positions,
-            input_type=input_type,
-        )
+        density, X, Y = Voronoi1D.get_tessellation_density(samples_voronoi_cells,
+                                                           samples_param_values,
+                                                           position_bins,
+                                                           param_value_bins,
+                                                           input_type)                                                     
         if ax is None:
             _, ax = plt.subplots()
-
-        cax = ax.hist2d(
-            interp_param_values.ravel(),
-            np.tile(interp_positions, interp_param_values.shape[0]),
-            bins=(param_value_bins, len(interp_positions)),
-            density=True,
-            **kwargs,
-        )
-        # colorbar (for the histogram density)
-        cbar = plt.colorbar(cax[3], ax=ax, aspect=35, pad=0.02)
-        cbar.set_label("Probability density")
-        if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
-            ax.invert_yaxis()
         if swap_xy_axes:
+            X, Y = Y, X
             if not ax.get_xlabel():
                 ax.set_xlabel("Parameter values")
         else:
             if not ax.get_ylabel():
                 ax.set_ylabel("Parameter values")
+        
+        img = ax.pcolormesh(X, Y, density, **kwargs)
+        cbar = plt.colorbar(img, ax=ax, aspect=35, pad=0.02)
+        cbar.set_label("Probability density")
+        if ax.get_ylim()[0] < ax.get_ylim()[1] and swap_xy_axes:
+            ax.invert_yaxis()
         return ax, cbar
 
     @staticmethod
