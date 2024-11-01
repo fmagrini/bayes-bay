@@ -9,5 +9,5 @@ An instance of ``LogLikelihood`` can encapsulate multiple ``Target`` instances, 
     :toctree: generated/
     :nosignatures:
 
-    bayesbay.Target
-    bayesbay.LogLikelihood
+    bayesbay.likelihood.Target
+    bayesbay.likelihood.LogLikelihood
