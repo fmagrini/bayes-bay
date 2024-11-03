@@ -34,7 +34,6 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
-    "sphinx.ext.mathjax",        # Ensure MathJax support for LaTeX
     "sphinx_design",
     "sphinx_togglebutton",
     "sphinx_copybutton",
