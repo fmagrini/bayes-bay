@@ -247,7 +247,7 @@ class Discretization(Prior, ParameterSpace):
 
     @abstractmethod
     def log_prob_initialize_discretization(self, ps_state: ParameterSpaceState) -> Number:
-        """The log of the partial acceptance probability of the birth of the
+        r"""The log of the partial acceptance probability of the birth of the
         discretization. This includes only the discretization but not the parameter
         values.
 
