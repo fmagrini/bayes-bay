@@ -15,3 +15,5 @@ A ``State`` in BayesBay is a data structure containing all numerical values asso
     bayesbay.State
     bayesbay.ParameterSpaceState
     bayesbay.DataNoiseState
+
+All examples in this documentation use ``bayesbay.State`` within a forward function. For usage tips, refer to our :doc:`Quickstart Tutorial <../tutorials/00_quickstart>`. The classes ``bayesbay.ParameterSpaceState`` and ``bayesbay.DataNoiseState`` are typically used under the hood.

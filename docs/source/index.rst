@@ -16,7 +16,7 @@ BayesBay is a Python package providing a versatile framework for **trans-dimensi
    * :bold-underline:`Hierarchical` When unknown, data errors can be treated as free hyperparameters.
    * :bold-underline:`Joint Inversion Support` High-level features facilitate integration of multiple data sets, enabling seamless joint inversions.
    * :bold-underline:`Flexible Parameterizations` BayesBay streamlines the setup of complex prior probabilities, allowing users to incorporate detailed knowledge of the inverse problem.
-   * :bold-underline:`Discretization Support` Includes high-level features for implementing 1-D and 2-D trans-dimensional Voronoi tessellations.
+   * :bold-underline:`Discretization Support` Includes high-level features for implementing trans-dimensional Voronoi tessellations.
    * :bold-underline:`Multi-Processing Capabilities` Multiple Markov chains can be distributed across CPUs for parallel execution.
    * :bold-underline:`User-Friendly Sampling` Settings for burn-in period, model save intervals, number of chains, and CPU allocation can be configured in a single line of code.
    * :bold-underline:`Advanced Sampling Techniques` Built-in support for parallel tempering and simulated annealing for sampling complex posterior distributions.

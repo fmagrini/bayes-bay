@@ -27,3 +27,7 @@ also be tailored to vary as a function of position within the domain.
     bayesbay.prior.GaussianPrior
     bayesbay.prior.LaplacePrior
     bayesbay.prior.CustomPrior
+
+All examples in this documentation make use of `UniformPrior`. Examples using `GaussianPrior` include:
+
+* :doc:`Polynomial Fitting: Part I <../tutorials/01_polyfit>` and :doc:`Part II <../tutorials/02_hierarchical_polyfit>`
