@@ -6,29 +6,21 @@
 Welcome to BayesBay's documentation!
 ========================================
 
-BayesBay is a user-friendly Python package designed for **generalised trans-dimensional and hierarchical Bayesian inference**. 
-Optimised computationally through Cython, our library offers multi-processing capabilities and runs seamlessly on both standard computers and computer clusters. 
-
-Distinguishing itself from existing packages, BayesBay provides **high-level functionalities for defining complex parameterizations**. 
-These include prior probabilities that can be specified by uniform, Gaussian, or custom density functions and may vary depending on the spatial position in a 
-hypothetical discretization. 
-
-By default, BayesBay employs **reversible-jump Markov chain Monte Carlo** (MCMC) for sampling the posterior probability. 
-It also offers options for **parallel tempering** or **simulated annealing**, while its low-level features enable the effortless implementation of arbitrary sampling criteria. 
-Utilising object-oriented programming principles, BayesBay ensures that each component of an inference problem --- such as observed data, forward function(s), and parameterization --- 
-is a self-contained unit. This design facilitates the integration of various forward solvers and data sets, promoting the simultaneous use of multiple data types in the 
-considered inverse problem.
+BayesBay is a Python package providing a versatile framework for **trans-dimensional and hierarchical Markov Chain Monte Carlo (MCMC) sampling**. It leverages object-oriented programming principles to facilitate the definition of Bayesian sampling problems across a range of applications. This includes joint inversions of multiple data sets with different forward functions and unknown noise properties, as well as complex parameterizations involving multiple parameters with unknown dimensionality and/or spatially varying priors.
 
 .. admonition:: KEY FEATURES
    :class: note
 
-   * :bold-underline:`Flexible Parameterizations` The free parameters in the inverse problem can be defined by uniform, Gaussian, or custom prior probabilities. In the case of spatially discretized problems, these may or may not be dependent on position.
-   * :bold-underline:`Trans-dimensional` The dimensionality of the inverse problem can be treated as unknown, i.e., as a free parameter to be inferred from the observations.
-   * :bold-underline:`Hierarchical` When unknown, data errors can be treated as free hyper-parameters. Ideal for data fusion, this approach allows the data itself to drive the characteristics of the noise properties and avoids arbitrary weights for different observables in the evaluation of the likelihood.
-   * :bold-underline:`Multi-Processing Capabilities` Multiple Markov chains can be efficiently distributed across different CPUs for parallel execution.
-   * :bold-underline:`Flexible Sampling Criteria` Besides providing ready-to-use functionalities such as parallel tempering or simulated annealing to sample complex posterior probabilities, the low-level features of BayesBay enable the definition of arbitrary sampling criteria.
-   * :bold-underline:`Discretization Support` Particularly relevant to geoscientific inverse problems, BayesBay currently supports (trans-dimensional) spatial discretization through 1-D Voronoi tessellation. Development of 2-D and 3-D tessellations is actively underway.
-   * :bold-underline:`Joint Inversion Support` Designed to facilitate joint inversions of multiple data sets, BayesBay provides high-level functionalities for data fusion.
+   * :bold-underline:`Modular Architecture` Each component of the inversion (e.g., parameterization, data noise, forward functions) is treated as a self-contained unit, allowing solution of a wide range of inverse problems.
+   * :bold-underline:`Trans-dimensional` The dimensionality of the inverse problem can be treated as unknown.
+   * :bold-underline:`Hierarchical` When unknown, data errors can be treated as free hyperparameters.
+   * :bold-underline:`Joint Inversion Support` High-level features facilitate integration of multiple data sets, enabling seamless joint inversions.
+   * :bold-underline:`Flexible Parameterizations` BayesBay streamlines the setup of complex prior probabilities, allowing users to incorporate detailed knowledge of the inverse problem.
+   * :bold-underline:`Discretization Support` Includes high-level features for implementing trans-dimensional Voronoi tessellations.
+   * :bold-underline:`Multi-Processing Capabilities` Multiple Markov chains can be distributed across CPUs for parallel execution.
+   * :bold-underline:`User-Friendly Sampling` Settings for burn-in period, model save intervals, number of chains, and CPU allocation can be configured in a single line of code.
+   * :bold-underline:`Advanced Sampling Techniques` Built-in support for parallel tempering and simulated annealing for sampling complex posterior distributions.
+  
 
 
 .. toctree::
@@ -36,6 +28,7 @@ considered inverse problem.
    :caption: Getting started
 
    installation
+   tutorials/00_quickstart
 
   
 .. toctree::

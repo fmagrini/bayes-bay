@@ -172,3 +172,12 @@ facilitate this, including `venv`, `virtualenv`, `conda` and `mamba`.
     
     The :code:`-e` flag ensures that the module is installed in editable mode; you can 
     omit this if you do not intend to make any changes.
+
+
+
+
+.. admonition:: Tip
+   :class: tip
+
+   We recommend installing the `ArviZ <https://python.arviz.org/en/stable/>`_ Python library to visualise posterior probability marginals in fixed-dimensional sampling problems.
+ 
