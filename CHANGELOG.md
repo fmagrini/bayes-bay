@@ -2,7 +2,7 @@
 
 <!--next-version-placeholder-->
 
-## v0.3.1 (_/03/2024)
+## v0.3.1 (20/03/2024)
 - API change: removed `DimensionalityException`
     - DimensionalityException replaced with -math.inf log probability in birth and death perturbations
 - New feature: `Voronoi1D`
