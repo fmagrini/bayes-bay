@@ -29,7 +29,7 @@ BayesBay is a Python package providing a versatile framework for **trans-dimensi
 
    installation
    tutorials/00_quickstart
-
+   cite
   
 .. toctree::
    :maxdepth: 1
