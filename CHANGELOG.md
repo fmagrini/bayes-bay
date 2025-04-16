@@ -2,10 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.3 (16/04/2025)
+- Enhancement: More robust checks when custom starting states (`walkers_starting_states`) are passed to BayesianInversion
+
 ## v0.3.2 (16/04/2025)
-- API change: Enabled custom starting states in high-level API
-	- BayesianInversion now takes optional argument `walkers_starting_states`
-	- MarkovChain now takes optional argument `starting_state`
+- Enhancement: Enabled custom starting states in high-level API
+    - BayesianInversion now takes optional argument `walkers_starting_states`
+    - MarkovChain now takes optional argument `starting_state`
 
 ## v0.3.1 (20/03/2024)
 - API change: removed `DimensionalityException`

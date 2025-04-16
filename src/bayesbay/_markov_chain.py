@@ -360,27 +360,44 @@ class MarkovChain(BaseMarkovChain):
 
     def _init_starting_state(self, starting_state=None) -> State:
         """Initialize the parameterization by defining a starting state."""
+        ref_state = self.parameterization.initialize()
         if starting_state is not None:
-            self._check_starting_state(starting_state)
+            self._check_starting_state(starting_state, ref_state)
         else:
-            starting_state = self.parameterization.initialize()
+            starting_state = ref_state
         self.log_likelihood.initialize(starting_state)
         return starting_state
 
-    def _check_starting_state(self, starting_state):
+    def _check_starting_state(self, starting_state, ref_state, level=1):
         """Ensure the user's starting state is compatible with the parameterization."""
-        if not isinstance(starting_state, State):
-            raise TypeError("``starting_state`` should be an instance of " "``State``")
-        ref_state = self.parameterization.initialize()
-        start_dict = dict(starting_state.items())
-        ref_dict = dict(ref_state.items())
 
-        keys_match = set(ref_dict) <= set(start_dict)
-        type_match = all(type(ref_dict[k]) == type(start_dict[k]) for k in ref_dict)
+        start = dict(starting_state.items())
+        ref = dict(ref_state.items())
 
+        # check keys and types
+        keys_match = set(ref) <= set(start)
+        type_match = all(type(ref[k]) == type(start[k]) for k in ref)
         if not (keys_match and type_match):
             raise ValueError(
-                "The specified starting state is incompatible with the current parameterization."
-                f"\nExpected items:\n\t{ref_state.items()}"
+                "The specified starting state is incompatible with the current "
+                f"parameterization.\nExpected items:\n\t{ref_state.items()}"
                 f"\nPassed items:\n\t{starting_state.items()}"
             )
+
+        ps_keys = [k for k in ref if "n_dimensions" in k]
+        for ps_key in ps_keys:
+            base = ".".join(ps_key.split(".")[:level])
+            n_dimensions = start[ps_key]
+            for key, ref_value in ref.items():
+                if key.startswith(f"{base}.") and key != f"{base}.n_dimensions":
+                    if isinstance(ref_value, list):
+                        for inner in start[key]:
+                            self._check_starting_state(inner, ref_value[0], level + 1)
+                    else:
+                        if len(start[key]) != n_dimensions:
+                            raise ValueError(
+                                "The specified starting state is incompatible with the "
+                                f"current parameterization.\nIssue found in the item "
+                                f"`{key}`: it should be {n_dimensions}-"
+                                f"dimensional but it is {len(start[key])}-dimensional"
+                            )

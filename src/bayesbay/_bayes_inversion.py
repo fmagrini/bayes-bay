@@ -417,16 +417,16 @@ class BayesianInversion(BaseBayesianInversion):
     ):
         if not isinstance(log_likelihood, LogLikelihood):
             raise TypeError(
-                "``log_likelihood`` should be an instance of "
-                "``bayesbay.LogLikelihood``"
+                "`log_likelihood` should be an instance of "
+                "`bayesbay.likelihood.LogLikelihood`"
             )
 
         if walkers_starting_states is not None and n_chains != len(
             walkers_starting_states
         ):
             raise ValueError(
-                f"Length of ``walkers_starting_states`` ({len(walkers_starting_states)})"
-                f" does not match ``n_chains`` ({n_chains})."
+                f"Length of `walkers_starting_states` ({len(walkers_starting_states)})"
+                f" does not match `n_chains` ({n_chains})."
             )
 
         self.parameterization = parameterization
