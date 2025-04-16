@@ -11,6 +11,7 @@ from ._utils import _preprocess_func
 from .likelihood._log_likelihood import LogLikelihood
 from .likelihood._target import Target
 from .perturbations._birth_death import BirthPerturbation, DeathPerturbation
+from ._state import State
 
 
 class BaseBayesianInversion:
@@ -58,12 +59,12 @@ class BaseBayesianInversion:
         this is set to (the default value) ``None``, then each perturbation function
         will have equal probability of being selected on each iteration.
     log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]], optional
-        the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid 
-        \mathbf{m'})} {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and 
-        proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should 
-        be consistent with the other arguments of this class, and returns a scalar 
-        corresponding to the log likelihood ratio. This is utilised in the calculation 
-        of the acceptance probability. If None, ``log_like_func`` gets used 
+        the log likelihood ratio function :math:`\log(\frac{p(\mathbf{d}_{obs} \mid
+        \mathbf{m'})} {p(\mathbf{d}_{obs} \mid \mathbf{m})})`. It takes the current and
+        proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`, whose type should
+        be consistent with the other arguments of this class, and returns a scalar
+        corresponding to the log likelihood ratio. This is utilised in the calculation
+        of the acceptance probability. If None, ``log_like_func`` gets used
         instead. Default to None
     log_like_func: Callable[[Any], Number], optional
         the log likelihood function :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`.
@@ -74,11 +75,12 @@ class BaseBayesianInversion:
     n_chains: int, optional
         the number of chains in the McMC sampling. Default is 10
     """
+
     def __init__(
         self,
         walkers_starting_states: List[Any],
         perturbation_funcs: List[Callable[[Any], Tuple[Any, Number]]],
-        perturbation_weights: List[Number] = None, 
+        perturbation_weights: List[Number] = None,
         log_like_ratio_func: Union[LogLikelihood, Callable[[Any, Any], Number]] = None,
         log_like_func: Callable[[Any], Number] = None,
         n_chains: int = 10,
@@ -94,9 +96,9 @@ class BaseBayesianInversion:
             self.log_likelihood = log_like_ratio_func
         else:
             self.log_likelihood = LogLikelihood(
-                log_like_ratio_func=log_like_ratio_func, 
-                log_like_func=log_like_func, 
-            ) 
+                log_like_ratio_func=log_like_ratio_func,
+                log_like_func=log_like_func,
+            )
         self.n_chains = n_chains
         self.save_dpred = save_dpred
         self._chains = [
@@ -104,19 +106,19 @@ class BaseBayesianInversion:
                 id=i,
                 starting_state=self.walkers_starting_states[i],
                 perturbation_funcs=self.perturbation_funcs,
-                perturbation_weights=self.perturbation_weights, 
-                log_likelihood=self.log_likelihood, 
+                perturbation_weights=self.perturbation_weights,
+                log_likelihood=self.log_likelihood,
                 save_dpred=self.save_dpred,
             )
             for i in range(n_chains)
         ]
-        
+
         self._init_repr_args()
-    
+
     def set_perturbation_funcs(
-        self, 
-        perturbation_funcs: List[Callable], 
-        perturbation_weights: List[Number] = None, 
+        self,
+        perturbation_funcs: List[Callable],
+        perturbation_weights: List[Number] = None,
     ):
         # preprocess functions (if necessary)
         perturbation_funcs = [_preprocess_func(func) for func in perturbation_funcs]
@@ -124,21 +126,27 @@ class BaseBayesianInversion:
         if perturbation_weights is None:
             perturbation_weights = [1] * len(perturbation_funcs)
         # check lengths
-        assert len(perturbation_funcs) == len(perturbation_weights),  (
-                "`perturbation_funcs` should have the same length of "
-                f"`perturbation_weights`: {len(perturbation_funcs)} != "
-                f"{len(perturbation_weights)}"
-            )
+        assert len(perturbation_funcs) == len(perturbation_weights), (
+            "`perturbation_funcs` should have the same length of "
+            f"`perturbation_weights`: {len(perturbation_funcs)} != "
+            f"{len(perturbation_weights)}"
+        )
         # validate weights of birth-death pairs to be the same
         birth_death_pairs = defaultdict(list)
         for ifunc, func in enumerate(perturbation_funcs):
             if isinstance(func, (BirthPerturbation, DeathPerturbation)):
                 birth_death_pairs[func.param_space_name].append(ifunc)
         for ps_name, perturb_ifuncs in birth_death_pairs.items():
-            birth_func_indices = [i for i in perturb_ifuncs if \
-                isinstance(perturbation_funcs[i], BirthPerturbation)]
-            death_func_indices = [i for i in perturb_ifuncs if \
-                isinstance(perturbation_funcs[i], DeathPerturbation)]
+            birth_func_indices = [
+                i
+                for i in perturb_ifuncs
+                if isinstance(perturbation_funcs[i], BirthPerturbation)
+            ]
+            death_func_indices = [
+                i
+                for i in perturb_ifuncs
+                if isinstance(perturbation_funcs[i], DeathPerturbation)
+            ]
             if len(birth_func_indices) != 1:
                 raise ValueError(
                     "there should be exactly one birth perturbation function for each "
@@ -172,12 +180,12 @@ class BaseBayesianInversion:
                 chain.set_perturbation_funcs(
                     self.perturbation_funcs, self.perturbation_weights
                 )
-    
+
     @property
     def chains(self) -> List[BaseMarkovChain]:
         """The ``MarkovChain`` instances of the current Bayesian inversion"""
         return self._chains
-    
+
     @chains.setter
     def chains(self, updated_chains: List[BaseMarkovChain]):
         """setters of chains attached to this BayesianInversion instance
@@ -193,9 +201,10 @@ class BaseBayesianInversion:
             when ``updated_chains` is not a list or the elements are not instances of
             :class:`BaseMarkovChain`
         """
-        if not isinstance(updated_chains, list) or \
-            all([isinstance(c, BaseMarkovChain) for c in updated_chains]):
-                raise TypeError("make sure the `updated_chains` is a list of chains")
+        if not isinstance(updated_chains, list) or all(
+            [isinstance(c, BaseMarkovChain) for c in updated_chains]
+        ):
+            raise TypeError("make sure the `updated_chains` is a list of chains")
         self._chains = updated_chains
         self.n_chains = len(updated_chains)
 
@@ -207,7 +216,7 @@ class BaseBayesianInversion:
         save_every: int = 100,
         verbose: bool = True,
         print_every: int = 100,
-        parallel_config: dict = None
+        parallel_config: dict = None,
     ):
         r"""To run the inversion
 
@@ -234,7 +243,7 @@ class BaseBayesianInversion:
             the frequency with which we print the progress and information during the
             sampling, by default 100 iterations
         parallel_config : dict, optional
-            keyword arguments passed to :class:`joblib.Parallel`. Ignored when 
+            keyword arguments passed to :class:`joblib.Parallel`. Ignored when
             ``len(self.chains)`` is 1
         """
         if sampler is None:
@@ -251,9 +260,9 @@ class BaseBayesianInversion:
             verbose=verbose,
             print_every=print_every,
         )
-    
+
     def get_results(
-        self, 
+        self,
         keys: Union[str, List[str]] = None,
         concatenate_chains: bool = True,
     ) -> Union[Dict[str, list], list]:
@@ -262,7 +271,7 @@ class BaseBayesianInversion:
         Parameters
         ----------
         keys : Union[str, List[str]]
-            key(s) to retrieve from the saved states. This will be ignored when states 
+            key(s) to retrieve from the saved states. This will be ignored when states
             are not of type :class:`State` or dict
         concatenate_chains : bool, optional
             whether to aggregate samples from all the Markov chains or to keep them
@@ -272,14 +281,14 @@ class BaseBayesianInversion:
         -------
         Union[Dict[str, list], list]
             a dictionary from name of the attribute stored to the values, or a list of
-            saved states (if the base level API is used, and states are not of type 
+            saved states (if the base level API is used, and states are not of type
             :class:`State` or dict)
         """
         return self.get_results_from_chains(self.chains, keys, concatenate_chains)
 
     @staticmethod
     def get_results_from_chains(
-        chains: Union[BaseMarkovChain, List[BaseMarkovChain]], 
+        chains: Union[BaseMarkovChain, List[BaseMarkovChain]],
         keys: Union[str, List[str]] = None,
         concatenate_chains: bool = True,
     ) -> Union[Dict[str, list], list]:
@@ -290,7 +299,7 @@ class BaseBayesianInversion:
         chains : Union[BaseMarkovChain, List[BaseMarkovChain]]
             Markov chain(s) that the results are going to be extracted from
         keys : Union[str, List[str]]
-            key(s) to retrieve from the saved states. This will be ignored when states 
+            key(s) to retrieve from the saved states. This will be ignored when states
             are not of type :class:`State` or dict
         concatenate_chains : bool, optional
             whether to aggregate samples from all the Markov chains or to keep them
@@ -300,7 +309,7 @@ class BaseBayesianInversion:
         -------
         Union[Dict[str, list], list]
             a dictionary from name of the attribute stored to the values, or a list of
-            saved states (if the base level API is used, and states are not of type 
+            saved states (if the base level API is used, and states are not of type
             :class:`State` or dict)
         """
         if not isinstance(chains, list):
@@ -329,45 +338,45 @@ class BaseBayesianInversion:
                 else:
                     results.append(chain.saved_states)
         return dict(results)
-    
+
     def _init_repr_args(self):
         self._repr_args = {
-            "walkers_starting_states": self.walkers_starting_states, 
-            "perturbation_funcs": self.perturbation_funcs, 
-            "log_likelihood": self.log_likelihood, 
-            "n_chains": self.n_chains, 
-            "save_dpred": self.save_dpred, 
-            "chains": self.chains, 
+            "walkers_starting_states": self.walkers_starting_states,
+            "perturbation_funcs": self.perturbation_funcs,
+            "log_likelihood": self.log_likelihood,
+            "n_chains": self.n_chains,
+            "save_dpred": self.save_dpred,
+            "chains": self.chains,
         }
-    
+
     def __repr__(self) -> str:
         string = f"{self.__class__.__name__}("
         for k, v in self._repr_args.items():
-            if hasattr(v, '__class__') and v.__class__.__repr__ is object.__repr__:
+            if hasattr(v, "__class__") and v.__class__.__repr__ is object.__repr__:
                 repr_v = v.__class__.__name__
             elif k == "walkers_starting_states":
                 try:
                     repr_v = f"[{len(v)} arrays with shapes {', '.join(str(arr.shape) for arr in v)}]"
                 except AttributeError:
                     repr_v = f"[{len(v)} {type(v[0])} objects]"
-            elif k == "chains" and len(v) > 3: 
+            elif k == "chains" and len(v) > 3:
                 repr_v = f"{str(v[:3])[:-1]}, ...{len(v)} chains in total...]"
             else:
                 repr_v = repr(v)
             string += f"{k}={repr_v}, "
         return f"{string[:-2]})"
-    
+
     def __str__(self) -> str:
-        repr_args_copy = self._repr_args.copy() 
+        repr_args_copy = self._repr_args.copy()
         _n_chains = ""
-        if 'chains' in repr_args_copy and len(repr_args_copy['chains']) > 3:
+        if "chains" in repr_args_copy and len(repr_args_copy["chains"]) > 3:
             _n_chains = f"...{len(repr_args_copy['chains'])} chains in total..."
-            repr_args_copy['chains'] = repr_args_copy['chains'][:3] + [_n_chains]
+            repr_args_copy["chains"] = repr_args_copy["chains"][:3] + [_n_chains]
         string = f"{self.__class__.__name__}("
         string += pformat(repr_args_copy)[1:-1] + ")"
-        string = string.replace(repr(_n_chains), _n_chains)     # remove the quotes
+        string = string.replace(repr(_n_chains), _n_chains)  # remove the quotes
         return string
-    
+
 
 class BayesianInversion(BaseBayesianInversion):
     """A high-level class for performing Bayesian inversion using Markov Chain Monte
@@ -396,8 +405,9 @@ class BayesianInversion(BaseBayesianInversion):
     def __init__(
         self,
         parameterization: Parameterization,
-        log_likelihood: LogLikelihood, 
+        log_likelihood: LogLikelihood,
         n_chains: int = 10,
+        walkers_starting_states: List[State] = None,
         save_dpred: bool = True,
     ):
         if not isinstance(log_likelihood, LogLikelihood):
@@ -406,39 +416,53 @@ class BayesianInversion(BaseBayesianInversion):
                 "``bayesbay.LogLikelihood``"
             )
 
+        if walkers_starting_states is not None and n_chains != len(
+            walkers_starting_states
+        ):
+            raise ValueError(
+                f"Length of ``walkers_starting_states`` ({len(walkers_starting_states)})"
+                f" does not match ``n_chains`` ({n_chains})."
+            )
+
         self.parameterization = parameterization
         self.log_likelihood = log_likelihood
         self.n_chains = n_chains
         self.save_dpred = save_dpred
-        self.perturbation_funcs, self.perturbation_weights = \
-            self._init_perturbation_funcs()
+        (
+            self.perturbation_funcs,
+            self.perturbation_weights,
+        ) = self._init_perturbation_funcs()
+        self.walkers_starting_states = walkers_starting_states
+        starting_states = walkers_starting_states or [None] * n_chains
         self._chains = [
             MarkovChain(
                 id=i,
                 parameterization=self.parameterization,
-                log_likelihood=self.log_likelihood, 
-                perturbation_funcs=self.perturbation_funcs, 
-                perturbation_weights=self.perturbation_weights, 
+                log_likelihood=self.log_likelihood,
+                perturbation_funcs=self.perturbation_funcs,
+                perturbation_weights=self.perturbation_weights,
+                starting_state=starting_states[i],
                 saved_dpred=self.save_dpred,
             )
             for i in range(n_chains)
         ]
         self.log_likelihood.add_targets_observer(self)
         self._init_repr_args()
-    
+
     def _init_repr_args(self) -> dict:
         self._repr_args = {
-            "parameterization": self.parameterization, 
-            "log_likelihood": self.log_likelihood, 
-            "n_chains": self.n_chains, 
-            "save_dpred": self.save_dpred, 
-            "chains": self.chains, 
+            "parameterization": self.parameterization,
+            "log_likelihood": self.log_likelihood,
+            "n_chains": self.n_chains,
+            "save_dpred": self.save_dpred,
+            "chains": self.chains,
         }
         _parameterization = dict()
         for ps_name, ps in self.parameterization.parameter_spaces.items():
             _parameterization[ps_name] = {
-                k: v for k, v in ps._repr_args.items() \
-                    if k not in {"parameters", "name"}
+                k: v
+                for k, v in ps._repr_args.items()
+                if k not in {"parameters", "name"}
             }
             _parameterization[ps_name]["parameters"] = list(ps.parameters.values())
         self._repr_args["parameterization"] = _parameterization
@@ -448,16 +472,18 @@ class BayesianInversion(BaseBayesianInversion):
         funcs_from_log_likelihood = self.log_likelihood.perturbation_funcs
         weights_from_parameterization = self.parameterization.perturbation_weights
         weights_from_log_likelihood = self.log_likelihood.perturbation_weights
-        return funcs_from_parameterization + funcs_from_log_likelihood, \
-            weights_from_parameterization + weights_from_log_likelihood
+        return (
+            funcs_from_parameterization + funcs_from_log_likelihood,
+            weights_from_parameterization + weights_from_log_likelihood,
+        )
 
     def update_log_likelihood_targets(self, targets: List[Target]):
-        """function to be called by ``self.log_likelihood`` when there are more 
-        target(s) added to the inversion. This method updates the perturbation function 
-        list for the current inversion and its chains, and initializes the 
+        """function to be called by ``self.log_likelihood`` when there are more
+        target(s) added to the inversion. This method updates the perturbation function
+        list for the current inversion and its chains, and initializes the
         ``current_state`` for each chain when there are hierarchical targets added.
-        
-        This method is called because we register ``self`` (i.e. the current 
+
+        This method is called because we register ``self`` (i.e. the current
         ``BayesianInversion``) as an observer to its log likelihood instance.
 
         Parameters
@@ -465,8 +491,10 @@ class BayesianInversion(BaseBayesianInversion):
         targets : List[Target]
             the list of targets added to ``self.log_likelihood``
         """
-        self.perturbation_funcs, self.perturbation_weights = \
-            self._init_perturbation_funcs()
+        (
+            self.perturbation_funcs,
+            self.perturbation_weights,
+        ) = self._init_perturbation_funcs()
         for chain in self.chains:
             chain.set_perturbation_funcs(
                 self.perturbation_funcs, self.perturbation_weights

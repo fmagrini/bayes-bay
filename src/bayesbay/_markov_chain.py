@@ -341,12 +341,13 @@ class MarkovChain(BaseMarkovChain):
         log_likelihood: LogLikelihood,
         perturbation_funcs: List[Callable],
         perturbation_weights: List[Number],
+        starting_state: State = None,
         temperature: float = 1,
         saved_dpred: bool = True,
     ):
         self.parameterization = parameterization
         self.log_likelihood = log_likelihood
-        starting_state = self._init_starting_state()
+        starting_state = self._init_starting_state(starting_state)
         super().__init__(
             id=id,
             starting_state=starting_state,
@@ -357,8 +358,29 @@ class MarkovChain(BaseMarkovChain):
             save_dpred=saved_dpred,
         )
 
-    def _init_starting_state(self) -> State:
+    def _init_starting_state(self, starting_state=None) -> State:
         """Initialize the parameterization by defining a starting state."""
-        starting_state = self.parameterization.initialize()
+        if starting_state is not None:
+            self._check_starting_state(starting_state)
+        else:
+            starting_state = self.parameterization.initialize()
         self.log_likelihood.initialize(starting_state)
         return starting_state
+
+    def _check_starting_state(self, starting_state):
+        """Ensure the user's starting state is compatible with the parameterization."""
+        if not isinstance(starting_state, State):
+            raise TypeError("``starting_state`` should be an instance of " "``State``")
+        ref_state = self.parameterization.initialize()
+        start_dict = dict(starting_state.items())
+        ref_dict = dict(ref_state.items())
+
+        keys_match = set(ref_dict) <= set(start_dict)
+        type_match = all(type(ref_dict[k]) == type(start_dict[k]) for k in ref_dict)
+
+        if not (keys_match and type_match):
+            raise ValueError(
+                "The specified starting state is incompatible with the current parameterization."
+                f"\nExpected items:\n\t{ref_state.items()}"
+                f"\nPassed items:\n\t{starting_state.items()}"
+            )
