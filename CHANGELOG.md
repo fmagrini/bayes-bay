@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.2 (16/04/2025)
+- API change: Enabled custom starting states in high-level API
+	- BayesianInversion now takes optional argument `walkers_starting_states`
+	- MarkovChain now takes optional argument `starting_state`
+
 ## v0.3.1 (20/03/2024)
 - API change: removed `DimensionalityException`
     - DimensionalityException replaced with -math.inf log probability in birth and death perturbations

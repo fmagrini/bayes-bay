@@ -398,6 +398,11 @@ class BayesianInversion(BaseBayesianInversion):
     fwd_functions : Callable[[bayesbay.State], np.ndarray]
         a lsit of forward functions corresponding to each data targets provided above.
         Each function takes in a state and returns a numpy array of data predictions.
+    walkers_starting_states: List[State]
+        a list of starting states for each chain. The states should be an instance of a
+        :class:`bayesbay.State` and their structure should be consistent with the specified
+        ``parameterization``. The length of this list must be equal to the number of
+        chains, i.e. ``n_chains``
     n_chains: int, 10 by default
         the number of chains in the McMC sampling
     """
