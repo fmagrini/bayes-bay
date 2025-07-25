@@ -60,6 +60,7 @@ BayesBay is a Python package providing a versatile framework for **trans-dimensi
    tutorials/gmm
    tutorials/partition_modeling
    tutorials/sw
+   tutorials/sw_rf
    tutorials/tomography
 
 .. toctree::
