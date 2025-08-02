@@ -46,15 +46,15 @@ class Prior(ABC):
     @property
     def name(self) -> str:
         return self._name
-    
+
     @abstractmethod
     def sample(self, position: Number = None) -> Number:
         r"""sample a new value from the prior
-        
+
         Paramters
         ---------
         position : Union[np.ndarray, Number], optional
-            the position (in the discretization domain) associated with the value, 
+            the position (in the discretization domain) associated with the value,
             None by default
 
         Returns
@@ -66,15 +66,15 @@ class Prior(ABC):
 
     @abstractmethod
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
-        r"""initializes the values of this (possibly position-dependent) 
+        r"""initializes the values of this (possibly position-dependent)
         parameter
-        
+
         This is the vectorized version of the method :meth:`sample`.
 
         Parameters
         ----------
         positions : np.ndarray, optional
-            the position (in the discretization domain) associated with the value, 
+            the position (in the discretization domain) associated with the value,
             None by default
 
         Returns
@@ -86,15 +86,17 @@ class Prior(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def perturb_value(self, value: Number, position: Number = None) -> Tuple[Number, Number]:
-        r"""perturbs the given value, in a way that may depend on the position 
-        associated with such a parameter value, and calculates the log of the 
-        corresponding partial acceptance probability 
-        
+    def perturb_value(
+        self, value: Number, position: Number = None
+    ) -> Tuple[Number, Number]:
+        r"""perturbs the given value, in a way that may depend on the position
+        associated with such a parameter value, and calculates the log of the
+        corresponding partial acceptance probability
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
 
         Parameters
@@ -102,7 +104,7 @@ class Prior(ABC):
         value : Number
             the current value to be perturbed from
         position : Number, optional
-            the position (in the discretization domain) associated with the value, 
+            the position (in the discretization domain) associated with the value,
             None by default
 
         Returns
@@ -111,7 +113,7 @@ class Prior(ABC):
             the perturbed value and
             :math:`\alpha_{p} = \log(
             \frac{p({\bf m'})}{p({\bf m})}
-            \frac{q\left({\bf m} 
+            \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
@@ -127,9 +129,9 @@ class Prior(ABC):
         value : Number
             the value to calculate the probability density for
         position : Number, optional
-            the position (in the discretization domain) associated with the value, 
+            the position (in the discretization domain) associated with the value,
             None by default
-        
+
         Returns
         -------
         Number
@@ -170,17 +172,15 @@ class Prior(ABC):
     def _initializer(self, initialize_func, *args, **kwargs):
         return initialize_func(self, *args, **kwargs)
 
-    def get_perturb_std(
-        self, position: Union[Number, np.ndarray] = None
-    ) -> Number:
+    def get_perturb_std(self, position: Union[Number, np.ndarray] = None) -> Number:
         r"""get the standard deviation of the Gaussian used to perturb
         the parameter, which may be dependent on the position in the
         discretization domain
-        
+
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the standard 
+            the position in the discretization domain at which the standard
             deviation of the Gaussian used to perturb the parameter is returned.
             Default is None
 
@@ -194,21 +194,21 @@ class Prior(ABC):
             return self.get_hyper_param("perturb_std", position)
         else:
             raise NotImplementedError("`get_perturb_std` needs to be implemented")
-    
+
     def get_perturb_std_birth(
         self, position: Union[Number, np.ndarray] = None
     ) -> Number:
         r"""get the standard deviation of the Gaussian used to perturb
         the parameter at birth, which may be dependent on the position in the
         discretization domain
-        
+
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
             the position in the discretization domain at which the standard
             deviation of the Gaussian used to perturb the parameter at birth
             is returned. Default is None
-            
+
         Returns
         -------
         Number
@@ -222,7 +222,7 @@ class Prior(ABC):
 
     def add_hyper_params(self, hyper_params: Dict[str, Union[Number, np.ndarray]]):
         r"""Sets the attributes from the given dict and checks for errors
-        
+
         Parameters
         ----------
         hyper_params : Dict[str, Union[Number, np.ndarray]]
@@ -236,17 +236,17 @@ class Prior(ABC):
             if self.position is None:
                 assert np.isscalar(param_val), f"`{name}` {msg_scalar_when_pos_none}"
             else:
-                assert np.isscalar(param_val) or \
-                    len(param_val) == len(self.position), \
-                        f"`{name}` {msg_scalar_or_same_len}"
+                assert np.isscalar(param_val) or len(param_val) == len(
+                    self.position
+                ), f"`{name}` {msg_scalar_or_same_len}"
             if not np.isscalar(param_val):
                 param_val = np.array(param_val, dtype=float)
             setattr(self, name, self._init_hyper_param(param_val))
-    
+
     def has_hyper_param(self, hyper_param: str) -> bool:
         r"""Whether or not the :class:`Prior` instance has the specified
         attribute
-        
+
         Parameters
         ----------
         hyper_param : str
@@ -255,21 +255,19 @@ class Prior(ABC):
         return hasattr(self, hyper_param)
 
     def get_hyper_param(
-            self, 
-            hyper_param: str, 
-            position: Union[Number, np.ndarray] = None
-        ) -> Union[Number, np.ndarray]:
-        r"""Retrieves the value corresponding to the specified attribute, which 
+        self, hyper_param: str, position: Union[Number, np.ndarray] = None
+    ) -> Union[Number, np.ndarray]:
+        r"""Retrieves the value corresponding to the specified attribute, which
         may be a function of position
-        
+
         Parameters
         ----------
         hyper_param : str
             the name of the attribute
         position : Union[np.ndarray, Number], optional
-            the position (in the discretization domain) associated with the value, 
+            the position (in the discretization domain) associated with the value,
             None by default
-            
+
         Returns
         -------
         Union[Number, np.ndarray]
@@ -293,7 +291,8 @@ class Prior(ABC):
             return partial(interpolate_linear_1d, x=self.position, y=hyper_param)
         else:
             interpolator = scipy.interpolate.LinearNDInterpolator(
-                points=self.position, values=hyper_param,
+                points=self.position,
+                values=hyper_param,
             )
             return _interpolate_linear_nd(self.name, interpolator)
 
@@ -315,8 +314,8 @@ class UniformPrior(Prior):
         if the defined probability distribution is a function of ``position``
         in the discretization domain
     perturb_std : Union[Number, np.ndarray]
-        standard deviation of the Gaussians used to randomly perturb the parameter. 
-        This can either be a scalar or an array if the defined probability 
+        standard deviation of the Gaussians used to randomly perturb the parameter.
+        This can either be a scalar or an array if the defined probability
         distribution is a function of ``position`` in the discretization domain
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
@@ -338,26 +337,28 @@ class UniformPrior(Prior):
             vmin=vmin,
             vmax=vmax,
             perturb_std=perturb_std,
-            perturb_std_birth=perturb_std_birth
+            perturb_std_birth=perturb_std_birth,
         )
-        self.add_hyper_params({
-            "vmin": vmin, 
-            "vmax": vmax, 
-            "perturb_std": perturb_std, 
-            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std,
-            "delta": np.array(vmax) - np.array(vmin), 
-        })
+        self.add_hyper_params(
+            {
+                "vmin": vmin,
+                "vmax": vmax,
+                "perturb_std": perturb_std,
+                "perturb_std_birth": perturb_std_birth
+                if perturb_std_birth is not None
+                else perturb_std,
+                "delta": np.array(vmax) - np.array(vmin),
+            }
+        )
 
-    def get_delta(
-        self, position: Union[Number, np.ndarray] = None
-    ) -> Number:
+    def get_delta(self, position: Union[Number, np.ndarray] = None) -> Number:
         r"""get the range :math:`\Delta v = v_{max} - v_{min}`, which may be
         dependent on the specified position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the uniform 
+            the position in the discretization domain at which the uniform
             distribution range will be returned. None by default
 
         Returns
@@ -370,13 +371,13 @@ class UniformPrior(Prior):
     def get_vmin_vmax(
         self, position: Union[Number, np.ndarray] = None
     ) -> Tuple[Number, Number]:
-        r"""get the lower and upper bounds of the parameter, which may be 
+        r"""get the lower and upper bounds of the parameter, which may be
         dependent on position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the the lower 
+            the position in the discretization domain at which the the lower
             and upper bounds of the parameter will be returned. None by default
 
         Returns
@@ -387,7 +388,7 @@ class UniformPrior(Prior):
         vmin = self.get_hyper_param("vmin", position)
         vmax = self.get_hyper_param("vmax", position)
         return vmin, vmax
-    
+
     def sample(self, position: Union[Number, np.ndarray] = None) -> Number:
         vmin, vmax = self.get_vmin_vmax(position)
         return random.uniform(vmin, vmax)
@@ -397,25 +398,25 @@ class UniformPrior(Prior):
         return np.random.uniform(vmin, vmax, len(positions))
 
     def perturb_value(
-        self, 
-        value: Number, 
-        position: Union[Number, np.ndarray] = None, 
-        is_birth: bool = False
+        self,
+        value: Number,
+        position: Union[Number, np.ndarray] = None,
+        is_birth: bool = False,
     ) -> Tuple[Number, Number]:
-        r"""perturbs the given value, in a way that may depend on the position 
-        in the discretization domain and calculates the log of the corresponding 
+        r"""perturbs the given value, in a way that may depend on the position
+        in the discretization domain and calculates the log of the corresponding
         partial acceptance probability,
-        
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
 
-        which in this case equals zero. In the above equation, :math:`\bf m'` denotes 
-        the perturbed model as obtained through a random deviate from a normal 
-        distribution :math:`\mathcal{N}(v, \sigma)`, where :math:`v` denotes 
-        the original ``value`` and :math:`\sigma` the standard deviation of the 
+        which in this case equals zero. In the above equation, :math:`\bf m'` denotes
+        the perturbed model as obtained through a random deviate from a normal
+        distribution :math:`\mathcal{N}(v, \sigma)`, where :math:`v` denotes
+        the original ``value`` and :math:`\sigma` the standard deviation of the
         Gaussian used for the perturbation. :math:`\sigma` may be dependent
         on the specified position (:attr:`UniformPrior.perturb_std`).
 
@@ -424,7 +425,7 @@ class UniformPrior(Prior):
         value : Number
             the current value to be perturbed from
         position : Union[Number, np.ndarray], optional
-            the position in the discretization domain at which the parameter 
+            the position in the discretization domain at which the parameter
             ``value`` is to be perturbed
         is_birth : bool, optional
             whether the perturbation is a birth or not, False by default
@@ -435,7 +436,7 @@ class UniformPrior(Prior):
             the perturbed value and
             :math:`\alpha_{p} = \log(
             \frac{p({\bf m'})}{p({\bf m})}
-            \frac{q\left({\bf m} 
+            \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert) = 0`
         """
@@ -452,7 +453,7 @@ class UniformPrior(Prior):
     def log_prior(
         self, value: Number, position: Union[Number, np.ndarray] = None
     ) -> Number:
-        r"""calculates the log of the prior probability density for the given 
+        r"""calculates the log of the prior probability density for the given
         value, which may be dependent on the position in the discretization
         domain
 
@@ -468,7 +469,7 @@ class UniformPrior(Prior):
         -------
         Number
             the log of the prior probability :math:`p(v) = \frac{1}{\Delta v}`,
-            where :math:`v` denotes the ``value`` passed by the user and 
+            where :math:`v` denotes the ``value`` passed by the user and
             :math:`\Delta v = v_{max} - v_{min}` the range within which the
             uniform parameter is allowed to vary. This may be
             dependent on position in the discretization domain
@@ -482,7 +483,7 @@ class UniformPrior(Prior):
 
 class GaussianPrior(Prior):
     r"""Class for defining the prior probability of a free parameter distributed
-    according to a Gaussian distribution, :math:`\mathcal{N}(\mu, \sigma)`, 
+    according to a Gaussian distribution, :math:`\mathcal{N}(\mu, \sigma)`,
     where :math:`\mu` denotes the mean and :math:`\sigma` the standard deviation
 
     Parameters
@@ -498,8 +499,8 @@ class GaussianPrior(Prior):
         if the defined probability distribution is a function of ``position``
         in the discretization domain
     perturb_std : Union[Number, np.ndarray]
-        standard deviation of the Gaussians used to randomly perturb the parameter. 
-        This can either be a scalar or an array if the defined probability distribution 
+        standard deviation of the Gaussians used to randomly perturb the parameter.
+        This can either be a scalar or an array if the defined probability distribution
         is a function of ``position`` in the discretization domain
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
@@ -507,9 +508,9 @@ class GaussianPrior(Prior):
     """
 
     def __init__(
-        self, 
-        name: str, 
-        mean: Union[Number, np.ndarray], 
+        self,
+        name: str,
+        mean: Union[Number, np.ndarray],
         std: Union[Number, np.ndarray],
         perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
@@ -521,25 +522,27 @@ class GaussianPrior(Prior):
             mean=mean,
             std=std,
             perturb_std=perturb_std,
-            perturb_std_birth=perturb_std_birth
+            perturb_std_birth=perturb_std_birth,
         )
-        self.add_hyper_params({
-            "mean": mean, 
-            "std": std, 
-            "perturb_std": perturb_std, 
-            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std, 
-        })
-    
-    def get_mean(
-        self, position: Union[Number, np.ndarray] = None
-    ) -> Number:
+        self.add_hyper_params(
+            {
+                "mean": mean,
+                "std": std,
+                "perturb_std": perturb_std,
+                "perturb_std_birth": perturb_std_birth
+                if perturb_std_birth is not None
+                else perturb_std,
+            }
+        )
+
+    def get_mean(self, position: Union[Number, np.ndarray] = None) -> Number:
         """get the mean of the Gaussian parameter, which may be dependent on
         position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            position in the discretization domain at which the mean of the 
+            position in the discretization domain at which the mean of the
             Gaussian will be returned. None by default
 
         Returns
@@ -549,16 +552,14 @@ class GaussianPrior(Prior):
         """
         return self.get_hyper_param("mean", position)
 
-    def get_std(
-        self, position: Union[Number, np.ndarray] = None
-    ) -> Number:
-        """get the standard deviation of the Gaussian, which may be 
+    def get_std(self, position: Union[Number, np.ndarray] = None) -> Number:
+        """get the standard deviation of the Gaussian, which may be
         dependent on position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            position in the discretization domain at which the standard 
+            position in the discretization domain at which the standard
             deviation of the Gaussian will be returned. None by default
 
         Returns
@@ -574,13 +575,13 @@ class GaussianPrior(Prior):
         return random.gauss(mean, std)
 
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
-        r"""initialize the parameter, possibly at specific positions in the 
+        r"""initialize the parameter, possibly at specific positions in the
         discretization domain
-        
+
         Parameters
         ----------
         positions: np.ndarray, optional
-            the positions in the discretization domain at which the parameter is 
+            the positions in the discretization domain at which the parameter is
             initialized. None by default
 
         Returns
@@ -596,28 +597,28 @@ class GaussianPrior(Prior):
         return values
 
     def perturb_value(
-        self, 
-        value: Number, 
-        position: Union[Number, np.ndarray] = None, 
-        is_birth: bool = False
+        self,
+        value: Number,
+        position: Union[Number, np.ndarray] = None,
+        is_birth: bool = False,
     ) -> Tuple[Number, Number]:
-        r"""perturbs the given value, in a way that may depend on the position 
-        in the discretization, and calculates the log of the corresponding 
+        r"""perturbs the given value, in a way that may depend on the position
+        in the discretization, and calculates the log of the corresponding
         partial acceptance probability,
-        
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
 
-        where :math:`\bf m'` denotes the perturbed model as obtained through a 
-        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`, 
-        where :math:`v` denotes the original ``value`` and :math:`\theta` the 
-        standard deviation of the Gaussian used for the perturbation. 
-        :math:`\theta` may be dependent on the specified position 
+        where :math:`\bf m'` denotes the perturbed model as obtained through a
+        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`,
+        where :math:`v` denotes the original ``value`` and :math:`\theta` the
+        standard deviation of the Gaussian used for the perturbation.
+        :math:`\theta` may be dependent on the specified position
         (:attr:`GaussianPrior.perturb_std`).
-        
+
         Parameters
         ----------
         value : Number
@@ -626,14 +627,14 @@ class GaussianPrior(Prior):
             the position of the value to be perturbed
         is_birth : bool, optional
             whether the perturbation is a birth or not, False by default
-        
+
         Returns
         -------
         Tuple[Number, Number]
             the perturbed value and
             :math:`\alpha_{p} = \log(
             \frac{p({\bf m'})}{p({\bf m})}
-            \frac{q\left({\bf m} 
+            \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
@@ -647,11 +648,11 @@ class GaussianPrior(Prior):
         std = self.get_std(position)
         ratio = (value - new_value) * (value + new_value - 2 * mean) / (2 * std**2)
         return new_value, ratio
-    
+
     def log_prior(
         self, value: Number, position: Union[Number, np.ndarray] = None
     ) -> Number:
-        r"""calculates the log of the prior probability density for the given 
+        r"""calculates the log of the prior probability density for the given
         value, which may be dependent on the position in the discretization
         domain
 
@@ -662,26 +663,29 @@ class GaussianPrior(Prior):
         position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the prior
             probability of the parameter ``value`` is to be retrieved
-        
+
         Returns
         -------
         Number
-            the log of the prior probability :math:`p(v) = \frac{1}{\sigma \sqrt{2 \pi}} 
+            the log of the prior probability :math:`p(v) = \frac{1}{\sigma \sqrt{2 \pi}}
             \exp \Big \lbrace -\frac{\left( v - \mu \right)^2}
             {2\sigma^2} \Big \rbrace`, where :math:`\mu` and :math:`\sigma`
-            denote the (prior) mean and standard deviation of the 
+            denote the (prior) mean and standard deviation of the
             Gaussian and :math:`v` the ``value`` at which the prior
             probability is to be retrieved. :math:`\mu` and :math:`\sigma` may
             be dependent on position in the discretization domain.
         """
         mean = self.get_mean(position)
         std = self.get_std(position)
-        return -0.5 * np.log(2 * np.pi) - np.log(std) - 0.5 * ((value - mean) / std)**2
+        return (
+            -0.5 * np.log(2 * np.pi) - np.log(std) - 0.5 * ((value - mean) / std) ** 2
+        )
+
 
 class LaplacePrior(Prior):
     r"""Class for defining the prior probability of a free parameter distributed
-    according to a Laplace distribution, with probability density function 
-    :math:`p(v) = \frac{1}{2b} \exp \Big \lbrace -\frac{|v - \mu|}{b} \Big \rbrace`, 
+    according to a Laplace distribution, with probability density function
+    :math:`p(v) = \frac{1}{2b} \exp \Big \lbrace -\frac{|v - \mu|}{b} \Big \rbrace`,
     where :math:`\mu` denotes the mean and :math:`b` the scale.
 
     Parameters
@@ -697,8 +701,8 @@ class LaplacePrior(Prior):
         if the defined probability distribution is a function of ``position``
         in the discretization domain
     perturb_std : Union[Number, np.ndarray]
-        standard deviation of the Gaussians used to randomly perturb the parameter. 
-        This can either be a scalar or an array if the defined probability distribution 
+        standard deviation of the Gaussians used to randomly perturb the parameter.
+        This can either be a scalar or an array if the defined probability distribution
         is a function of ``position`` in the discretization domain
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
@@ -706,10 +710,10 @@ class LaplacePrior(Prior):
     """
 
     def __init__(
-        self, 
-        name: str, 
-        mean: Union[Number, np.ndarray], 
-        scale: Union[Number, np.ndarray], 
+        self,
+        name: str,
+        mean: Union[Number, np.ndarray],
+        scale: Union[Number, np.ndarray],
         perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None,
@@ -721,23 +725,25 @@ class LaplacePrior(Prior):
             scale=scale,
             perturb_std=perturb_std,
         )
-        self.add_hyper_params({
-            "mean": mean, 
-            "scale": scale, 
-            "perturb_std": perturb_std, 
-            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std
-        })
+        self.add_hyper_params(
+            {
+                "mean": mean,
+                "scale": scale,
+                "perturb_std": perturb_std,
+                "perturb_std_birth": perturb_std_birth
+                if perturb_std_birth is not None
+                else perturb_std,
+            }
+        )
 
-    def get_mean(
-        self, position: Union[Number, np.ndarray] = None
-    ) -> Number:
+    def get_mean(self, position: Union[Number, np.ndarray] = None) -> Number:
         """get the mean of the Laplace parameter, which may be dependent on
         position in the discretization domain
 
         Parameters
         ----------
         position: Union[Number, np.ndarray], optional
-            position in the discretization domain at which the mean of the 
+            position in the discretization domain at which the mean of the
             Laplace distribution will be returned. None by default
 
         Returns
@@ -746,11 +752,9 @@ class LaplacePrior(Prior):
             mean at the given position
         """
         return self.get_hyper_param("mean", position)
-    
-    def get_scale(
-        self, position: Union[Number, np.ndarray] = None
-    ) -> Number:
-        """get the scale of the Laplace distribution, which may be 
+
+    def get_scale(self, position: Union[Number, np.ndarray] = None) -> Number:
+        """get the scale of the Laplace distribution, which may be
         dependent on position in the discretization domain
 
         Parameters
@@ -765,20 +769,20 @@ class LaplacePrior(Prior):
             scale at the given position
         """
         return self.get_hyper_param("scale", position)
-    
+
     def sample(self, position: Number = None) -> Number:
         mean = self.get_mean(position)
         scale = self.get_scale(position)
         return np.random.laplace(mean, scale)
 
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
-        r"""initialize the parameter, possibly at specific positions in the 
+        r"""initialize the parameter, possibly at specific positions in the
         discretization domain
-        
+
         Parameters
         ----------
         positions: np.ndarray, optional
-            the positions in the discretization domain at which the parameter is 
+            the positions in the discretization domain at which the parameter is
             initialized. None by default
 
         Returns
@@ -792,30 +796,30 @@ class LaplacePrior(Prior):
         scale = self.get_scale(positions)
         values = np.random.laplace(mean, scale, len(positions))
         return values
-    
+
     def perturb_value(
-        self, 
-        value: Number, 
-        position: Union[Number, np.ndarray] = None, 
-        is_birth: bool = False
+        self,
+        value: Number,
+        position: Union[Number, np.ndarray] = None,
+        is_birth: bool = False,
     ) -> Tuple[Number, Number]:
-        r"""perturbs the given value, in a way that may depend on the position 
-        in the discretization, and calculates the log of the corresponding 
+        r"""perturbs the given value, in a way that may depend on the position
+        in the discretization, and calculates the log of the corresponding
         partial acceptance probability,
-        
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
 
-        where :math:`\bf m'` denotes the perturbed model as obtained through a 
-        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`, 
-        where :math:`v` denotes the original ``value`` and :math:`\theta` the 
-        standard deviation of the Gaussian used for the perturbation. 
-        :math:`\theta` may be dependent on the specified position 
+        where :math:`\bf m'` denotes the perturbed model as obtained through a
+        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`,
+        where :math:`v` denotes the original ``value`` and :math:`\theta` the
+        standard deviation of the Gaussian used for the perturbation.
+        :math:`\theta` may be dependent on the specified position
         (:attr:`LaplacePrior.perturb_std`).
-        
+
         Parameters
         ----------
         value : Number
@@ -824,14 +828,14 @@ class LaplacePrior(Prior):
             the position of the value to be perturbed
         is_birth : bool, optional
             whether the perturbation is a birth or not, False by default
-        
+
         Returns
         -------
         Tuple[Number, Number]
             the perturbed value and
             :math:`\alpha_{p} = \log(
             \frac{p({\bf m'})}{p({\bf m})}
-            \frac{q\left({\bf m} 
+            \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
@@ -843,11 +847,13 @@ class LaplacePrior(Prior):
         new_value = value + random_deviate
         mean = self.get_mean(position)
         scale = self.get_scale(position)
-        ratio = (abs(value - mean) - abs(new_value -  mean)) / scale
+        ratio = (abs(value - mean) - abs(new_value - mean)) / scale
         return new_value, ratio
-    
-    def log_prior(self, value: Number, position: Union[Number, np.ndarray] = None) -> Number:
-        r"""calculates the log of the prior probability density for the given 
+
+    def log_prior(
+        self, value: Number, position: Union[Number, np.ndarray] = None
+    ) -> Number:
+        r"""calculates the log of the prior probability density for the given
         value, which may be dependent on the position in the discretization
         domain
 
@@ -858,14 +864,14 @@ class LaplacePrior(Prior):
         position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the prior
             probability of the parameter ``value`` is to be retrieved
-        
+
         Returns
         -------
         Number
-            the log of the prior probability :math:`p(v) = \frac{1}{2b} 
+            the log of the prior probability :math:`p(v) = \frac{1}{2b}
             \exp \Big \lbrace -\frac{|v - \mu|}
             {b} \Big \rbrace`, where :math:`\mu` and :math:`b`
-            denote the mean and scale of the Laplace distribution 
+            denote the mean and scale of the Laplace distribution
             and :math:`v` the ``value`` at which the prior
             probability is to be retrieved. :math:`\mu` and :math:`b` may
             be dependent on position in the discretization domain.
@@ -873,6 +879,7 @@ class LaplacePrior(Prior):
         mean = self.get_mean(position)
         scale = self.get_scale(position)
         return -math.log(2) - math.log(scale) - abs(value - mean) / scale
+
 
 class CustomPrior(Prior):
     """Class enabling the definition of an arbitrary prior for a free parameter
@@ -886,68 +893,73 @@ class CustomPrior(Prior):
         a function that samples a new value (optionally dependent on a position). The
         parameter initialization will also be done by calling this function
     perturb_std : Union[Number, np.ndarray]
-        standard deviation of the Gaussians used to randomly perturb the parameter. 
-        This can either be a scalar or an array if the defined probability distribution 
+        standard deviation of the Gaussians used to randomly perturb the parameter.
+        This can either be a scalar or an array if the defined probability distribution
         is a function of ``position`` in the discretization domain
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
         probability distribution. None by default
     """
+
     def __init__(
         self,
         name: str,
         log_prior: Callable[[Number, Number], Number],
         sample: Callable[[Number], Number],
-        perturb_std: Union[Number, np.ndarray], 
+        perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
-        position: np.ndarray = None, 
+        position: np.ndarray = None,
     ):
         super().__init__(
             name=name,
             log_prior=log_prior,
             sample=sample,
-            perturb_std=perturb_std, 
-            position=position, 
+            perturb_std=perturb_std,
+            position=position,
         )
-        self.add_hyper_params({
-            "perturb_std": perturb_std, 
-            "perturb_std_birth": perturb_std_birth if perturb_std_birth is not None else perturb_std,
-        })
+        self.add_hyper_params(
+            {
+                "perturb_std": perturb_std,
+                "perturb_std_birth": perturb_std_birth
+                if perturb_std_birth is not None
+                else perturb_std,
+            }
+        )
         self._log_prior = log_prior
         self._sample = sample
-    
+
     def sample(self, position: Union[Number, np.ndarray] = None) -> Number:
-        return self._sample(position) 
-    
+        return self._sample(position)
+
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
         result = np.empty_like(positions)
         for i, position in enumerate(positions):
             result[i] = self._sample(position)
         return result
-    
+
     def perturb_value(
-        self, 
-        value: Number, 
-        position: Union[Number, np.ndarray] = None, 
-        is_birth: bool = False
+        self,
+        value: Number,
+        position: Union[Number, np.ndarray] = None,
+        is_birth: bool = False,
     ) -> Tuple[Number, Number]:
-        r"""perturbs the given value, in a way that may depend on the position 
-        in the discretization domain, and calculates the log of the corresponding 
+        r"""perturbs the given value, in a way that may depend on the position
+        in the discretization domain, and calculates the log of the corresponding
         partial acceptance probability,
-        
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
 
-        where :math:`\bf m'` denotes the perturbed model as obtained through a 
-        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`, 
-        where :math:`v` denotes the original ``value`` and :math:`\theta` the 
-        standard deviation of the Gaussian used for the perturbation. 
-        :math:`\theta` may be dependent on the specified position in the 
+        where :math:`\bf m'` denotes the perturbed model as obtained through a
+        random deviate from a normal distribution :math:`\mathcal{N}(v, \theta)`,
+        where :math:`v` denotes the original ``value`` and :math:`\theta` the
+        standard deviation of the Gaussian used for the perturbation.
+        :math:`\theta` may be dependent on the specified position in the
         discretization domain (:attr:`CustomPrior.perturb_std`).
-        
+
         Parameters
         ----------
         value : Number
@@ -963,12 +975,14 @@ class CustomPrior(Prior):
             the perturbed value and
             :math:`\alpha_{p} = \log(
             \frac{p({\bf m'})}{p({\bf m})}
-            \frac{q\left({\bf m} 
+            \frac{q\left({\bf m}
             \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}
             \lvert \mathbf{J} \rvert)`
         """
         if is_birth:
             perturb_std = self.get_perturb_std_birth(position)
+        else:
+            perturb_std = self.get_perturb_std(position)
         random_deviate = random.normalvariate(0, perturb_std)
         new_value = value + random_deviate
         ratio = self.log_prior(new_value, position) - self.log_prior(value, position)
@@ -977,7 +991,7 @@ class CustomPrior(Prior):
     def log_prior(
         self, value: Number, position: Union[Number, np.ndarray] = None
     ) -> Number:
-        r"""calculates the log of the prior probability density for the given 
+        r"""calculates the log of the prior probability density for the given
         value, which may be dependent on the position in the discretization
         domain
 
@@ -988,7 +1002,7 @@ class CustomPrior(Prior):
         position : Union[Number, np.ndarray], optional
             the position in the discretization domain at which the prior
             probability of the parameter ``value`` is to be retrieved
-        
+
         Returns
         -------
         Number
@@ -1006,4 +1020,5 @@ def _interpolate_linear_nd(variable_name, interpolator):
         if np.isnan(y_interp):
             raise OutOfDomainException(variable_name, x)
         return y_interp.item()
+
     return func

@@ -8,19 +8,19 @@ import bayesbay as bb
 # define parameter: customly defined uniform parameter
 custom_param = bb.prior.CustomPrior(
     "custom_param",
-    lambda v: - math.log(10) if 0 <= v <= 10 else float("-inf"), 
-    lambda _: random.uniform(0,10), 
-    1, 
+    lambda v: -math.log(10) if 0 <= v <= 10 else float("-inf"),
+    lambda _: random.uniform(0, 10),
+    1,
 )
 
 # define parameter space
 parameterization = bb.parameterization.Parameterization(
     bb.parameterization.ParameterSpace(
-        name="my_param_space", 
-        n_dimensions=None, 
-        n_dimensions_min=1, 
-        n_dimensions_max=10, 
-        parameters=[custom_param], 
+        name="my_param_space",
+        n_dimensions=None,
+        n_dimensions_min=1,
+        n_dimensions_max=10,
+        parameters=[custom_param],
     )
 )
 
@@ -31,16 +31,16 @@ log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 
 # run the sampler
 inversion = bb.BayesianInversion(
-    parameterization=parameterization, 
-    log_likelihood=log_likelihood,  
-    n_chains=1, 
+    parameterization=parameterization,
+    log_likelihood=log_likelihood,
+    n_chains=1,
 )
 inversion.run(
-    sampler=None, 
-    n_iterations=500_000, 
-    burnin_iterations=0, 
-    save_every=200, 
-    print_every=200, 
+    sampler=None,
+    n_iterations=100_000,
+    burnin_iterations=0,
+    save_every=200,
+    print_every=20_000,
 )
 
 # get results and plot

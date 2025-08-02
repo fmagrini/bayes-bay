@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.4 (02/08/2025)
+- Bug fix: added else condition in `bayesbay.prior.CustomPrior.perturb_value()` to accommodate `is_birth=False`
+
 ## v0.3.3 (16/04/2025)
 - Enhancement: More robust checks when custom starting states (`walkers_starting_states`) are passed to BayesianInversion
 
