@@ -11,6 +11,9 @@ from ._state import State
 from .exceptions import ForwardException, UserFunctionException
 
 
+_MAX_INITIAL_STATE_ATTEMPTS = 500
+
+
 class BaseMarkovChain:
     r"""
     Low-level interface for a Markov Chain.
@@ -360,13 +363,59 @@ class MarkovChain(BaseMarkovChain):
 
     def _init_starting_state(self, starting_state=None) -> State:
         """Initialize the parameterization by defining a starting state."""
-        ref_state = self.parameterization.initialize()
+
         if starting_state is not None:
+            ref_state = self.parameterization.initialize()
             self._check_starting_state(starting_state, ref_state)
-        else:
-            starting_state = ref_state
-        self.log_likelihood.initialize(starting_state)
-        return starting_state
+            self.log_likelihood.initialize(starting_state)
+            try:
+                self._validate_starting_state(starting_state)
+            except (ForwardException, UserFunctionException) as exc:
+                raise RuntimeError(
+                    "The provided starting_state caused the forward model to fail. "
+                    "Please supply a feasible state or adjust the parameterization."
+                ) from exc
+            return starting_state
+
+        last_exception: Exception = None
+        for _ in range(_MAX_INITIAL_STATE_ATTEMPTS):
+            candidate_state = self.parameterization.initialize()
+            self.log_likelihood.initialize(candidate_state)
+            try:
+                self._validate_starting_state(candidate_state)
+            except (ForwardException, UserFunctionException) as exc:
+                last_exception = exc
+                continue
+            return candidate_state
+
+        raise RuntimeError(
+            "Unable to initialize a valid starting state after "
+            f"{_MAX_INITIAL_STATE_ATTEMPTS} attempts. Consider providing a "
+            "custom starting_state or updating your parameterization/log-likelihood."
+        ) from last_exception
+
+    def _validate_starting_state(self, state: State) -> None:
+        """Run a forward evaluation to ensure the state is admissible."""
+        forward_funcs = getattr(self.log_likelihood, "fwd_functions", None) or []
+        if forward_funcs:
+            for forward_func in forward_funcs:
+                try:
+                    forward_func(state)
+                except Exception as exc:  # pragma: no cover - defensive
+                    raise ForwardException(exc)
+            return
+
+        log_like_ratio_func = getattr(self.log_likelihood, "log_like_ratio_func", None)
+        if log_like_ratio_func is not None:
+            log_like_ratio_func(state, state)
+            return
+
+        log_like_func = getattr(self.log_likelihood, "log_like_func", None)
+        if log_like_func is not None:
+            log_like_func(state)
+            return
+
+        self.log_likelihood.log_likelihood_ratio(state, state)
 
     def _check_starting_state(self, starting_state, ref_state, level=1):
         """Ensure the user's starting state is compatible with the parameterization."""
