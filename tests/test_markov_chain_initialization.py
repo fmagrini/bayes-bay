@@ -1,118 +1,151 @@
-import sys
-import types
-from pathlib import Path
-
 import numpy as np
-import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+import bayesbay as bb
 
 
-class _UtilsStub(types.ModuleType):
-    def __getattr__(self, name):
-        def _stub(*args, **kwargs):  # pragma: no cover - placeholder implementation
-            raise NotImplementedError(name)
+class _FailingForward:
+    """Forward function that fails for the first N calls"""
 
-        return _stub
+    def __init__(self, fail_count):
+        self.fail_count = fail_count
+        self.call_count = 0
 
-
-utils_stub = _UtilsStub("bayesbay._utils_1d")
-utils_stub.inverse_covariance = lambda std, correlation, n: np.eye(n)
-sys.modules.setdefault("bayesbay._utils_1d", utils_stub)
-
-import bayesbay._markov_chain as mc_mod
-from bayesbay._markov_chain import MarkovChain
-from bayesbay._state import ParameterSpaceState, State
+    def __call__(self, state):
+        self.call_count += 1
+        print(f"Forward called {self.call_count} times")
+        if self.call_count <= self.fail_count:
+            raise RuntimeError("Forward failed intentionally")
+        return np.array([1.0])
 
 
-def _make_state(label: str) -> State:
-    param_state = ParameterSpaceState(1, {"value": np.array([0.0])})
-    return State({"model": param_state}, extra_storage={"label": label})
+class _FailingLogLike:
+    """Log likelihood function that fails for the first N calls"""
 
+    def __init__(self, fail_count):
+        self.fail_count = fail_count
+        self.call_count = 0
 
-class SequentialParameterization:
-    def __init__(self, states):
-        self.states = list(states)
-        if not self.states:
-            raise ValueError("states must not be empty")
-        self.index = 0
-        self.parameter_spaces = {}
-
-    @property
-    def perturbation_funcs(self):
-        return []
-
-    @property
-    def perturbation_weights(self):
-        return []
-
-    def initialize(self):
-        if self.index < len(self.states):
-            state = self.states[self.index]
-            self.index += 1
-            return state
-        return self.states[-1]
-
-
-class DummyLogLikelihood:
-    def __init__(self, failing_labels):
-        self.failing_labels = set(failing_labels)
-        self.initialize_calls = 0
-        self.forward_calls = 0
-        self.fwd_functions = [self._forward]
-        self.log_like_ratio_func = None
-        self.log_like_func = None
-
-    def initialize(self, state):
-        self.initialize_calls += 1
-
-    def _forward(self, state):
-        self.forward_calls += 1
-        if state.extra_storage.get("label") in self.failing_labels:
-            raise RuntimeError("forward failed")
-        return np.array([0.0])
-
-    def log_likelihood_ratio(self, old_state, new_state, temperature=1):
-        if new_state.extra_storage.get("label") in self.failing_labels:
-            raise RuntimeError("forward failed")
+    def __call__(self, state):
+        self.call_count += 1
+        print(f"Log likelihood called {self.call_count} times")
+        if self.call_count <= self.fail_count:
+            raise RuntimeError("Log likelihood failed intentionally")
         return 0.0
 
 
-def test_initialization_retries_until_valid_state():
-    bad_states = [_make_state("bad1"), _make_state("bad2")]
-    good_state = _make_state("good")
-    parameterization = SequentialParameterization(bad_states + [good_state])
-    log_likelihood = DummyLogLikelihood({"bad1", "bad2"})
+class _FailingLogLikeRatio:
+    """Log likelihood ratio function that fails for the first N calls"""
 
-    chain = MarkovChain(
-        id=0,
-        parameterization=parameterization,
-        log_likelihood=log_likelihood,
-        perturbation_funcs=[],
-        perturbation_weights=[],
+    def __init__(self, fail_count):
+        self.fail_count = fail_count
+        self.call_count = 0
+
+    def __call__(self, old_state, new_state):
+        self.call_count += 1
+        print(f"Log likelihood ratio called {self.call_count} times")
+        if self.call_count <= self.fail_count:
+            raise RuntimeError("Log likelihood ratio failed intentionally")
+        return 0.0
+
+
+def _setup_parameterization():
+    param = bb.prior.UniformPrior("param", 0, 1, 0.1)
+    return bb.parameterization.Parameterization(
+        bb.discretization.Voronoi1D(
+            name="voronoi",
+            vmin=0,
+            vmax=1,
+            perturb_std=0.1,
+            n_dimensions=None,
+            n_dimensions_min=1,
+            n_dimensions_max=3,
+            parameters=[param],
+        )
     )
 
-    assert chain.current_state.extra_storage["label"] == "good"
-    assert log_likelihood.initialize_calls == 3
-    assert log_likelihood.forward_calls == 3
+
+def test_initialization_with_forward_functions():
+    """Test retry logic with targets + fwd_functions"""
+    print("\n=== Test 1: With forward functions (targets + fwd_functions) ===")
+    forward = _FailingForward(fail_count=2)
+    parameterization = _setup_parameterization()
+    target = bb.likelihood.Target("data", np.array([1.0]), covariance_mat_inv=1.0)
+    log_likelihood = bb.likelihood.LogLikelihood([target], [forward])
+
+    inversion = bb.BayesianInversion(
+        parameterization=parameterization,
+        log_likelihood=log_likelihood,
+        n_chains=1,
+    )
+
+    print(f"✓ Initialization succeeded after {forward.call_count} attempts")
+    assert forward.call_count == 3, f"Expected 3 calls, got {forward.call_count}"
+    print("✓ Test passed!\n")
 
 
-def test_initialization_raises_after_exhaustion(monkeypatch):
-    bad_state = _make_state("bad")
-    parameterization = SequentialParameterization([bad_state])
-    log_likelihood = DummyLogLikelihood({"bad"})
-    monkeypatch.setattr(mc_mod, "_MAX_INITIAL_STATE_ATTEMPTS", 3)
+def test_initialization_with_log_like_func():
+    """Test retry logic with log_like_func"""
+    print("=== Test 2: With log_like_func ===")
+    log_like = _FailingLogLike(fail_count=2)
+    parameterization = _setup_parameterization()
+    log_likelihood = bb.likelihood.LogLikelihood(log_like_func=log_like)
 
-    with pytest.raises(RuntimeError) as exc:
-        MarkovChain(
-            id=0,
+    inversion = bb.BayesianInversion(
+        parameterization=parameterization,
+        log_likelihood=log_likelihood,
+        n_chains=1,
+    )
+
+    print(f"✓ Initialization succeeded after {log_like.call_count} attempts")
+    assert log_like.call_count == 3, f"Expected 3 calls, got {log_like.call_count}"
+    print("✓ Test passed!\n")
+
+
+def test_initialization_with_log_like_ratio_func():
+    """Test retry logic with log_like_ratio_func"""
+    print("=== Test 3: With log_like_ratio_func ===")
+    log_like_ratio = _FailingLogLikeRatio(fail_count=2)
+    parameterization = _setup_parameterization()
+    log_likelihood = bb.likelihood.LogLikelihood(log_like_ratio_func=log_like_ratio)
+
+    inversion = bb.BayesianInversion(
+        parameterization=parameterization,
+        log_likelihood=log_likelihood,
+        n_chains=1,
+    )
+
+    print(f"✓ Initialization succeeded after {log_like_ratio.call_count} attempts")
+    assert (
+        log_like_ratio.call_count == 3
+    ), f"Expected 3 calls, got {log_like_ratio.call_count}"
+    print("✓ Test passed!\n")
+
+
+def test_initialization_fails_after_max_attempts():
+    """Test that initialization raises error after too many failures"""
+    print("=== Test 4: Raises error after max attempts ===")
+    forward = _FailingForward(fail_count=1000)
+    parameterization = _setup_parameterization()
+    target = bb.likelihood.Target("data", np.array([1.0]), covariance_mat_inv=1.0)
+    log_likelihood = bb.likelihood.LogLikelihood([target], [forward])
+
+    try:
+        inversion = bb.BayesianInversion(
             parameterization=parameterization,
             log_likelihood=log_likelihood,
-            perturbation_funcs=[],
-            perturbation_weights=[],
+            n_chains=1,
         )
+        print("✗ Test failed: Should have raised RuntimeError")
+        assert False
+    except RuntimeError as e:
+        print(f"✓ Got expected error: {e}")
+        assert "Unable to initialize" in str(e)
+        print("✓ Test passed!\n")
 
-    assert "Unable to initialize" in str(exc.value)
-    assert log_likelihood.initialize_calls == 3
-    assert log_likelihood.forward_calls == 3
 
+if __name__ == "__main__":
+    test_initialization_fails_after_max_attempts()
+    test_initialization_with_forward_functions()
+    test_initialization_with_log_like_func()
+    test_initialization_with_log_like_ratio_func()
+    print("=" * 50)
+    print("All tests passed! ✓")
