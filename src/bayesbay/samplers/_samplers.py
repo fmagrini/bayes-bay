@@ -381,7 +381,7 @@ class SimulatedAnnealing(Sampler):
     ----------
     temperature_start : Number
         the starting temperature of the Markov chains
-    cooling_fraction : float, optional
+    cooling_fraction : float
         fraction of ``burnin_iterations`` over which exponential cooling is applied
         before clamping the temperature to 1 for the remainder of burn-in (default 0.9).
 
