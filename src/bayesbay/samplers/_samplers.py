@@ -13,6 +13,7 @@ class Sampler(ABC):
     """Low-level class for defining the sampling criterion of a Markov chain
     and/or modifying its attributes in-between iterations
     """
+
     def __init__(self):
         self._extra_on_initialize = []
         self._extra_on_begin_iteration = []
@@ -21,7 +22,7 @@ class Sampler(ABC):
 
     def initialize(self, chains: List[BaseMarkovChain]):  # called by external
         """initializes the given Markov Chains by calling :meth:`on_initialize`
-        
+
         Parameters
         ----------
         chains : List[BaseMarkovChain]
@@ -35,7 +36,7 @@ class Sampler(ABC):
     def begin_iteration(self, chain: BaseMarkovChain):  # called by external
         """calls :meth:`on_begin_iteration` before beginning the current Markov
         chain iteration
-        
+
         Parameters
         ----------
         chain : bayesbay.BaseMarkovChain
@@ -48,7 +49,7 @@ class Sampler(ABC):
     def end_iteration(self, chain: BaseMarkovChain):  # called by external
         """calls :meth:`on_end_iteration` before passing to the next Markov
         chain iteration.
-        
+
         Parameters
         ----------
         chain : bayesbay.BaseMarkovChain
@@ -72,7 +73,7 @@ class Sampler(ABC):
     ):
         """adds a custom function that will be called at the end of the chains
         initialization (see :meth:`initialize`)
-        
+
         Parameters
         ----------
         func : Callable
@@ -83,13 +84,13 @@ class Sampler(ABC):
     def add_on_begin_iteration(
         self, func: Callable[["Sampler", BaseMarkovChain], None]
     ):
-        """adds a custom function that will be called at the beginning of each 
+        """adds a custom function that will be called at the beginning of each
         Markov chain iteration (see :meth:`on_begin_iteration`)
         """
         self._extra_on_begin_iteration.append(func)
 
     def add_on_end_iteration(self, func: Callable[["Sampler", BaseMarkovChain], None]):
-        """adds a custom function that will be called at the end of each Markov 
+        """adds a custom function that will be called at the end of each Markov
         chain iteration (see :meth:`on_end_iteration`)
         """
         self._extra_on_end_iteration.append(func)
@@ -102,9 +103,9 @@ class Sampler(ABC):
 
     @abstractmethod
     def on_initialize(self, chains):  # customized by subclass
-        """defines the behaviour of the sampler at the initialization of the 
+        """defines the behaviour of the sampler at the initialization of the
         Markov chains
-        
+
         Parameters
         ----------
         chains : List[BaseMarkovChain]
@@ -116,7 +117,7 @@ class Sampler(ABC):
     def on_begin_iteration(self, chain: BaseMarkovChain):  # customized by subclass
         """defines the behaviour of the sampler at the beginning of each
         Markov chain iteration
-        
+
         Parameters
         ----------
         chain : BaseMarkovChain
@@ -128,7 +129,7 @@ class Sampler(ABC):
     def on_end_iteration(self, chain: BaseMarkovChain):  # customized by subclass
         """defines the behaviour of the sampler at the end of each
         Markov chain iteration
-        
+
         Parameters
         ----------
         chain : BaseMarkovChain
@@ -140,7 +141,7 @@ class Sampler(ABC):
     def on_end_advance_chain(self):  # customized by subclass
         """defines the behaviour of the sampler at the end of the batch of
         Markov chain iterations taking place after calling :meth:`advance_chain`
-        
+
         Parameters
         ----------
         chain : BaseMarkovChain
@@ -150,11 +151,11 @@ class Sampler(ABC):
 
     @abstractmethod
     def run(self):  # customized by subclass; called by external
-        """function that allows for running the Bayesian inference by calling 
-        :meth:`advance_chain`. 
-        
+        """function that allows for running the Bayesian inference by calling
+        :meth:`advance_chain`.
+
         .. important::
-            
+
             To work properly, a custom Sampler has to call within this function
             the method :meth:`advance_chain`.
         """
@@ -164,7 +165,7 @@ class Sampler(ABC):
     def chains(self) -> List[BaseMarkovChain]:
         """the ``MarkovChain`` instances of the current Bayesian inference"""
         return self._chains
-    
+
     @property
     def parallel_config(self) -> dict:
         """customized parallel configuration dictionary that will be passed to
@@ -173,10 +174,10 @@ class Sampler(ABC):
         if not hasattr(self, "_parallel_config"):
             self._parallel_config = dict()
         return self._parallel_config
-    
+
     @parallel_config.setter
     def parallel_config(self, parallel_config: dict):
-        """set the parallel configuration that will be passed to 
+        """set the parallel configuration that will be passed to
         :class:`joblib.Parallel`
 
         Parameters
@@ -211,7 +212,7 @@ class Sampler(ABC):
             the frequency with which we print the progress and information during the
             sampling, by default 100 iterations
         parallel_config : dict, optional
-            keyword arguments passed to ``joblib.Parallel``. Ignored when 
+            keyword arguments passed to ``joblib.Parallel``. Ignored when
             ``len(self.chains)`` is 1
         Returns
         -------
@@ -239,9 +240,10 @@ class Sampler(ABC):
 
 
 class VanillaSampler(Sampler):
-    """High-level class to be used to sample the posterior by means of 
+    """High-level class to be used to sample the posterior by means of
     reversible-jump Markov chain Monte Carlo.
     """
+
     def __init__(self):
         super().__init__()
 
@@ -275,11 +277,11 @@ class VanillaSampler(Sampler):
 
 
 class ParallelTempering(Sampler):
-    r"""High-level class to be used to sample the posterior by means of 
+    r"""High-level class to be used to sample the posterior by means of
     reversible-jump Markov chain Monte Carlo accelerated with parallel tempering.
 
     See references below for details on parallel tempering [1]_, [2]_.
-    
+
     Parameters
     ----------
     temperature_max : Number
@@ -288,16 +290,17 @@ class ParallelTempering(Sampler):
         the fraction of chains having unit temperature, 0.4 by default (i.e. 40%
         of the chains)
     swap_every : int
-        the frequency with which the chain temperatures are randomly chosen 
+        the frequency with which the chain temperatures are randomly chosen
         and possibly swapped during the sampling, by default 500 iterations
-    
+
     References
     ----------
-    .. [1] Ray et al. 2013, Robust and accelerated Bayesian inversion of marine 
+    .. [1] Ray et al. 2013, Robust and accelerated Bayesian inversion of marine
         controlled-source electromagnetic data using parallel tempering
-    .. [2] Sambridge 2014, A parallel tempering algorithm for probabilistic 
+    .. [2] Sambridge 2014, A parallel tempering algorithm for probabilistic
         sampling and multimodal optimization
     """
+
     def __init__(
         self,
         temperature_max=5,
@@ -349,9 +352,7 @@ class ParallelTempering(Sampler):
         while True:
             iteration = self.chains[0].statistics["n_proposed_models_total"]
             n_it = min(self._swap_every, n_iterations - iteration)
-            burnin_it = max(
-                0, min(self._swap_every, burnin_iterations - iteration)
-            )
+            burnin_it = max(0, min(self._swap_every, burnin_iterations - iteration))
             self.advance_chain(
                 n_iterations=n_it,
                 burnin_iterations=burnin_it,
@@ -365,30 +366,34 @@ class ParallelTempering(Sampler):
 
 
 class SimulatedAnnealing(Sampler):
-    r"""High-level class to be used to sample the posterior by means of 
+    r"""High-level class to be used to sample the posterior by means of
     reversible-jump Markov chain Monte Carlo accelerated with simulated annealing.
 
     See references below for details on simulated annealing [1]_.
-    
+
     .. note::
         In our implementation, the temperature of each Markov chain is decreased
-        exponentially with iteration, from :attr:`temperature_start` to 1, 
-        during the burn-in phase. Using ``SimulatedAnnealing`` is therefore 
+        exponentially with iteration, from :attr:`temperature_start` to 1,
+        during the burn-in phase. Using ``SimulatedAnnealing`` is therefore
         incompatible with setting ``burnin_iterations`` to zero in :meth:`run`.
-    
+
     Parameters
     ----------
     temperature_start : Number
         the starting temperature of the Markov chains
-        
-        
+    cooling_fraction : float, optional
+        fraction of ``burnin_iterations`` over which exponential cooling is applied
+        before clamping the temperature to 1 for the remainder of burn-in (default 0.9).
+
     References
     ----------
     .. [1] Kirkpatrick et al. 1983, Optimization by simulated annealing
     """
-    def __init__(self, temperature_start=10):
+
+    def __init__(self, temperature_start=10, cooling_fraction=0.8):
         super().__init__()
         self.temperature_start = temperature_start
+        self.cooling_fraction = float(cooling_fraction)
 
     def on_initialize(self, chains: List[BaseMarkovChain]):
         for chain in chains:
@@ -396,12 +401,17 @@ class SimulatedAnnealing(Sampler):
 
     def on_begin_iteration(self, chain: BaseMarkovChain):
         iteration = chain.statistics["n_proposed_models_total"]
+
         if iteration < self.burnin_iterations:
-            chain.temperature = self.temperature_start * math.exp(
-                -self.cooling_rate * iteration
-            )
-        elif iteration == self.burnin_iterations:
-            chain.temperature = 1
+            # Exponential cooling for the first `cooling_iterations`, then plateau at T=1
+            if iteration < self.cooling_iterations:
+                temp = self.temperature_start * math.exp(-self.cooling_rate * iteration)
+                chain.temperature = max(1.0, temp)  # guard against rounding below 1
+            else:
+                chain.temperature = 1.0
+        else:
+            if chain.temperature != 1.0:  # set only once
+                chain.temperature = 1.0
 
     def on_end_iteration(self, chain: BaseMarkovChain):
         pass
@@ -419,7 +429,15 @@ class SimulatedAnnealing(Sampler):
     ) -> List[BaseMarkovChain]:
         self.burnin_iterations = burnin_iterations
         if burnin_iterations != 0:
-            self.cooling_rate = math.log(self.temperature_start) / burnin_iterations
+            # Cooling happens over the first `cooling_iterations` of burn-in, then T=1 plateau.
+            cf = min(max(self.cooling_fraction, 0.0), 1.0)
+            self.cooling_iterations = max(
+                1, min(burnin_iterations, int(round(cf * burnin_iterations)))
+            )
+            self.cooling_rate = (
+                math.log(self.temperature_start) / self.cooling_iterations
+            )
+
         self.advance_chain(
             n_iterations=n_iterations,
             burnin_iterations=burnin_iterations,
