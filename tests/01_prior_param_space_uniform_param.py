@@ -9,11 +9,11 @@ uniform_param = bb.prior.UniformPrior("uniform_param", -1, 1, 0.1)
 # define parameter space
 parameterization = bb.parameterization.Parameterization(
     bb.parameterization.ParameterSpace(
-        name="my_param_space",  
-        n_dimensions=None, 
-        n_dimensions_min=1, 
-        n_dimensions_max=10, 
-        parameters=[uniform_param], 
+        name="my_param_space",
+        n_dimensions=None,
+        n_dimensions_min=1,
+        n_dimensions_max=10,
+        parameters=[uniform_param],
     )
 )
 
@@ -24,16 +24,16 @@ log_likelihood = bb.LogLikelihood(targets, fwd_functions)
 
 # run the sampler
 inversion = bb.BayesianInversion(
-    parameterization=parameterization, 
-    log_likelihood=log_likelihood,  
-    n_chains=1, 
+    parameterization=parameterization,
+    log_likelihood=log_likelihood,
+    n_chains=1,
 )
 inversion.run(
-    sampler=None, 
-    n_iterations=500_000, 
-    burnin_iterations=0, 
-    save_every=200, 
-    print_every=200, 
+    sampler=None,
+    n_iterations=500_000,
+    burnin_iterations=0,
+    save_every=200,
+    print_every=200,
 )
 
 # get results and plot
