@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.7 (19/11/2025)
+- Change to setup.py: avoid "-march=native" for "arm64" and "aarch64" machines
+
 ## v0.3.6 (11/11/2025)
 - Enhancement: SimulatedAnnealing now accepts the argument `cooling_fraction`
 

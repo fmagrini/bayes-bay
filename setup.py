@@ -2,15 +2,20 @@ from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 import numpy
 import os
+import platform
 
 
 # Compiler arguments
-extra_compile_args = ["-O3", "-ffast-math", "-march=native"]
+
+extra_compile_args = ["-O3", "-ffast-math"]
+if platform.machine() not in ["arm64", "aarch64"]:
+    extra_compile_args.append("-march=native")
 
 
 def readme():
     with open("README.md", "r") as f:
         return f.read()
+
 
 def read_version():
     version_file = os.path.join("src", "bayesbay", "_version.py")
@@ -43,8 +48,8 @@ setup(
         "numpy>=1.22",
         "scipy>=1.9.0",
         "matplotlib>=3.0.0",
-        "shapely>=2.0.0", 
-        "joblib>=1.3.2", 
+        "shapely>=2.0.0",
+        "joblib>=1.3.2",
     ],
     ext_modules=cythonize(ext_modules, language_level="3"),
     include_dirs=[numpy.get_include()],
