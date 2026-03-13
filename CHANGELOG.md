@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.8 (13/03/2026)
+- Fixed docstring of BayesianInversion
+
 ## v0.3.7 (19/11/2025)
 - Change to setup.py: avoid "-march=native" for "arm64" and "aarch64" machines
 

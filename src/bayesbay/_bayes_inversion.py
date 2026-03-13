@@ -1,17 +1,17 @@
-from typing import List, Callable, Tuple, Any, Dict, Union
-from numbers import Number
-from collections import defaultdict
-from pprint import pformat
 import warnings
+from collections import defaultdict
+from numbers import Number
+from pprint import pformat
+from typing import Any, Callable, Dict, List, Tuple, Union
 
-from ._markov_chain import MarkovChain, BaseMarkovChain
-from .samplers import VanillaSampler, Sampler
-from .parameterization import Parameterization
+from ._markov_chain import BaseMarkovChain, MarkovChain
+from ._state import State
 from ._utils import _preprocess_func
 from .likelihood._log_likelihood import LogLikelihood
 from .likelihood._target import Target
+from .parameterization import Parameterization
 from .perturbations._birth_death import BirthPerturbation, DeathPerturbation
-from ._state import State
+from .samplers import Sampler, VanillaSampler
 
 
 class BaseBayesianInversion:
@@ -86,10 +86,9 @@ class BaseBayesianInversion:
         n_chains: int = 10,
         save_dpred: bool = True,
     ):
-        assert len(walkers_starting_states) == n_chains, (
-            "`walkers_starting_states` doesn't match the number of chains: "
-            f"{len(walkers_starting_states)} != {n_chains}"
-        )
+        assert (
+            len(walkers_starting_states) == n_chains
+        ), f"`walkers_starting_states` doesn't match the number of chains: {len(walkers_starting_states)} != {n_chains}"
         self.walkers_starting_states = walkers_starting_states
         self.set_perturbation_funcs(perturbation_funcs, perturbation_weights)
         if isinstance(log_like_ratio_func, LogLikelihood):
@@ -137,16 +136,8 @@ class BaseBayesianInversion:
             if isinstance(func, (BirthPerturbation, DeathPerturbation)):
                 birth_death_pairs[func.param_space_name].append(ifunc)
         for ps_name, perturb_ifuncs in birth_death_pairs.items():
-            birth_func_indices = [
-                i
-                for i in perturb_ifuncs
-                if isinstance(perturbation_funcs[i], BirthPerturbation)
-            ]
-            death_func_indices = [
-                i
-                for i in perturb_ifuncs
-                if isinstance(perturbation_funcs[i], DeathPerturbation)
-            ]
+            birth_func_indices = [i for i in perturb_ifuncs if isinstance(perturbation_funcs[i], BirthPerturbation)]
+            death_func_indices = [i for i in perturb_ifuncs if isinstance(perturbation_funcs[i], DeathPerturbation)]
             if len(birth_func_indices) != 1:
                 raise ValueError(
                     "there should be exactly one birth perturbation function for each "
@@ -177,9 +168,7 @@ class BaseBayesianInversion:
         self.perturbation_weights = perturbation_weights
         if hasattr(self, "_chains"):
             for chain in self.chains:
-                chain.set_perturbation_funcs(
-                    self.perturbation_funcs, self.perturbation_weights
-                )
+                chain.set_perturbation_funcs(self.perturbation_funcs, self.perturbation_weights)
 
     @property
     def chains(self) -> List[BaseMarkovChain]:
@@ -201,9 +190,7 @@ class BaseBayesianInversion:
             when ``updated_chains` is not a list or the elements are not instances of
             :class:`BaseMarkovChain`
         """
-        if not isinstance(updated_chains, list) or all(
-            [isinstance(c, BaseMarkovChain) for c in updated_chains]
-        ):
+        if not isinstance(updated_chains, list) or all([isinstance(c, BaseMarkovChain) for c in updated_chains]):
             raise TypeError("make sure the `updated_chains` is a list of chains")
         self._chains = updated_chains
         self.n_chains = len(updated_chains)
@@ -316,8 +303,7 @@ class BaseBayesianInversion:
             chains = [chains]
         if not all([isinstance(c, BaseMarkovChain) for c in chains]):
             raise TypeError(
-                "`chains` should be a list of Markov chains (i.e. instances of "
-                "BaseMarkovChain or MarkovChain)"
+                "`chains` should be a list of Markov chains (i.e. instances of BaseMarkovChain or MarkovChain)"
             )
         if isinstance(keys, str):
             keys = [keys]
@@ -379,32 +365,38 @@ class BaseBayesianInversion:
 
 
 class BayesianInversion(BaseBayesianInversion):
-    """A high-level class for performing Bayesian inversion using Markov Chain Monte
-    Carlo (McMC) methods.
+    """A high-level class for Bayesian inversion using Markov chain Monte Carlo.
 
-    This is a subclass of :class:`BaseBayesianInversion`.
-
-    This class provides the basic structure for setting up and running McMC sampling,
-    given user-configured parameterization settings, data targets and corresponding
-    forward functions.
+    This is a subclass of :class:`BaseBayesianInversion` that combines perturbations
+    from ``parameterization`` and ``log_likelihood`` and initializes a
+    :class:`bayesbay.MarkovChain` for each walker.
 
     Parameters
     ----------
     parameterization : bayesbay.parameterization.Parameterization
-        pre-configured parameterization. This includes information about the dimension,
-        parameterization bounds and properties of unknown parameterizations
-    targets : List[bayesbay.Target]
-        a list of data targets
-    fwd_functions : Callable[[bayesbay.State], np.ndarray]
-        a lsit of forward functions corresponding to each data targets provided above.
-        Each function takes in a state and returns a numpy array of data predictions.
-    walkers_starting_states: List[State]
-        a list of starting states for each chain. The states should be an instance of a
-        :class:`bayesbay.State` and their structure should be consistent with the specified
-        ``parameterization``. The length of this list must be equal to the number of
-        chains, i.e. ``n_chains``
-    n_chains: int, 10 by default
-        the number of chains in the McMC sampling
+        Pre-configured parameterization describing model structure, priors, and
+        parameter-space perturbations.
+    log_likelihood : bayesbay.likelihood.LogLikelihood
+        Log-likelihood object used to score proposed states. Its perturbation
+        functions (e.g., hierarchical target updates) are merged with those from
+        ``parameterization``.
+    n_chains : int, optional
+        Number of Markov chains to run. Default is 10.
+    walkers_starting_states : List[bayesbay.State], optional
+        Optional starting state for each chain. If provided, the list length must be
+        equal to ``n_chains``. If ``None``, each chain initializes from
+        ``parameterization``.
+    save_dpred : bool, optional
+        Whether to store predicted data in saved chain states. Default is ``True``.
+
+    Raises
+    ------
+    TypeError
+        If ``log_likelihood`` is not an instance of
+        :class:`bayesbay.likelihood.LogLikelihood`.
+    ValueError
+        If ``walkers_starting_states`` is provided and its length does not match
+        ``n_chains``.
     """
 
     def __init__(
@@ -416,14 +408,9 @@ class BayesianInversion(BaseBayesianInversion):
         save_dpred: bool = True,
     ):
         if not isinstance(log_likelihood, LogLikelihood):
-            raise TypeError(
-                "`log_likelihood` should be an instance of "
-                "`bayesbay.likelihood.LogLikelihood`"
-            )
+            raise TypeError("`log_likelihood` should be an instance of `bayesbay.likelihood.LogLikelihood`")
 
-        if walkers_starting_states is not None and n_chains != len(
-            walkers_starting_states
-        ):
+        if walkers_starting_states is not None and n_chains != len(walkers_starting_states):
             raise ValueError(
                 f"Length of `walkers_starting_states` ({len(walkers_starting_states)})"
                 f" does not match `n_chains` ({n_chains})."
@@ -464,11 +451,7 @@ class BayesianInversion(BaseBayesianInversion):
         }
         _parameterization = dict()
         for ps_name, ps in self.parameterization.parameter_spaces.items():
-            _parameterization[ps_name] = {
-                k: v
-                for k, v in ps._repr_args.items()
-                if k not in {"parameters", "name"}
-            }
+            _parameterization[ps_name] = {k: v for k, v in ps._repr_args.items() if k not in {"parameters", "name"}}
             _parameterization[ps_name]["parameters"] = list(ps.parameters.values())
         self._repr_args["parameterization"] = _parameterization
 
@@ -501,7 +484,5 @@ class BayesianInversion(BaseBayesianInversion):
             self.perturbation_weights,
         ) = self._init_perturbation_funcs()
         for chain in self.chains:
-            chain.set_perturbation_funcs(
-                self.perturbation_funcs, self.perturbation_weights
-            )
+            chain.set_perturbation_funcs(self.perturbation_funcs, self.perturbation_weights)
             chain.update_targets(targets)
