@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.10 (23/03/2026)
+- Bug fix: Python 3.14 compatibility — added explicit type casts at Cython call sites to prevent `TypeError` when numpy scalars are passed to typed Cython parameters (issue #25)
+- Refactor: moved all 1D-specific logic from `Voronoi` into `Voronoi1D` overrides, removing dimension conditionals from the base class
+- `Voronoi` now raises `ValueError` if directly instantiated with `spatial_dimensions` of 1 or 2, recommending `Voronoi1D` or `Voronoi2D` instead
+
 ## v0.3.9 (23/03/2026)
 - Bug fix: `Voronoi1D.sample_site()` now returns a Python `float` instead of a shape-(1,) NumPy array, fixing a `TypeError` in birth perturbation with Cython extensions compiled against older Cython versions and NumPy >= 2.0
 

@@ -1,30 +1,30 @@
-from bisect import bisect_left
 import math
-from typing import Tuple, Union, List, Dict, Callable
-from numbers import Number
 import random
+from bisect import bisect_left
+from numbers import Number
+from typing import Callable, List, Tuple, Union
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
 import shapely.geometry
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
-from ..parameterization._parameter_space import ParameterSpace
-from ..perturbations._param_values import ParamPerturbation
-from ..perturbations._param_space import ParamSpacePerturbation
-from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
-from ._discretization import Discretization
-from ..prior import Prior
-from .._state import State, ParameterSpaceState
+from .._state import ParameterSpaceState, State
 from .._utils_1d import (
+    compute_voronoi1d_cell_extents,
+    delete_1d,
+    insert_1d,
     interpolate_depth_profile,
     interpolate_nearest_1d,
-    compute_voronoi1d_cell_extents,
-    insert_1d,
-    delete_1d,
     nearest_neighbour_1d,
 )
-
+from ..parameterization._parameter_space import ParameterSpace
+from ..perturbations._birth_death import BirthPerturbation, DeathPerturbation
+from ..perturbations._param_space import ParamSpacePerturbation
+from ..perturbations._param_values import ParamPerturbation
+from ..prior import Prior
+from ._discretization import Discretization
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
 
@@ -104,19 +104,16 @@ class Voronoi(Discretization):
             vmin=vmin,
             vmax=vmax,
         )
+        if type(self) is Voronoi and spatial_dimensions <= 2:
+            subclass = {1: "Voronoi1D", 2: "Voronoi2D"}[spatial_dimensions]
+            raise ValueError(f"Use {subclass} for {spatial_dimensions}D tessellations")
         self.vmin = vmin
         self.vmax = vmax
         msg = "The %s number of Voronoi cells, "
         if n_dimensions is not None:
-            assert n_dimensions > 0, (
-                msg % "minimum" + "`n_dimensions`, should be greater than zero"
-            )
-            assert isinstance(n_dimensions, int), (
-                msg % "minimum" + "`n_dimensions`, should be an integer"
-            )
-            assert isinstance(n_dimensions, int), (
-                msg % "maximum" + "`n_dimensions`, should be an integer"
-            )
+            assert n_dimensions > 0, msg % "minimum" + "`n_dimensions`, should be greater than zero"
+            assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
+            assert isinstance(n_dimensions, int), msg % "maximum" + "`n_dimensions`, should be an integer"
 
     def sample_site(self) -> np.ndarray:
         """draws a Voronoi-site position at random within the discretization domain"""
@@ -133,16 +130,12 @@ class Voronoi(Discretization):
 
         # initialize Voronoi sites
         voronoi_sites = np.array([self.sample_site() for _ in range(n_voronoi_cells)])
-        if self.spatial_dimensions == 1:
-            voronoi_sites = np.sort(np.ravel(voronoi_sites))
 
         # initialize parameter values
         parameter_vals = {"discretization": voronoi_sites}
         return ParameterSpaceState(n_voronoi_cells, parameter_vals)
 
-    def initialize(
-        self, position: np.ndarray = None
-    ) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
+    def initialize(self, position: np.ndarray = None) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
         """initializes the parameter space linked to the Voronoi tessellation
 
         Returns
@@ -168,8 +161,6 @@ class Voronoi(Discretization):
 
         # initialize Voronoi sites
         voronoi_sites = np.array([self.sample_site() for _ in range(n_voronoi_cells)])
-        if self.spatial_dimensions == 1:
-            voronoi_sites = np.sort(np.ravel(voronoi_sites))
 
         # initialize parameter values
         parameter_vals = {"discretization": voronoi_sites}
@@ -177,9 +168,7 @@ class Voronoi(Discretization):
             parameter_vals[name] = param.initialize(voronoi_sites)
         return ParameterSpaceState(n_voronoi_cells, parameter_vals)
 
-    def _perturb_site(
-        self, site: Union[Number, np.ndarray]
-    ) -> Union[Number, np.ndarray]:
+    def _perturb_site(self, site: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
         """perturbes a Voronoi  site
 
         Parameters
@@ -193,22 +182,12 @@ class Voronoi(Discretization):
             perturbed Voronoi site position
         """
         while True:
-            if self.spatial_dimensions == 1:
-                random_deviate = random.normalvariate(0, self.perturb_std)
-                new_site = site + random_deviate
-                if new_site >= self.vmin and new_site <= self.vmax:
-                    return new_site
-            else:
-                random_deviate = np.random.normal(
-                    0, self.perturb_std, self.spatial_dimensions
-                )
-                new_site = site + random_deviate
-                if all((new_site >= self.vmin) & (new_site <= self.vmax)):
-                    return new_site
+            random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
+            new_site = site + random_deviate
+            if all((new_site >= self.vmin) & (new_site <= self.vmax)):
+                return new_site
 
-    def perturb_value(
-        self, old_ps_state: ParameterSpaceState, isite: int
-    ) -> Tuple[ParameterSpaceState, Number]:
+    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int) -> Tuple[ParameterSpaceState, Number]:
         r"""perturbs the value of one Voronoi site and calculates the log of the
         partial acceptance probability
 
@@ -236,32 +215,15 @@ class Voronoi(Discretization):
         new_site = self._perturb_site(old_sites[isite])
         new_sites = old_sites.copy()
         new_sites[isite] = new_site
-        if self.spatial_dimensions == 1:
-            isort = np.argsort(new_sites)
-            new_sites = new_sites[isort]
-            new_values = {"discretization": new_sites}
-            log_prior_ratio = 0
-            for param_name, param in self.parameters.items():
-                values = old_ps_state[param_name]
-                if not isinstance(param, ParameterSpace) and param.position is not None:
-                    log_prior_old = param.log_prior(values[isite], old_site)
-                    log_prior_new = param.log_prior(values[isite], new_site)
-                    log_prior_ratio += log_prior_new - log_prior_old
-                new_values[param_name] = (
-                    values[isort]
-                    if isinstance(values, np.ndarray)
-                    else [values[i] for i in isort]
-                )
-        else:
-            new_values = {"discretization": new_sites}
-            log_prior_ratio = 0
-            for param_name, param in self.parameters.items():
-                values = old_ps_state[param_name]
-                if not isinstance(param, ParameterSpace) and param.position is not None:
-                    log_prior_old = param.log_prior(values[isite], old_site)
-                    log_prior_new = param.log_prior(values[isite], new_site)
-                    log_prior_ratio += log_prior_new - log_prior_old
-                new_values[param_name] = values
+        new_values = {"discretization": new_sites}
+        log_prior_ratio = 0
+        for param_name, param in self.parameters.items():
+            values = old_ps_state[param_name]
+            if not isinstance(param, ParameterSpace) and param.position is not None:
+                log_prior_old = param.log_prior(values[isite], old_site)
+                log_prior_new = param.log_prior(values[isite], new_site)
+                log_prior_ratio += log_prior_new - log_prior_old
+            new_values[param_name] = values
 
         new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
         return (
@@ -269,9 +231,7 @@ class Voronoi(Discretization):
             log_prior_ratio,
         )  # log_proposal_ratio=0 and log_det_jacobian=0
 
-    def birth(
-        self, old_ps_state: ParameterSpaceState
-    ) -> Tuple[ParameterSpaceState, float]:
+    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
         r"""creates a new Voronoi cell, initializes all free parameters
         associated with it, and returns the pertubed state along with the
         log of the corresponding partial acceptance probability,
@@ -365,32 +325,16 @@ class Voronoi(Discretization):
         # randomly choose a new Voronoi site position
         new_site = self.sample_site()
         old_sites = old_ps_state["discretization"]
-        initialized_values, log_prob_ratio = self._initialize_newborn_params(
-            new_site, old_sites, old_ps_state
-        )
+        initialized_values, log_prob_ratio = self._initialize_newborn_params(new_site, old_sites, old_ps_state)
         new_values = dict()
-        if self.spatial_dimensions == 1:
-            idx_insert = bisect_left(old_sites, new_site)
-            new_sites = insert_1d(old_sites, idx_insert, new_site)
-            new_values["discretization"] = new_sites
-            for name, value in initialized_values.items():
-                old_values = old_ps_state[name]
-                if isinstance(old_values, np.ndarray):
-                    new_values[name] = insert_1d(old_values, idx_insert, float(value))
-                else:
-                    new_values[name] = (
-                        old_values[:idx_insert] + [value] + old_values[idx_insert:]
-                    )
-        else:
-            idx_insert = n_cells
-            new_sites = np.row_stack((old_sites, new_site))
-            new_values["discretization"] = new_sites
-            for name, value in initialized_values.items():
-                old_values = old_ps_state[name]
-                if isinstance(old_values, np.ndarray):
-                    new_values[name] = np.append(old_values, value)
-                else:
-                    new_values[name] = old_values + [value]
+        new_sites = np.row_stack((old_sites, new_site))
+        new_values["discretization"] = new_sites
+        for name, value in initialized_values.items():
+            old_values = old_ps_state[name]
+            if isinstance(old_values, np.ndarray):
+                new_values[name] = np.append(old_values, value)
+            else:
+                new_values[name] = old_values + [value]
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
         return new_ps_state, log_prob_ratio
 
@@ -434,16 +378,11 @@ class Voronoi(Discretization):
         new_values = dict()
         for name, old_values in old_ps_state.param_values.items():
             if isinstance(old_values, np.ndarray):  # pure Prior
-                if self.spatial_dimensions == 1:
-                    new_values[name] = delete_1d(old_values, iremove)
-                else:
-                    new_values[name] = np.delete(old_values, iremove, axis=0)
+                new_values[name] = np.delete(old_values, iremove, axis=0)
             else:  # ParameterSpace
                 new_values[name] = old_values[:iremove] + old_values[iremove + 1 :]
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values)
-        return new_ps_state, self._log_prob_death_parameters(
-            old_ps_state, new_ps_state, iremove
-        )
+        return new_ps_state, self._log_prob_death_parameters(old_ps_state, new_ps_state, iremove)
 
     def log_prior(self, *args):
         r"""
@@ -486,9 +425,7 @@ class Voronoi(Discretization):
         _ps_perturbation_funcs.append(ParamPerturbation(self.name, [self]))
         _ps_perturbation_weights.append(1)
         self._perturbation_funcs.append(
-            ParamSpacePerturbation(
-                self.name, _ps_perturbation_funcs, _ps_perturbation_weights
-            )
+            ParamSpacePerturbation(self.name, _ps_perturbation_funcs, _ps_perturbation_weights)
         )
         self._perturbation_weights.append(sum(_ps_perturbation_weights))
 
@@ -525,15 +462,9 @@ class Voronoi(Discretization):
     def nearest_neighbour(
         self, discretization: np.ndarray, query_point: Union[Number, np.ndarray]
     ) -> Union[Number, np.ndarray]:
-        if self.spatial_dimensions == 1:
-            return nearest_neighbour_1d(
-                xp=float(query_point), x=discretization, xlen=int(discretization.size)
-            )
         return np.argmin(np.linalg.norm(discretization - query_point, axis=1))
 
-    def log_prob_initialize_discretization(
-        self, ps_state: ParameterSpaceState
-    ) -> Number:
+    def log_prob_initialize_discretization(self, ps_state: ParameterSpaceState) -> Number:
         return 0
 
 
@@ -606,6 +537,96 @@ class Voronoi1D(Voronoi):
         """draws a Voronoi-site position at random within the discretization domain"""
         return random.uniform(self.vmin, self.vmax)
 
+    def sample_discretization(self) -> ParameterSpaceState:
+        if not self.trans_d:
+            n_voronoi_cells = self._n_dimensions
+        else:
+            n_dims_min = self._n_dimensions_min
+            n_dims_max = self._n_dimensions_max
+            n_voronoi_cells = random.randint(n_dims_min, n_dims_max)
+        voronoi_sites = np.sort([self.sample_site() for _ in range(n_voronoi_cells)])
+        parameter_vals = {"discretization": voronoi_sites}
+        return ParameterSpaceState(n_voronoi_cells, parameter_vals)
+
+    def _initialize(self) -> ParameterSpaceState:
+        if not self.trans_d:
+            n_voronoi_cells = self._n_dimensions
+        else:
+            init_range = self._n_dimensions_init_range
+            n_dims_min = self._n_dimensions_min
+            n_dims_max = self._n_dimensions_max
+            init_max = int((n_dims_max - n_dims_min) * init_range + n_dims_min)
+            n_voronoi_cells = random.randint(n_dims_min, init_max)
+        voronoi_sites = np.sort([self.sample_site() for _ in range(n_voronoi_cells)])
+        parameter_vals = {"discretization": voronoi_sites}
+        for name, param in self.parameters.items():
+            parameter_vals[name] = param.initialize(voronoi_sites)
+        return ParameterSpaceState(n_voronoi_cells, parameter_vals)
+
+    def _perturb_site(self, site: Number) -> Number:
+        while True:
+            random_deviate = random.normalvariate(0, self.perturb_std)
+            new_site = site + random_deviate
+            if self.vmin <= new_site <= self.vmax:
+                return new_site
+
+    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int) -> Tuple[ParameterSpaceState, Number]:
+        old_sites = old_ps_state["discretization"]
+        old_site = old_sites[isite]
+        new_site = self._perturb_site(old_sites[isite])
+        new_sites = old_sites.copy()
+        new_sites[isite] = new_site
+        isort = np.argsort(new_sites)
+        new_sites = new_sites[isort]
+        new_values = {"discretization": new_sites}
+        log_prior_ratio = 0
+        for param_name, param in self.parameters.items():
+            values = old_ps_state[param_name]
+            if not isinstance(param, ParameterSpace) and param.position is not None:
+                log_prior_old = param.log_prior(values[isite], old_site)
+                log_prior_new = param.log_prior(values[isite], new_site)
+                log_prior_ratio += log_prior_new - log_prior_old
+            new_values[param_name] = values[isort] if isinstance(values, np.ndarray) else [values[i] for i in isort]
+        new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
+        return new_ps_state, log_prior_ratio
+
+    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        n_cells = old_ps_state.n_dimensions
+        if n_cells == self._n_dimensions_max:
+            return old_ps_state, -math.inf
+        new_site = self.sample_site()
+        old_sites = old_ps_state["discretization"]
+        initialized_values, log_prob_ratio = self._initialize_newborn_params(new_site, old_sites, old_ps_state)
+        new_values = dict()
+        idx_insert = bisect_left(old_sites, new_site)
+        new_sites = insert_1d(old_sites, idx_insert, new_site)
+        new_values["discretization"] = new_sites
+        for name, value in initialized_values.items():
+            old_values = old_ps_state[name]
+            if isinstance(old_values, np.ndarray):
+                new_values[name] = insert_1d(old_values, idx_insert, float(value))
+            else:
+                new_values[name] = old_values[:idx_insert] + [value] + old_values[idx_insert:]
+        new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
+        return new_ps_state, log_prob_ratio
+
+    def death(self, old_ps_state: ParameterSpaceState):
+        n_cells = old_ps_state.n_dimensions
+        if n_cells == self._n_dimensions_min:
+            return old_ps_state, -math.inf
+        iremove = random.randint(0, n_cells - 1)
+        new_values = dict()
+        for name, old_values in old_ps_state.param_values.items():
+            if isinstance(old_values, np.ndarray):
+                new_values[name] = delete_1d(old_values, iremove)
+            else:
+                new_values[name] = old_values[:iremove] + old_values[iremove + 1 :]
+        new_ps_state = ParameterSpaceState(n_cells - 1, new_values)
+        return new_ps_state, self._log_prob_death_parameters(old_ps_state, new_ps_state, iremove)
+
+    def nearest_neighbour(self, discretization: np.ndarray, query_point: Number) -> int:
+        return nearest_neighbour_1d(xp=float(query_point), x=discretization, xlen=int(discretization.size))
+
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=None, fill_value=0):
         r"""compute Voronoi cell extents from the Voronoi sites. Voronoi-cell
@@ -646,12 +667,10 @@ class Voronoi1D(Voronoi):
         """
         lb = lb if lb is not None else -np.inf
         ub = ub if ub is not None else np.inf
-        return compute_voronoi1d_cell_extents(
-            voronoi_sites, lb=float(lb), ub=float(ub), fill_value=float(fill_value)
-        )
+        return compute_voronoi1d_cell_extents(voronoi_sites, lb=float(lb), ub=float(ub), fill_value=float(fill_value))
 
     @staticmethod
-    def compute_interface_positions(        
+    def compute_interface_positions(
         voronoi_cells: np.ndarray,
         input_type="nuclei",
         lb_tessellation=None,
@@ -668,9 +687,9 @@ class Voronoi1D(Voronoi):
             interpreted as a Voronoi-site position (``'nuclei'``) or as the
             extent of the Voronoi cell (``'extents'``)
         lb_tessellation : Number
-            the lower boundary of the 1D tessellation, used to calculate the 
+            the lower boundary of the 1D tessellation, used to calculate the
             interface positions when `input_type` is `'extents'`. Ignored otherwise.
-            
+
         Returns
         -------
         np.ndarray
@@ -678,18 +697,13 @@ class Voronoi1D(Voronoi):
         if input_type == "nuclei":
             return (voronoi_cells[:-1] + voronoi_cells[1:]) / 2
         elif input_type == "extents":
-            assert lb_tessellation is not None, (
-                "`lb_tessellation` should not be None when `input_type` is"
-                "'extents'"
-            )
+            assert lb_tessellation is not None, "`lb_tessellation` should not be None when `input_type` is'extents'"
             return np.cumsum(voronoi_cells)[:-1] + lb_tessellation
         else:
             raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
-        
+
     @staticmethod
-    def interpolate_tessellation(
-        voronoi_cells, param_values, interp_positions, input_type="nuclei"
-    ):
+    def interpolate_tessellation(voronoi_cells, param_values, interp_positions, input_type="nuclei"):
         """interpolates the values of a parameter associated with the given
         Voronoi tessellation onto the specified positions
 
@@ -714,9 +728,7 @@ class Voronoi1D(Voronoi):
         if input_type == "nuclei":
             return interpolate_nearest_1d(interp_positions, voronoi_cells, param_values)
         elif input_type == "extents":
-            return interpolate_depth_profile(
-                np.array(voronoi_cells), np.array(param_values), interp_positions
-            )
+            return interpolate_depth_profile(np.array(voronoi_cells), np.array(param_values), interp_positions)
         raise ValueError("`input_type` should either be 'nuclei' or 'extents'")
 
     @staticmethod
@@ -727,9 +739,7 @@ class Voronoi1D(Voronoi):
         input_type="nuclei",
     ):
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
-        for i, (sample_cells, sample_values) in enumerate(
-            zip(samples_voronoi_cells, samples_param_values)
-        ):
+        for i, (sample_cells, sample_values) in enumerate(zip(samples_voronoi_cells, samples_param_values)):
             interp_params[i, :] = Voronoi1D.interpolate_tessellation(
                 np.array(sample_cells),
                 np.array(sample_values),
@@ -789,7 +799,7 @@ class Voronoi1D(Voronoi):
         samples_param_values: np.ndarray,
         position_bins: Union[int, np.ndarray] = 100,
         param_value_bins: Union[int, np.ndarray] = 100,
-        input_type="nuclei"
+        input_type="nuclei",
     ):
         """plot a 2D density histogram of the Voronoi tessellation
 
@@ -814,8 +824,8 @@ class Voronoi1D(Voronoi):
         Returns
         -------
         density : ndarray, shape(nx, ny)
-            The bi-dimensional histogram of samples x and y. Values in x are 
-            histogrammed along the first dimension and values in y are histogrammed 
+            The bi-dimensional histogram of samples x and y. Values in x are
+            histogrammed along the first dimension and values in y are histogrammed
             along the second dimension
         X : ndarray, shape(nx+1,)
             The bin edges along the first dimension.
@@ -860,10 +870,12 @@ class Voronoi1D(Voronoi):
             interp_positions,
             input_type=input_type,
         )
-        density, X, Y = np.histogram2d(np.tile(interp_positions, interp_param_values.shape[0]),
-                                       interp_param_values.ravel(),
-                                       bins=(len(interp_positions), param_value_bins),
-                                       density=True)
+        density, X, Y = np.histogram2d(
+            np.tile(interp_positions, interp_param_values.shape[0]),
+            interp_param_values.ravel(),
+            bins=(len(interp_positions), param_value_bins),
+            density=True,
+        )
         return density, X, Y
 
     @staticmethod
@@ -929,11 +941,9 @@ class Voronoi1D(Voronoi):
                 samples_voronoi_sites, samples_param_values
             )
         """
-        density, X, Y = Voronoi1D.get_tessellation_density(samples_voronoi_cells,
-                                                           samples_param_values,
-                                                           position_bins,
-                                                           param_value_bins,
-                                                           input_type)                                                     
+        density, X, Y = Voronoi1D.get_tessellation_density(
+            samples_voronoi_cells, samples_param_values, position_bins, param_value_bins, input_type
+        )
         if ax is None:
             _, ax = plt.subplots()
         if swap_xy_axes:
@@ -943,7 +953,7 @@ class Voronoi1D(Voronoi):
         else:
             if not ax.get_ylabel():
                 ax.set_ylabel("Parameter values")
-        
+
         img = ax.pcolormesh(X, Y, density, **kwargs)
         cbar = plt.colorbar(img, ax=ax, aspect=35, pad=0.02)
         cbar.set_label("Probability density")
@@ -980,20 +990,18 @@ class Voronoi1D(Voronoi):
             if True (default), the x axis is swapped with the y axis so as to display
             the parameter value associated with each Voronoi cell on the x axis
         lb_tessellation : Number
-            the lower boundary of the 1D tessellation, used to calculate the 
+            the lower boundary of the 1D tessellation, used to calculate the
             interface positions when `input_type` is `'extents'`. Ignored otherwise.
         kwargs : dict, optional
             additional keyword arguments to pass to ax.bar
-            
+
         Returns
         -------
         matplotlib.axes.Axes
         """
         positions = []
         for voronoi_cells in samples_voronoi_cells:
-            positions.extend(Voronoi1D.compute_interface_positions(voronoi_cells, 
-                                                                   input_type,
-                                                                   lb_tessellation))
+            positions.extend(Voronoi1D.compute_interface_positions(voronoi_cells, input_type, lb_tessellation))
         if ax is None:
             _, ax = plt.subplots()
         hist, edges = np.histogram(positions, bins=bins, density=True)
@@ -1050,18 +1058,14 @@ class Voronoi1D(Voronoi):
             The Axes object containing the plot
         """
         lb, ub = bounds
-        interface_positions = Voronoi1D.compute_interface_positions(voronoi_cells,
-                                                                    input_type,
-                                                                    lb)
+        interface_positions = Voronoi1D.compute_interface_positions(voronoi_cells, input_type, lb)
         if ub is not None:
-            assert ub > interface_positions[-1], (
-                "`bounds[1]` should be greater"
-                " than the sum of Voronoi"
-                f" cell extents (here, {interface_positions[-1]})"
-            )
+            assert (
+                ub > interface_positions[-1]
+            ), f"`bounds[1]` should be greater than the sum of Voronoi cell extents (here, {interface_positions[-1]})"
             end_position = ub
         else:
-            end_position = interface_positions[-1] + np.max(np.abs(interface_positions))/2
+            end_position = interface_positions[-1] + np.max(np.abs(interface_positions)) / 2
 
         x = np.insert(np.append(interface_positions, end_position), 0, lb)
         y = np.insert(param_values, 0, param_values[0])
@@ -1075,9 +1079,7 @@ class Voronoi1D(Voronoi):
         sample_style = {
             "linewidth": kwargs.pop("linewidth", kwargs.pop("lw", 0.5)),
             "alpha": kwargs.pop("alpha", 1),
-            "color": kwargs.pop(
-                "color", kwargs.pop("c", "blue")
-            ),  # Fixed color for the sample lines
+            "color": kwargs.pop("color", kwargs.pop("c", "blue")),  # Fixed color for the sample lines
         }
         sample_style.update(kwargs)  # Override with any provided kwargs
         ax.step(x, y, where="post", **sample_style)
@@ -1136,8 +1138,7 @@ class Voronoi1D(Voronoi):
         lb, ub = bounds
         if input_type == "nuclei":
             samples_voronoi_cell_extents = [
-                Voronoi1D.compute_cell_extents(nuclei, lb=lb)
-                for nuclei in samples_voronoi_cells
+                Voronoi1D.compute_cell_extents(nuclei, lb=lb) for nuclei in samples_voronoi_cells
             ]
         elif input_type == "extents":
             samples_voronoi_cell_extents = samples_voronoi_cells
@@ -1152,9 +1153,7 @@ class Voronoi1D(Voronoi):
         sample_style = {
             "linewidth": kwargs.pop("linewidth", kwargs.pop("lw", 0.5)),
             "alpha": kwargs.pop("alpha", 0.2),
-            "color": kwargs.pop(
-                "color", kwargs.pop("c", "blue")
-            ),  # Fixed color for the sample lines
+            "color": kwargs.pop("color", kwargs.pop("c", "blue")),  # Fixed color for the sample lines
         }
         sample_style.update(kwargs)  # Override with any provided kwargs
 
@@ -1341,9 +1340,10 @@ class Voronoi2D(Voronoi):
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
         compute_kdtree: bool = False,
     ):
-        assert (vmin is not None and vmax is not None) or polygon is not None, (
-            "Either `vmin`/`vmax` or `polygon`"
-            " must not be None to properly define the discretization domain."
+        assert (
+            vmin is not None and vmax is not None
+        ) or polygon is not None, (
+            "Either `vmin`/`vmax` or `polygon` must not be None to properly define the discretization domain."
         )
         if polygon is not None:
             polygon = shapely.geometry.Polygon(polygon)
@@ -1386,9 +1386,7 @@ class Voronoi2D(Voronoi):
         ps_state.save_to_cache("kdtree", kdtree)
         return ps_state
 
-    def _perturb_site(
-        self, site: Union[Number, np.ndarray]
-    ) -> Union[Number, np.ndarray]:
+    def _perturb_site(self, site: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
         """perturbes a Voronoi  site
 
         Parameters
@@ -1404,9 +1402,7 @@ class Voronoi2D(Voronoi):
         if self.polygon is None:
             return super()._perturb_site(site)
         while True:
-            random_deviate = np.random.normal(
-                0, self.perturb_std, self.spatial_dimensions
-            )
+            random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
             new_site = site + random_deviate
             point = shapely.geometry.Point(new_site)
             if self.polygon.contains(point):
@@ -1418,9 +1414,7 @@ class Voronoi2D(Voronoi):
             new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
         return new_ps_state, log_prior_ratio
 
-    def birth(
-        self, old_ps_state: ParameterSpaceState
-    ) -> Tuple[ParameterSpaceState, float]:
+    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
         new_ps_state, log_prob_ratio_birth = super().birth(old_ps_state)
         if self.compute_kdtree:
             new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
@@ -1460,13 +1454,9 @@ class Voronoi2D(Voronoi):
         return param_values[inearest]
 
     @staticmethod
-    def _interpolate_tessellations(
-        samples_voronoi_sites, samples_param_values, interp_positions
-    ):
+    def _interpolate_tessellations(samples_voronoi_sites, samples_param_values, interp_positions):
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
-        for i, (sample_sites, sample_values) in enumerate(
-            zip(samples_voronoi_sites, samples_param_values)
-        ):
+        for i, (sample_sites, sample_values) in enumerate(zip(samples_voronoi_sites, samples_param_values)):
             interp_params[i, :] = Voronoi2D.interpolate_tessellation(
                 np.array(sample_sites), np.array(sample_values), interp_positions
             )
@@ -1553,9 +1543,7 @@ class Voronoi2D(Voronoi):
         ax : matplotlib.axes.Axes
             The Axes object containing the 2D histogram
         """
-        voronoi_plot_2d_kwargs = (
-            voronoi_plot_2d_kwargs if voronoi_plot_2d_kwargs is not None else {}
-        )
+        voronoi_plot_2d_kwargs = voronoi_plot_2d_kwargs if voronoi_plot_2d_kwargs is not None else {}
         interfaces_style = {
             "line_colors": "k",
             "show_vertices": False,
@@ -1563,17 +1551,11 @@ class Voronoi2D(Voronoi):
             "line_width": 1,
         }
         interfaces_style.update(voronoi_plot_2d_kwargs)
-        voronoi_sites_kwargs = (
-            voronoi_sites_kwargs if voronoi_sites_kwargs is not None else {}
-        )
+        voronoi_sites_kwargs = voronoi_sites_kwargs if voronoi_sites_kwargs is not None else {}
         sites_style = {
-            "color": voronoi_sites_kwargs.pop(
-                "color", voronoi_sites_kwargs.pop("c", "k")
-            ),
+            "color": voronoi_sites_kwargs.pop("color", voronoi_sites_kwargs.pop("c", "k")),
             "marker": voronoi_sites_kwargs.pop("marker", "o"),
-            "ms": voronoi_sites_kwargs.pop(
-                "ms", voronoi_sites_kwargs.pop("markersize", 2)
-            ),
+            "ms": voronoi_sites_kwargs.pop("ms", voronoi_sites_kwargs.pop("markersize", 2)),
             "ls": "",
             "lw": 0,
         }
@@ -1597,10 +1579,7 @@ class Voronoi2D(Voronoi):
             fig, ax = plt.subplots()
         if param_values is not None:
             # make sure scipy.spatial.Voronoi didn't resort the original sites
-            isort = [
-                np.flatnonzero(np.all(p == voronoi.points, axis=1)).item()
-                for i, p in enumerate(sites[:-4])
-            ]
+            isort = [np.flatnonzero(np.all(p == voronoi.points, axis=1)).item() for i, p in enumerate(sites[:-4])]
             ax, cbar = Voronoi2D._fill_tessellation(
                 voronoi,
                 param_values[isort],
@@ -1641,13 +1620,11 @@ class Voronoi2D(Voronoi):
 
         for ipoint, iregion in enumerate(voronoi.point_region):
             region = voronoi.regions[iregion]
-            if region and not -1 in region:  # Filter out points at infinity
+            if region and -1 not in region:  # Filter out points at infinity
                 polygon = [voronoi.vertices[i] for i in region if i >= 0]
                 ax.fill(*zip(*polygon), color=colors[ipoint])
 
         # Create a colorbar to show the mapping between values and colors
-        cbar = ax.figure.colorbar(
-            mpl.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax, aspect=35, pad=0.02
-        )
+        cbar = ax.figure.colorbar(mpl.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax, aspect=35, pad=0.02)
         cbar.set_label("Parameter Values")
         return ax, cbar
