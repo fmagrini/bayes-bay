@@ -602,6 +602,10 @@ class Voronoi1D(Voronoi):
             birth_from=birth_from,
         )
 
+    def sample_site(self) -> float:
+        """draws a Voronoi-site position at random within the discretization domain"""
+        return random.uniform(self.vmin, self.vmax)
+
     @staticmethod
     def compute_cell_extents(voronoi_sites: np.ndarray, lb=0, ub=None, fill_value=0):
         r"""compute Voronoi cell extents from the Voronoi sites. Voronoi-cell

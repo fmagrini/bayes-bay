@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.9 (23/03/2026)
+- Bug fix: `Voronoi1D.sample_site()` now returns a Python `float` instead of a shape-(1,) NumPy array, fixing a `TypeError` in birth perturbation with Cython extensions compiled against older Cython versions and NumPy >= 2.0
+
 ## v0.3.8 (13/03/2026)
 - Fixed docstring of BayesianInversion
 
