@@ -262,7 +262,7 @@ class ParameterSpace:
         for param_name, param_vals in ps_state.param_values.items():
             if isinstance(param_vals, np.ndarray):
                 new_param_values[param_name] = insert_1d(
-                    param_vals, i_insert, self.parameters[param_name].sample()
+                    param_vals, i_insert, float(self.parameters[param_name].sample())
                 )
             else:   # insert newly sampled parameter space state at i_insert
                 new_param_values[param_name] = (

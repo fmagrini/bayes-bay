@@ -166,7 +166,7 @@ class Target:
                 return 1 / std**2 * vector
             else:
                 n = self.dobs.size
-                mat = inverse_covariance(std, correlation, n)
+                mat = inverse_covariance(std, correlation, int(n))
                 return mat @ vector
 
     def log_determinant_covariance(self, state: State) -> float:

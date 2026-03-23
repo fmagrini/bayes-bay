@@ -376,7 +376,7 @@ class Voronoi(Discretization):
             for name, value in initialized_values.items():
                 old_values = old_ps_state[name]
                 if isinstance(old_values, np.ndarray):
-                    new_values[name] = insert_1d(old_values, idx_insert, value)
+                    new_values[name] = insert_1d(old_values, idx_insert, float(value))
                 else:
                     new_values[name] = (
                         old_values[:idx_insert] + [value] + old_values[idx_insert:]
@@ -527,7 +527,7 @@ class Voronoi(Discretization):
     ) -> Union[Number, np.ndarray]:
         if self.spatial_dimensions == 1:
             return nearest_neighbour_1d(
-                xp=query_point, x=discretization, xlen=discretization.size
+                xp=float(query_point), x=discretization, xlen=int(discretization.size)
             )
         return np.argmin(np.linalg.norm(discretization - query_point, axis=1))
 
@@ -647,7 +647,7 @@ class Voronoi1D(Voronoi):
         lb = lb if lb is not None else -np.inf
         ub = ub if ub is not None else np.inf
         return compute_voronoi1d_cell_extents(
-            voronoi_sites, lb=lb, ub=ub, fill_value=fill_value
+            voronoi_sites, lb=float(lb), ub=float(ub), fill_value=float(fill_value)
         )
 
     @staticmethod
