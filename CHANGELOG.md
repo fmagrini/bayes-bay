@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.11 (30/06/2026)
+- Bug fix: replaced deprecated `np.row_stack` with `np.vstack` in Voronoi birth perturbations, fixing `Voronoi2D.birth()` compatibility with NumPy >= 2.5
+
 ## v0.3.10 (23/03/2026)
 - Bug fix: Python 3.14 compatibility — added explicit type casts at Cython call sites to prevent `TypeError` when numpy scalars are passed to typed Cython parameters (issue #25)
 - Refactor: moved all 1D-specific logic from `Voronoi` into `Voronoi1D` overrides, removing dimension conditionals from the base class

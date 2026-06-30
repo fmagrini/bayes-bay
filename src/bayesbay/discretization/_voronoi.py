@@ -327,7 +327,7 @@ class Voronoi(Discretization):
         old_sites = old_ps_state["discretization"]
         initialized_values, log_prob_ratio = self._initialize_newborn_params(new_site, old_sites, old_ps_state)
         new_values = dict()
-        new_sites = np.row_stack((old_sites, new_site))
+        new_sites = np.vstack((old_sites, new_site))
         new_values["discretization"] = new_sites
         for name, value in initialized_values.items():
             old_values = old_ps_state[name]
