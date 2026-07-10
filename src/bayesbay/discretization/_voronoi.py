@@ -1638,3 +1638,402 @@ class Voronoi2D(Voronoi):
         cbar = ax.figure.colorbar(mpl.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax, aspect=35, pad=0.02)
         cbar.set_label("Parameter Values")
         return ax, cbar
+
+
+class Voronoi2DSphere(Voronoi):
+    r"""Utility class for Voronoi tessellation on the surface of a sphere
+
+    The Voronoi sites are stored as longitude-latitude pairs, in degrees, with
+    longitudes in the range [-180, 180] and latitudes in the range [-90, 90].
+    The tessellation is defined in terms of great-circle distances: each point
+    on the sphere belongs to the Voronoi cell whose site is nearest in angular
+    distance. The prior probability of a site position is uniform per unit
+    area on the sphere.
+
+    .. note::
+        Position-dependent priors (see, e.g., the argument ``position`` of
+        :class:`bayesbay.prior.UniformPrior`) are interpolated linearly in the
+        longitude-latitude plane; near the poles and across the +/-180
+        meridian, such an interpolation does not account for the spherical
+        topology of the domain.
+
+    Parameters
+    ----------
+    name : str
+        name attributed to the Voronoi tessellation, for display and storing
+        purposes
+    perturb_std : Number
+        angular standard deviation, in degrees, of the perturbations applied
+        to the Voronoi sites. Site perturbations are proposed through a von
+        Mises--Fisher distribution centered on the current site, with
+        concentration parameter :math:`\kappa = 1 / \sigma^2`, where
+        :math:`\sigma` denotes ``perturb_std`` expressed in radians. The
+        density of such a proposal only depends on the angular distance
+        between the current and the proposed site; the proposal is therefore
+        symmetric and needs no correction to the acceptance probability
+    n_dimensions : Number, optional
+        number of dimensions. None (default) results in a trans-dimensional
+        discretization, with the dimensionality of the parameter space allowed
+        to vary in the range ``n_dimensions_min``-``n_dimensions_max``
+    n_dimensions_min, n_dimensions_max : Number, optional
+        minimum and maximum number of dimensions, by default 2 and 100. These
+        parameters are ignored if ``n_dimensions`` is not None, i.e. if the
+        discretization is not trans-dimensional
+    n_dimensions_init_range : Number, optional
+        percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
+        initialize the number of dimensions (0.3. by default). For example, if
+        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and
+        ``n_dimensions_init_range`` = 0.5,
+        the maximum number of dimensions at the initialization is::
+
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_min)
+
+    parameters : List[Prior], optional
+        a list of free parameters, by default None
+    birth_from : {"prior", "neighbour"}, optional
+        whether to initialize the free parameters associated with the newborn
+        Voronoi cell by randomly drawing from their prior or by perturbing the
+        value found in the nearest Voronoi cell (default)
+    compute_kdtree : bool
+        whether to compute a kd-tree for quick nearest-neighbour lookup at every
+        perturbation of the discretization. The kd-tree is built on the 3-D
+        Cartesian (unit-vector) representation of the Voronoi sites, for which
+        nearest neighbours in Euclidean distance coincide with nearest
+        neighbours in great-circle distance: use :meth:`lonlat_to_xyz` to
+        convert longitude-latitude query points before calling ``kdtree.query``
+    """
+
+    def __init__(
+        self,
+        name: str,
+        perturb_std: Number = 1,
+        n_dimensions: int = None,
+        n_dimensions_min: int = 2,
+        n_dimensions_max: int = 100,
+        n_dimensions_init_range: Number = 0.3,
+        parameters: List[Prior] = None,
+        birth_from: str = "neighbour",  # either "neighbour" or "prior"
+        compute_kdtree: bool = False,
+    ):
+        assert np.isscalar(perturb_std), (
+            "`perturb_std` should be a scalar, interpreted as the angular"
+            " standard deviation (in degrees) of the site perturbations"
+        )
+        super().__init__(
+            name=name,
+            spatial_dimensions=2,
+            vmin=np.array([-180.0, -90.0]),
+            vmax=np.array([180.0, 90.0]),
+            perturb_std=perturb_std,
+            n_dimensions=n_dimensions,
+            n_dimensions_min=n_dimensions_min,
+            n_dimensions_max=n_dimensions_max,
+            n_dimensions_init_range=n_dimensions_init_range,
+            parameters=parameters,
+            birth_from=birth_from,
+        )
+        self.compute_kdtree = compute_kdtree
+
+    @staticmethod
+    def lonlat_to_xyz(lonlat: np.ndarray) -> np.ndarray:
+        """converts longitude-latitude pairs (in degrees) into 3-D Cartesian
+        coordinates on the unit sphere
+
+        Parameters
+        ----------
+        lonlat : np.ndarray of shape (..., 2)
+            longitude-latitude pair(s), in degrees
+
+        Returns
+        -------
+        np.ndarray of shape (..., 3)
+            the corresponding unit vector(s)
+        """
+        lonlat = np.asarray(lonlat, dtype=float)
+        lon = np.radians(lonlat[..., 0])
+        lat = np.radians(lonlat[..., 1])
+        coslat = np.cos(lat)
+        return np.stack((coslat * np.cos(lon), coslat * np.sin(lon), np.sin(lat)), axis=-1)
+
+    @staticmethod
+    def xyz_to_lonlat(xyz: np.ndarray) -> np.ndarray:
+        """converts 3-D Cartesian coordinates on the unit sphere into
+        longitude-latitude pairs (in degrees)
+
+        Parameters
+        ----------
+        xyz : np.ndarray of shape (..., 3)
+            unit vector(s)
+
+        Returns
+        -------
+        np.ndarray of shape (..., 2)
+            the corresponding longitude-latitude pair(s), in degrees, with
+            longitudes in the range [-180, 180]
+        """
+        xyz = np.asarray(xyz, dtype=float)
+        lon = np.degrees(np.arctan2(xyz[..., 1], xyz[..., 0]))
+        lat = np.degrees(np.arcsin(np.clip(xyz[..., 2], -1.0, 1.0)))
+        return np.stack((lon, lat), axis=-1)
+
+    def sample_site(self) -> np.ndarray:
+        """draws a Voronoi-site position at random from the uniform (per unit
+        area) distribution on the sphere"""
+        lon = random.uniform(-180, 180)
+        lat = math.degrees(math.asin(random.uniform(-1, 1)))
+        return np.array([lon, lat])
+
+    def _perturb_site(self, site: np.ndarray) -> np.ndarray:
+        r"""perturbes a Voronoi site through a von Mises--Fisher proposal
+        centered on it, with concentration parameter
+        :math:`\kappa = 1 / \sigma^2` (:math:`\sigma` denoting
+        :attr:`perturb_std` in radians)
+
+        Parameters
+        ----------
+        site : np.ndarray
+            Voronoi-site position, i.e. a longitude-latitude pair in degrees
+
+        Returns
+        -------
+        np.ndarray
+            perturbed Voronoi-site position. The proposal density only depends
+            on the angular distance from ``site``, hence it is symmetric; the
+            sphere has no boundary, so the proposed site is always valid
+        """
+        sigma = math.radians(self.perturb_std)
+        kappa = 1 / sigma**2
+        # cosine of the angular distance between the current and the proposed
+        # site, drawn from the von Mises-Fisher distribution
+        u = random.random()
+        cos_gamma = 1 + math.log(u + (1 - u) * math.exp(-2 * kappa)) / kappa
+        cos_gamma = min(1.0, max(-1.0, cos_gamma))
+        sin_gamma = math.sqrt(1 - cos_gamma**2)
+        xyz = self.lonlat_to_xyz(site)
+        # orthonormal basis {e1, e2} of the plane tangent to the sphere at the site
+        helper = np.array([0.0, 0.0, 1.0]) if abs(xyz[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
+        e1 = np.cross(xyz, helper)
+        e1 /= np.linalg.norm(e1)
+        e2 = np.cross(xyz, e1)
+        azimuth = random.uniform(0, 2 * math.pi)
+        new_xyz = cos_gamma * xyz + sin_gamma * (math.cos(azimuth) * e1 + math.sin(azimuth) * e2)
+        return self.xyz_to_lonlat(new_xyz)
+
+    def nearest_neighbour(self, discretization: np.ndarray, query_point: np.ndarray) -> int:
+        """returns the index of the Voronoi site nearest (in great-circle
+        distance) to the given query point
+
+        Parameters
+        ----------
+        discretization : np.ndarray of shape (n, 2)
+            the Voronoi-site positions, i.e. longitude-latitude pairs in degrees
+        query_point : np.ndarray of shape (2,)
+            longitude-latitude pair, in degrees
+
+        Returns
+        -------
+        int
+            the index of the nearest Voronoi site
+        """
+        sites_xyz = self.lonlat_to_xyz(discretization)
+        query_xyz = self.lonlat_to_xyz(query_point)
+        return int(np.argmax(sites_xyz @ query_xyz))
+
+    def _initialize(self) -> ParameterSpaceState:
+        ps_state = super()._initialize()
+        if self.compute_kdtree:
+            return self._add_kdtree_to_ps_state(ps_state)
+        return ps_state
+
+    def _add_kdtree_to_ps_state(self, ps_state: ParameterSpaceState) -> ParameterSpaceState:
+        voronoi_sites = ps_state.get_param_values("discretization")
+        kdtree = scipy.spatial.KDTree(self.lonlat_to_xyz(voronoi_sites))
+        ps_state.save_to_cache("kdtree", kdtree)
+        return ps_state
+
+    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
+        new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
+        if self.compute_kdtree and new_ps_state is not old_ps_state:
+            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
+        return new_ps_state, log_prior_ratio
+
+    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
+        new_ps_state, log_prob_ratio_birth = super().birth(old_ps_state)
+        if self.compute_kdtree and new_ps_state is not old_ps_state:
+            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
+        return new_ps_state, log_prob_ratio_birth
+
+    def death(self, old_ps_state: ParameterSpaceState):
+        new_ps_state, log_prob_ratio_death = super().death(old_ps_state)
+        if self.compute_kdtree and new_ps_state is not old_ps_state:
+            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
+        return new_ps_state, log_prob_ratio_death
+
+    @staticmethod
+    def interpolate_tessellation(
+        voronoi_sites: np.ndarray,
+        param_values: np.ndarray,
+        interp_positions: np.ndarray,
+    ):
+        r"""nearest-neighbour interpolation, in terms of great-circle
+        distance, based on the Voronoi-site positions and the values
+        associated with them
+
+        Parameters
+        ----------
+        voronoi_sites : (n, 2) np.ndarray
+            the Voronoi-site positions, i.e. longitude-latitude pairs in degrees
+        param_values : (n,) np.ndarray
+            the parameter values associated with each Voronoi cell
+        interp_positions : (m, 2) np.ndarray
+            the longitude-latitude pairs (in degrees) at which the
+            interpolation is performed
+
+        Returns
+        -------
+        np.ndarray
+            interpolated values
+        """
+        kdtree = scipy.spatial.KDTree(Voronoi2DSphere.lonlat_to_xyz(voronoi_sites))
+        inearest = kdtree.query(Voronoi2DSphere.lonlat_to_xyz(interp_positions))[1]
+        return np.asarray(param_values)[inearest]
+
+    @staticmethod
+    def _interpolate_tessellations(samples_voronoi_sites, samples_param_values, interp_positions):
+        interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
+        for i, (sample_sites, sample_values) in enumerate(zip(samples_voronoi_sites, samples_param_values)):
+            interp_params[i, :] = Voronoi2DSphere.interpolate_tessellation(
+                np.array(sample_sites), np.array(sample_values), interp_positions
+            )
+        return interp_params
+
+    @staticmethod
+    def get_tessellation_statistics(
+        samples_voronoi_cells: list,
+        samples_param_values: list,
+        interp_positions: np.ndarray,
+        percentiles: tuple = (10, 90),
+    ) -> dict:
+        """get the mean, median, std and percentiles of the given ensemble
+
+        Parameters
+        ----------
+        samples_voronoi_cells : list
+            a list of Voronoi-site positions, i.e. arrays of longitude-latitude
+            pairs in degrees
+        samples_param_values : list
+            a list of parameter values to draw statistics from
+        interp_positions : np.ndarray
+            the longitude-latitude pairs (in degrees) at which the statistics
+            are calculated
+        percentiles : tuple, optional
+            percentiles to calculate, by default (10, 90)
+
+        Returns
+        -------
+        dict
+            a dictionary with these keys: "mean", "median", "std" and "percentile"
+        """
+        interp_params = Voronoi2DSphere._interpolate_tessellations(
+            samples_voronoi_cells, samples_param_values, interp_positions
+        )
+        statistics = {
+            "mean": np.mean(interp_params, axis=0),
+            "median": np.median(interp_params, axis=0),
+            "std": np.std(interp_params, axis=0),
+            "percentiles": np.percentile(interp_params, percentiles, axis=0),
+        }
+        return statistics
+
+    @staticmethod
+    def plot_tessellation(
+        voronoi_sites: np.ndarray,
+        param_values: np.ndarray = None,
+        ax=None,
+        resolution: Number = 1,
+        cmap="viridis",
+        norm=None,
+        vmin=None,
+        vmax=None,
+        colorbar=True,
+        voronoi_sites_kwargs=None,
+        **kwargs,
+    ):
+        """display the Voronoi tessellation on a longitude-latitude
+        (equirectangular) map
+
+        Parameters
+        ----------
+        voronoi_sites : np.ndarray of shape (m, 2)
+            Voronoi-site positions, i.e. longitude-latitude pairs in degrees
+        param_values: np.ndarray, optional
+            parameter values associated with each Voronoi cell. These could
+            represent the physical property inferred in each cell of the
+            discretized medium
+        ax : matplotlib.axes.Axes, optional
+            an optional Axes object to plot on
+        resolution : Number
+            size, in degrees, of the pixels used to rasterize the
+            tessellation, by default 1
+        cmap : Union[str, matplotlib.colors.Colormap]
+            the Colormap instance or registered colormap name used to map scalar
+            data to colors
+        norm : Union[str, matplotlib.colors.Normalize]
+            the normalization method used to scale scalar data to the [0, 1]
+            range before mapping to colors using ``cmap``. By default, a linear
+            scaling is used, mapping the lowest value to 0 and the highest to 1.
+        vmin, vmax : Number
+            minimum and maximum values used to create the colormap. Ignored
+            when ``norm`` is given
+        colorbar : bool
+            whether to draw a colorbar, by default True
+        voronoi_sites_kwargs : dict
+            keyword arguments passed to ``matplotlib.pyplot.plot``, used to
+            plot the voronoi nuclei
+        kwargs : dict, optional
+            additional keyword arguments passed to ``ax.pcolormesh``
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The Axes object containing the plot
+        cbar : Union[Colorbar, None]
+            The Colorbar object associated with the rasterized tessellation
+        """
+        if ax is None:
+            _, ax = plt.subplots()
+        cbar = None
+        if param_values is not None:
+            lon_edges = np.linspace(-180, 180, round(360 / resolution) + 1)
+            lat_edges = np.linspace(-90, 90, round(180 / resolution) + 1)
+            grid_lon, grid_lat = np.meshgrid(
+                (lon_edges[:-1] + lon_edges[1:]) / 2,
+                (lat_edges[:-1] + lat_edges[1:]) / 2,
+            )
+            interp_positions = np.column_stack((grid_lon.ravel(), grid_lat.ravel()))
+            interp_values = Voronoi2DSphere.interpolate_tessellation(
+                voronoi_sites, param_values, interp_positions
+            ).reshape(grid_lon.shape)
+            if norm is not None:
+                img = ax.pcolormesh(lon_edges, lat_edges, interp_values, cmap=cmap, norm=norm, **kwargs)
+            else:
+                img = ax.pcolormesh(lon_edges, lat_edges, interp_values, cmap=cmap, vmin=vmin, vmax=vmax, **kwargs)
+            if colorbar:
+                cbar = plt.colorbar(img, ax=ax, aspect=35, pad=0.02)
+                cbar.set_label("Parameter Values")
+
+        voronoi_sites_kwargs = voronoi_sites_kwargs if voronoi_sites_kwargs is not None else {}
+        sites_style = {
+            "color": voronoi_sites_kwargs.pop("color", voronoi_sites_kwargs.pop("c", "k")),
+            "marker": voronoi_sites_kwargs.pop("marker", "o"),
+            "ms": voronoi_sites_kwargs.pop("ms", voronoi_sites_kwargs.pop("markersize", 2)),
+            "ls": "",
+            "lw": 0,
+        }
+        sites_style.update(voronoi_sites_kwargs)
+        ax.plot(voronoi_sites[:, 0], voronoi_sites[:, 1], **sites_style)
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+        ax.set_xlim(-180, 180)
+        ax.set_ylim(-90, 90)
+        return ax, cbar

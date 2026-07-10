@@ -11,7 +11,8 @@ The ``Discretization`` class can be seen as a special type of ``ParameterSpace``
        Prior-->Discretization;
        Discretization-->Voronoi;
        Voronoi-->Voronoi1D;
-       Voronoi-->Voronoi2D
+       Voronoi-->Voronoi2D;
+       Voronoi-->Voronoi2DSphere
 
 .. autosummary::
     :toctree: generated/
@@ -21,6 +22,7 @@ The ``Discretization`` class can be seen as a special type of ``ParameterSpace``
     bayesbay.discretization.Voronoi
     bayesbay.discretization.Voronoi1D
     bayesbay.discretization.Voronoi2D
+    bayesbay.discretization.Voronoi2DSphere
 
 Examples in this documentation using :class:`Voronoi1D <bayesbay.discretization.Voronoi1D>` include:
 

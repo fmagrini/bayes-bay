@@ -1,5 +1,5 @@
 from ._discretization import Discretization
-from ._voronoi import Voronoi, Voronoi1D, Voronoi2D
+from ._voronoi import Voronoi, Voronoi1D, Voronoi2D, Voronoi2DSphere
 
 
 __all__ = [
@@ -7,4 +7,5 @@ __all__ = [
     "Voronoi",
     "Voronoi1D",
     "Voronoi2D",
+    "Voronoi2DSphere",
 ]
