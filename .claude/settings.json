@@ -10,7 +10,18 @@
       "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay log --oneline -S \"new_value, _ = param.sample\\(\\)\" -- src/bayesbay/discretization/_discretization.py)",
       "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay show 1bb5491 --stat)",
       "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay show 1bb5491:src/bayesbay/parameterization/_parameter_space.py)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.github.com/repos/rhyshawkins/GeneralVoronoiS2/contents/\")",
+      "Bash(python3 -c ' *)",
+      "Bash(MPLBACKEND=Agg PYTHONPATH=/home/fabrizio/Documents/GitHub/bayes-bay/src timeout 570 python3 /home/fabrizio/Documents/GitHub/bayes-bay/tests/23_prior_voronoi_2d_sphere.py)",
+      "Bash(python3 -m pytest /home/fabrizio/Documents/GitHub/bayes-bay/tests/test_markov_chain_initialization.py -q)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay status --short)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff --stat HEAD~1 HEAD)",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'added Voronoi2DSphere: trans-dimensional Voronoi tessellation on the sphere *)",
+      "Bash(git commit -m 'chore: updated local Claude Code permissions *)"
     ]
   }
 }
