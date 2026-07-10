@@ -367,7 +367,7 @@ class Discretization(Prior, ParameterSpace):
                 ) ** 2 / (2 * _perturb_std**2)
                 log_prob_ratio += log_prior_ratio + log_proposal_ratio
             elif isinstance(param, ParameterSpace):     # birth from prior
-                new_value, _ = param.sample()
+                new_value = param.sample()
                 new_born_values[param_name] = new_value
                 # log_prob_ratio += 0
             else:

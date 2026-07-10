@@ -178,14 +178,17 @@ class Voronoi(Discretization):
 
         Returns
         -------
-        Union[Number, np.ndarray]
-            perturbed Voronoi site position
+        Union[Number, np.ndarray, None]
+            perturbed Voronoi site position, or None if the proposed position
+            falls outside the discretization domain. Out-of-domain proposals
+            must be rejected (rather than redrawn) to preserve the symmetry of
+            the Gaussian proposal and hence detailed balance
         """
-        while True:
-            random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
-            new_site = site + random_deviate
-            if all((new_site >= self.vmin) & (new_site <= self.vmax)):
-                return new_site
+        random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
+        new_site = site + random_deviate
+        if all((new_site >= self.vmin) & (new_site <= self.vmax)):
+            return new_site
+        return None
 
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int) -> Tuple[ParameterSpaceState, Number]:
         r"""perturbs the value of one Voronoi site and calculates the log of the
@@ -213,6 +216,8 @@ class Voronoi(Discretization):
         old_sites = old_ps_state["discretization"]
         old_site = old_sites[isite]
         new_site = self._perturb_site(old_sites[isite])
+        if new_site is None:  # proposed site out of the domain: reject
+            return old_ps_state, -math.inf
         new_sites = old_sites.copy()
         new_sites[isite] = new_site
         new_values = {"discretization": new_sites}
@@ -564,16 +569,18 @@ class Voronoi1D(Voronoi):
         return ParameterSpaceState(n_voronoi_cells, parameter_vals)
 
     def _perturb_site(self, site: Number) -> Number:
-        while True:
-            random_deviate = random.normalvariate(0, self.perturb_std)
-            new_site = site + random_deviate
-            if self.vmin <= new_site <= self.vmax:
-                return new_site
+        random_deviate = random.normalvariate(0, self.perturb_std)
+        new_site = site + random_deviate
+        if self.vmin <= new_site <= self.vmax:
+            return new_site
+        return None
 
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int) -> Tuple[ParameterSpaceState, Number]:
         old_sites = old_ps_state["discretization"]
         old_site = old_sites[isite]
         new_site = self._perturb_site(old_sites[isite])
+        if new_site is None:  # proposed site out of the domain: reject
+            return old_ps_state, -math.inf
         new_sites = old_sites.copy()
         new_sites[isite] = new_site
         isort = np.argsort(new_sites)
@@ -1396,21 +1403,24 @@ class Voronoi2D(Voronoi):
 
         Returns
         -------
-        Union[Number, np.ndarray]
-            perturbed Voronoi site position
+        Union[Number, np.ndarray, None]
+            perturbed Voronoi site position, or None if the proposed position
+            falls outside the discretization domain. Out-of-domain proposals
+            must be rejected (rather than redrawn) to preserve the symmetry of
+            the Gaussian proposal and hence detailed balance
         """
         if self.polygon is None:
             return super()._perturb_site(site)
-        while True:
-            random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
-            new_site = site + random_deviate
-            point = shapely.geometry.Point(new_site)
-            if self.polygon.contains(point):
-                return new_site
+        random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
+        new_site = site + random_deviate
+        point = shapely.geometry.Point(new_site)
+        if self.polygon.contains(point):
+            return new_site
+        return None
 
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
         new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
-        if self.compute_kdtree:
+        if self.compute_kdtree and new_ps_state is not old_ps_state:
             new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
         return new_ps_state, log_prior_ratio
 
