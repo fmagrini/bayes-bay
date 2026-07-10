@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.12 (10/07/2026)
+- Bug fix: Voronoi-site perturbations in `Voronoi`, `Voronoi1D`, and `Voronoi2D` now reject proposals falling outside the discretization domain rather than redrawing them until valid. The redraw scheme made the effective proposal a truncated Gaussian whose normalization depends on the current site position, breaking detailed balance and biasing the sampled site positions within a few `perturb_std` of the domain boundaries (or of the polygon edges in `Voronoi2D`)
+- Bug fix: fixed a `TypeError` raised during birth perturbations when a `ParameterSpace` is nested inside a trans-dimensional discretization with `birth_from="neighbour"` (the default)
+
 ## v0.3.11 (30/06/2026)
 - Bug fix: replaced deprecated `np.row_stack` with `np.vstack` in Voronoi birth perturbations, fixing `Voronoi2D.birth()` compatibility with NumPy >= 2.5
 
