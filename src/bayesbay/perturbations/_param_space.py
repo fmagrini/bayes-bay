@@ -4,6 +4,7 @@ from collections import defaultdict
 import random
 
 from .._state import State, ParameterSpaceState
+from ..exceptions import InvalidProposalException
 from ._base_perturbation import Perturbation, ParamSpaceMixin
 
 
@@ -15,15 +16,15 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
         perturbation_weights: List[Number],
     ):
         self.param_space_name = param_space_name
-        assert len(perturbations) == len(perturbation_weights), (
-            "The number of perturbations and perturbation weights must be equal"
-        )
+        assert len(perturbations) == len(
+            perturbation_weights
+        ), "The number of perturbations and perturbation weights must be equal"
         self._perturbations_functions = perturbations
         self._perturbation_weights = perturbation_weights
 
     def perturb(self, state: State) -> Tuple[State, Number]:
         new_state = state.copy()
-        
+
         n_ps_states_to_perturb = 0
         states_queue = [state]
         while states_queue:
@@ -37,10 +38,10 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
                     states_queue.append(v)
                 elif isinstance(v, list) and isinstance(v[0], ParameterSpaceState):
                     states_queue.extend(v)
-        
+
         i_to_perturb = random.randint(0, n_ps_states_to_perturb - 1)
         i_ps_state = 0
-        
+
         log_prob_ratio = 0
         stats = defaultdict(int)
         states_queue = [(new_state, state)]
@@ -58,7 +59,11 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
                     new_vv_list = []
                     for vv in v:
                         if i_ps_state == i_to_perturb:
-                            new_vv, ratio, perturb_type = self.perturb_param_space_state(vv)
+                            (
+                                new_vv,
+                                ratio,
+                                perturb_type,
+                            ) = self.perturb_param_space_state(vv)
                             new_vv_list.append(new_vv)
                             log_prob_ratio += ratio
                             stats[perturb_type] += 1
@@ -85,15 +90,22 @@ class ParamSpacePerturbation(Perturbation, ParamSpaceMixin):
             )[0]
             perturb_func = self.perturbation_funcs[i_perturb]
             # perturb and get the log of the partial acceptance probability
-            new_ps_state, log_prob_ratio = perturb_func.perturb_param_space_state(
+            try:
+                new_ps_state, log_prob_ratio = perturb_func.perturb_param_space_state(
                     ps_state
-                    )
+                )
+            except InvalidProposalException as exc:
+                # Preserve the selected nested perturbation type so chain-level
+                # rejection statistics remain informative even though no proposed
+                # state was returned.
+                exc.perturbation_type = perturb_func.__name__
+                raise
             return new_ps_state, log_prob_ratio, perturb_func.__name__
 
     @property
     def perturbation_funcs(self) -> List[Perturbation]:
         return self._perturbations_functions
-    
+
     @perturbation_funcs.setter
     def perturbation_funcs(self, perturbations: List[Perturbation]):
         self._perturbations_functions = perturbations

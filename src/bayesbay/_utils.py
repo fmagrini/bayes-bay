@@ -1,4 +1,4 @@
-from .exceptions import UserFunctionException
+from .exceptions import InvalidProposalException, UserFunctionException
 from .perturbations._base_perturbation import Perturbation
 
 
@@ -41,6 +41,8 @@ class _FunctionWrapper:
     def __call__(self, *args):
         try:
             return self.func(*args, *self.args, **self.kwargs)
+        except InvalidProposalException:
+            raise
         except Exception as e:
             raise UserFunctionException(e)
 

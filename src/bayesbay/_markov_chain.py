@@ -8,7 +8,11 @@ from .likelihood._log_likelihood import LogLikelihood
 from .likelihood._target import Target
 from .parameterization import Parameterization
 from ._state import State
-from .exceptions import ForwardException, UserFunctionException
+from .exceptions import (
+    ForwardException,
+    InvalidProposalException,
+    UserFunctionException,
+)
 
 
 _MAX_INITIAL_STATE_ATTEMPTS = 500
@@ -35,6 +39,12 @@ class BaseMarkovChain:
         instance of the ``bayesbay.LogLikelihood`` class
     temperature : int, optional
         used to temper the log likelihood, by default 1
+    on_forward_error : {"reject", "raise"}, optional
+        how unexpected errors raised during likelihood/forward evaluation are
+        handled. ``"reject"`` treats the proposed state as having zero
+        likelihood; ``"raise"`` propagates the error for debugging. Deliberate
+        :class:`bayesbay.exceptions.InvalidProposalException` instances are
+        always treated as normal rejections
     """
 
     def __init__(
@@ -46,12 +56,16 @@ class BaseMarkovChain:
         log_likelihood: LogLikelihood,
         temperature: float = 1,
         save_dpred: bool = True,
+        on_forward_error: str = "reject",
     ):
         self.id = id
         self.current_state = starting_state
         self._temperature = temperature
         self.log_likelihood = log_likelihood
         self.save_dpred = save_dpred
+        if on_forward_error not in {"reject", "raise"}:
+            raise ValueError("`on_forward_error` should be either 'reject' or 'raise'")
+        self.on_forward_error = on_forward_error
         self.set_perturbation_funcs(perturbation_funcs, perturbation_weights)
         self._init_statistics()
         self._init_saved_states()
@@ -133,10 +147,28 @@ class BaseMarkovChain:
         else:
             self.saved_states.append(self.current_state)
 
-    def _save_statistics(self, perturb_i: int, accepted: bool, proposed_state: State):
+    def _save_statistics(
+        self,
+        perturb_i: int,
+        accepted: bool,
+        proposed_state: State = None,
+        exception: Exception = None,
+    ):
         perturb_type = self.perturbation_types[perturb_i]
         if perturb_type.startswith("ParamSpacePerturbation"):
-            perturb_stats = proposed_state.load_from_cache("perturb_stats")
+            if proposed_state is not None and proposed_state.saved_in_cache(
+                "perturb_stats"
+            ):
+                perturb_stats = proposed_state.load_from_cache("perturb_stats")
+            else:
+                sub_type = getattr(
+                    exception,
+                    "perturbation_type",
+                    exception.__class__.__name__
+                    if exception is not None
+                    else "unknown",
+                )
+                perturb_stats = {sub_type: 1}
             for k, v in perturb_stats.items():
                 self._statistics["n_proposed_models"][perturb_type][k] += v
                 self._statistics["n_accepted_models"][perturb_type][k] += (
@@ -202,49 +234,57 @@ class BaseMarkovChain:
         )
 
     def _next_iteration(self):
-        _last_exception = None
-        for i in range(500):
-            # choose one perturbation function and type
-            i_perturb = random.choices(
-                range(len(self.perturbation_funcs)), self.perturbation_weights
-            )[0]
-            perturb_func = self.perturbation_funcs[i_perturb]
+        i_perturb = random.choices(
+            range(len(self.perturbation_funcs)), self.perturbation_weights
+        )[0]
+        perturb_func = self.perturbation_funcs[i_perturb]
 
-            # perturb and get the partial acceptance probability excluding log
-            # likelihood ratio
-            try:
-                new_state, log_prob_ratio = perturb_func(self.current_state)
-            except UserFunctionException as e:
-                _last_exception = e
-                self._statistics["exceptions"][e.__class__.__name__] += 1
-                continue
-
-            if math.isinf(log_prob_ratio):
-                log_likelihood_ratio = 0
-            else:
-                # calculate the log likelihood ratio
-                try:
-                    log_likelihood_ratio = self._log_likelihood_ratio(new_state)
-                except (ForwardException, UserFunctionException) as e:
-                    _last_exception = e
-                    self._statistics["exceptions"][e.__class__.__name__] += 1
-                    continue
-
-            # decide whether to accept
-            acceptance_probability = log_prob_ratio + log_likelihood_ratio
-            accepted = acceptance_probability > math.log(random.random())
-            if accepted:
-                self.current_state = new_state
-
-            # save statistics and current state
-            self._save_statistics(i_perturb, accepted, new_state)
+        # Deliberately inadmissible proposals are counted as rejected
+        # self-transitions. Unexpected errors in user perturbation functions are
+        # programming errors and remain visible to the caller.
+        try:
+            new_state, log_prob_ratio = perturb_func(self.current_state)
+        except InvalidProposalException as exc:
+            self._statistics["exceptions"][exc.__class__.__name__] += 1
+            self._save_statistics(i_perturb, False, exception=exc)
             if self.save_current_iteration and self.temperature == 1.0:
                 self._save_state()
             return
-        raise RuntimeError(
-            f"Chain {self.id} failed in perturb or forward calculation for 500 times. "
-            "See above for the last exception."
-        ) from _last_exception
+        except UserFunctionException as exc:
+            self._statistics["exceptions"][exc.__class__.__name__] += 1
+            raise
+
+        if math.isinf(log_prob_ratio):
+            log_likelihood_ratio = 0
+        else:
+            try:
+                log_likelihood_ratio = self._log_likelihood_ratio(new_state)
+            except InvalidProposalException as exc:
+                self._statistics["exceptions"][exc.__class__.__name__] += 1
+                self._save_statistics(i_perturb, False, new_state)
+                if self.save_current_iteration and self.temperature == 1.0:
+                    self._save_state()
+                return
+            except (
+                ForwardException,
+                UserFunctionException,
+            ) as exc:
+                self._statistics["exceptions"][exc.__class__.__name__] += 1
+                if self.on_forward_error == "raise":
+                    raise
+                self._save_statistics(i_perturb, False, new_state)
+                if self.save_current_iteration and self.temperature == 1.0:
+                    self._save_state()
+                return
+
+        acceptance_probability = log_prob_ratio + log_likelihood_ratio
+        accepted = acceptance_probability > math.log(random.random())
+        if accepted:
+            self.current_state = new_state
+
+        self._save_statistics(i_perturb, accepted, new_state)
+        if self.save_current_iteration and self.temperature == 1.0:
+            self._save_state()
 
     def advance_chain(
         self,
@@ -300,6 +340,7 @@ class BaseMarkovChain:
         return {
             "id": self.id,
             "temperature": self.temperature,
+            "on_forward_error": self.on_forward_error,
             "n_proposed_models_total": self.statistics["n_proposed_models_total"],
             "n_accepted_models_total": self.statistics["n_accepted_models_total"],
         }
@@ -347,7 +388,10 @@ class MarkovChain(BaseMarkovChain):
         starting_state: State = None,
         temperature: float = 1,
         saved_dpred: bool = True,
+        on_forward_error: str = "reject",
     ):
+        if on_forward_error not in {"reject", "raise"}:
+            raise ValueError("`on_forward_error` should be either 'reject' or 'raise'")
         self.parameterization = parameterization
         self.log_likelihood = log_likelihood
         starting_state = self._init_starting_state(starting_state)
@@ -359,18 +403,35 @@ class MarkovChain(BaseMarkovChain):
             log_likelihood=log_likelihood,
             temperature=temperature,
             save_dpred=saved_dpred,
+            on_forward_error=on_forward_error,
         )
 
     def _init_starting_state(self, starting_state=None) -> State:
         """Initialize the parameterization by defining a starting state."""
 
         if starting_state is not None:
-            ref_state = self.parameterization.initialize()
+            last_exception = None
+            for _ in range(_MAX_INITIAL_STATE_ATTEMPTS):
+                try:
+                    ref_state = self.parameterization.initialize()
+                except InvalidProposalException as exc:
+                    last_exception = exc
+                    continue
+                break
+            else:
+                raise RuntimeError(
+                    "Unable to initialize a reference state for validating the "
+                    "provided starting_state"
+                ) from last_exception
             self._check_starting_state(starting_state, ref_state)
             self.log_likelihood.initialize(starting_state)
             try:
                 self._validate_starting_state(starting_state)
-            except (ForwardException, UserFunctionException) as exc:
+            except (
+                ForwardException,
+                InvalidProposalException,
+                UserFunctionException,
+            ) as exc:
                 raise RuntimeError(
                     "The provided starting_state caused the forward model to fail. "
                     "Please supply a feasible state or adjust the parameterization."
@@ -379,11 +440,15 @@ class MarkovChain(BaseMarkovChain):
 
         last_exception: Exception = None
         for _ in range(_MAX_INITIAL_STATE_ATTEMPTS):
-            candidate_state = self.parameterization.initialize()
-            self.log_likelihood.initialize(candidate_state)
             try:
+                candidate_state = self.parameterization.initialize()
+                self.log_likelihood.initialize(candidate_state)
                 self._validate_starting_state(candidate_state)
-            except (ForwardException, UserFunctionException) as exc:
+            except (
+                ForwardException,
+                InvalidProposalException,
+                UserFunctionException,
+            ) as exc:
                 last_exception = exc
                 continue
             return candidate_state
@@ -401,6 +466,8 @@ class MarkovChain(BaseMarkovChain):
             for forward_func in forward_funcs:
                 try:
                     forward_func(state)
+                except InvalidProposalException:
+                    raise
                 except Exception as exc:  # pragma: no cover - defensive
                     raise ForwardException(exc)
             return

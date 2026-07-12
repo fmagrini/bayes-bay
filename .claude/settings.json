@@ -68,7 +68,16 @@
       "Bash(python -m pytest tests/test_sphere_incremental_interp.py -x -q)",
       "Bash(python -)",
       "Bash(python -m pytest tests/ -q --co)",
-      "Bash(python -m pytest tests/ -q)"
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay log --oneline -5)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- src/bayesbay/exceptions/_exceptions.py src/bayesbay/exceptions/__init__.py)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- src/bayesbay/_markov_chain.py)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- src/bayesbay/perturbations/_param_space.py src/bayesbay/likelihood/_log_likelihood.py src/bayesbay/_utils.py src/bayesbay/parameterization/_parameter_space.py src/bayesbay/discretization/_discretization.py)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- src/bayesbay/discretization/_voronoi.py)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- src/bayesbay/prior/_prior.py src/bayesbay/_bayes_inversion.py noxfile.py CHANGELOG.md)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- tests/test_sphere_incremental_interp.py tests/23_prior_voronoi_2d_sphere.py tests/24_prior_voronoi_sphere_polygon.py)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- tests/test_sphere_incremental_interp.py)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- docs/)"
     ],
     "additionalDirectories": [
       "/tmp/claude-1000/-home-fabrizio-Documents-GitHub-bayes-bay/32223778-21c4-4062-a385-80398af4bbd8/scratchpad"

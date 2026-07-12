@@ -13,8 +13,8 @@ import scipy.spatial
 import shapely.geometry
 
 import bayesbay as bb
-from bayesbay.discretization import Voronoi2D, Voronoi2DSphere
-from bayesbay.exceptions import OutOfDomainException, UserFunctionException
+from bayesbay.discretization import Voronoi1D, Voronoi2D, Voronoi2DSphere
+from bayesbay.exceptions import InvalidProposalException, OutOfDomainException
 from bayesbay.prior import UniformPrior
 
 
@@ -34,7 +34,9 @@ def _assert_interp_cache_correct(voronoi, ps_state):
     """the cached nearest-site assignments must be exactly (up to floating
     point noise on the last digit) those of a full nearest-neighbour search"""
     sites_coords = voronoi._interp_position_coords(ps_state["discretization"])
-    full_affinities = voronoi._interp_affinity_block(voronoi._interp_coords, sites_coords)
+    full_affinities = voronoi._interp_affinity_block(
+        voronoi._interp_coords, sites_coords
+    )
     full_best = full_affinities.max(axis=1)
     cached_idx = ps_state.load_from_cache("interp_nearest")
     cached_affinity = ps_state.load_from_cache("interp_affinity")
@@ -112,14 +114,21 @@ def test_voronoi2d_default_behaviour_untouched():
     np.random.seed(6)
     random.seed(6)
     voronoi = Voronoi2D(
-        name="v", vmin=[0, 0], vmax=[10, 10], perturb_std=0.5,
-        n_dimensions_min=2, n_dimensions_max=20, compute_kdtree=True,
+        name="v",
+        vmin=[0, 0],
+        vmax=[10, 10],
+        perturb_std=0.5,
+        n_dimensions_min=2,
+        n_dimensions_max=20,
+        compute_kdtree=True,
     )
     ps_state = voronoi._initialize()
     for _ in range(200):
         kind = random.choice(["move", "birth", "death"])
         if kind == "move":
-            new_state, _ = voronoi.perturb_value(ps_state, random.randint(0, ps_state.n_dimensions - 1))
+            new_state, _ = voronoi.perturb_value(
+                ps_state, random.randint(0, ps_state.n_dimensions - 1)
+            )
         elif kind == "birth":
             new_state, _ = voronoi.birth(ps_state)
         else:
@@ -134,12 +143,28 @@ def test_polygon_validation():
         Voronoi2DSphere(name="v", polygon=[(-190, 0), (0, 0), (0, 10)])
     with pytest.raises(ValueError, match="pole"):
         Voronoi2DSphere(name="v", polygon=[(0, 80), (10, 80), (5, 90)])
+    with pytest.raises(ValueError, match="positive area"):
+        Voronoi2DSphere(name="v", polygon=[(0, 0), (1, 0), (2, 0)])
+    with pytest.raises(ValueError, match="positive area"):
+        Voronoi2D(name="v", polygon=[(0, 0), (1, 0), (2, 0)])
+
+
+@pytest.mark.parametrize("bad_std", [0, -1, np.nan, np.inf])
+def test_site_perturb_std_validation(bad_std):
+    with pytest.raises(ValueError, match="finite positive"):
+        Voronoi2DSphere(name="v", perturb_std=bad_std)
+    with pytest.raises(ValueError, match="finite positive"):
+        Voronoi2D(name="v", vmin=[0, 0], vmax=[1, 1], perturb_std=bad_std)
+    with pytest.raises(ValueError, match="finite positive"):
+        Voronoi1D(name="v", vmin=0, vmax=1, perturb_std=bad_std)
 
 
 def test_polygon_sampling_and_moves():
     np.random.seed(1)
     random.seed(1)
-    voronoi = Voronoi2DSphere(name="v", perturb_std=4, polygon=MED_POLYGON, n_dimensions=3)
+    voronoi = Voronoi2DSphere(
+        name="v", perturb_std=4, polygon=MED_POLYGON, n_dimensions=3
+    )
     poly = shapely.geometry.Polygon(MED_POLYGON)
     sites = np.array([voronoi.sample_site() for _ in range(2000)])
     assert all(poly.contains(shapely.geometry.Point(*s)) for s in sites)
@@ -178,7 +203,9 @@ def test_lon_shift_dateline():
     np.random.seed(3)
     random.seed(3)
     fiji = [(160, -25), (200, -25), (200, -10), (160, -10)]
-    voronoi = Voronoi2DSphere(name="v", perturb_std=5, polygon=fiji, lon_shift=180, n_dimensions=4)
+    voronoi = Voronoi2DSphere(
+        name="v", perturb_std=5, polygon=fiji, lon_shift=180, n_dimensions=4
+    )
     sites = np.array([voronoi.sample_site() for _ in range(1000)])
     assert ((sites[:, 0] >= 160) & (sites[:, 0] <= 200)).all()
     ps_state = voronoi._initialize()
@@ -190,8 +217,9 @@ def test_lon_shift_dateline():
     assert ((lons >= 160) & (lons <= 200)).all()
 
 
-def test_pickle_roundtrip():
-    voronoi = Voronoi2DSphere(name="v", perturb_std=4, polygon=MED_POLYGON, n_dimensions=3)
+@pytest.mark.parametrize("voronoi_cls", [Voronoi2D, Voronoi2DSphere])
+def test_polygon_pickle_roundtrip(voronoi_cls):
+    voronoi = voronoi_cls(name="v", perturb_std=4, polygon=MED_POLYGON, n_dimensions=3)
     clone = pickle.loads(pickle.dumps(voronoi))
     assert clone._prepared_polygon is not None
     assert clone.polygon.equals(voronoi.polygon)
@@ -199,20 +227,27 @@ def test_pickle_roundtrip():
     assert poly.contains(shapely.geometry.Point(*clone.sample_site()))
 
 
-def test_out_of_domain_is_user_function_exception():
+def test_out_of_domain_is_invalid_proposal_exception():
     exc = OutOfDomainException("vs", np.array([0.0, 0.0]))
-    assert isinstance(exc, UserFunctionException)
+    assert isinstance(exc, InvalidProposalException)
 
 
 def test_spherical_prior_flag_and_validation():
     # control points straddling the +/-180 meridian: the interpolation must be
     # seamless (the planar interpolation would see them ~360 degrees apart)
-    position = np.array([[179.0, 10.0], [-179.0, 10.0], [179.0, -10.0], [-179.0, -10.0]])
+    position = np.array(
+        [[179.0, 10.0], [-179.0, 10.0], [179.0, -10.0], [-179.0, -10.0]]
+    )
     vmin = np.array([1.0, 3.0, 1.0, 3.0])
     vmax = np.array([5.0, 7.0, 5.0, 7.0])
 
     prior = UniformPrior(
-        "vs", vmin=vmin, vmax=vmax, perturb_std=0.1, position=position, spherical_position=True
+        "vs",
+        vmin=vmin,
+        vmax=vmax,
+        perturb_std=0.1,
+        position=position,
+        spherical_position=True,
     )
     lo, hi = prior.get_vmin_vmax(np.array([180.0, 0.0]))  # centre of the 4 points
     assert abs(lo - 2.0) < 1e-9 and abs(hi - 6.0) < 1e-9
@@ -221,10 +256,14 @@ def test_spherical_prior_flag_and_validation():
     Voronoi2DSphere(name="v", perturb_std=5, n_dimensions=3, parameters=[prior])
 
     # a planar position-dependent prior is rejected by Voronoi2DSphere
-    planar_prior = UniformPrior("vs", vmin=vmin, vmax=vmax, perturb_std=0.1, position=position)
+    planar_prior = UniformPrior(
+        "vs", vmin=vmin, vmax=vmax, perturb_std=0.1, position=position
+    )
     assert not planar_prior.spherical_position
     with pytest.raises(ValueError, match="spherical_position"):
-        Voronoi2DSphere(name="v", perturb_std=5, n_dimensions=3, parameters=[planar_prior])
+        Voronoi2DSphere(
+            name="v", perturb_std=5, n_dimensions=3, parameters=[planar_prior]
+        )
 
     # priors without position are accepted as they are
     scalar_prior = UniformPrior("p", 0, 1, 0.1)
@@ -242,7 +281,10 @@ def test_high_level_interpolation_api():
     grid = _random_lonlat(3000, rng)
     vel = UniformPrior("vel", vmin=2, vmax=4, perturb_std=0.1)
     voronoi = Voronoi2DSphere(
-        name="v", perturb_std=10, n_dimensions=25, parameters=[vel],
+        name="v",
+        perturb_std=10,
+        n_dimensions=25,
+        parameters=[vel],
         interpolation_positions=grid,
     )
     ps_state = voronoi._initialize()
@@ -273,6 +315,76 @@ def test_high_level_interpolation_api():
         bare.get_nearest_site_indices(bare._initialize())
 
 
+def test_interpolation_cache_recomputed_after_reregistration():
+    sites = np.array([[0.0, 0.0], [90.0, 0.0], [-90.0, 0.0]])
+    voronoi = Voronoi2DSphere(
+        name="v", n_dimensions=3, interpolation_positions=np.array([[0.0, 0.0]])
+    )
+    state = bb.ParameterSpaceState(3, {"discretization": sites})
+    assert voronoi.get_nearest_site_indices(state).shape == (1,)
+    old_version = state.load_from_cache("interp_version")
+
+    positions = np.array([[0.0, 0.0], [90.0, 0.0], [-90.0, 0.0]])
+    voronoi.set_interpolation_positions(positions)
+    indices = voronoi.get_nearest_site_indices(state)
+    assert indices.shape == (3,)
+    assert np.array_equal(indices, [0, 1, 2])
+    assert state.load_from_cache("interp_version") != old_version
+
+
+@pytest.mark.parametrize(
+    "cls, kwargs",
+    [
+        (Voronoi2D, {"vmin": [0, 0], "vmax": [1, 1]}),
+        (Voronoi2DSphere, {}),
+    ],
+)
+def test_kdtree_available_for_every_state_creation_path(cls, kwargs):
+    voronoi = cls(name="v", n_dimensions=4, compute_kdtree=True, **kwargs)
+    for state in (
+        voronoi._initialize(),
+        voronoi.sample(),
+        voronoi.sample_discretization(),
+    ):
+        assert state.saved_in_cache("kdtree")
+        assert voronoi.get_kdtree(state) is state.load_from_cache("kdtree")
+
+    state = voronoi.sample()
+    state.cache.pop("kdtree")
+    assert voronoi.get_kdtree(state) is state.load_from_cache("kdtree")
+
+
+def test_nested_birth_creates_kdtree_cache():
+    inner = Voronoi2DSphere(name="inner", n_dimensions=4, compute_kdtree=True)
+    outer = Voronoi1D(
+        name="outer",
+        vmin=0,
+        vmax=1,
+        perturb_std=0.1,
+        n_dimensions_min=1,
+        n_dimensions_max=2,
+        parameters=[inner],
+    )
+    old_state = outer._initialize()
+    born, _ = outer.birth(old_state)
+    newborn_inner = born["inner"][-1]
+    assert newborn_inner.saved_in_cache("kdtree")
+    assert inner.get_kdtree(newborn_inner) is newborn_inner.load_from_cache("kdtree")
+
+
+def test_ensemble_interpolation_rejects_mismatched_lengths():
+    with pytest.raises(ValueError, match="same number of samples"):
+        Voronoi2DSphere._interpolate_tessellations(
+            [np.array([[0.0, 0.0]])], [], np.array([[0.0, 0.0]])
+        )
+    with pytest.raises(ValueError, match="sample 0"):
+        Voronoi2D._interpolate_tessellations(
+            [np.array([[0.0, 0.0], [1.0, 1.0]])],
+            [np.array([1.0])],
+            np.array([[0.0, 0.0]]),
+        )
+
+
 def test_spherical_cell_projection_containment():
     """every probe point on the sphere must fall within the projected map
     polygon of its nearest Voronoi site -- globally, poles and longitude seam
@@ -287,14 +399,21 @@ def test_spherical_cell_projection_containment():
         [
             _random_lonlat(3000, rng),
             # explicit probes at the poles and along the longitude seam
-            [[0, 89.9], [0, -89.9], [179.9, 0], [-179.9, 0], [179.9, 55], [-179.9, -55]],
+            [
+                [0, 89.9],
+                [0, -89.9],
+                [179.9, 0],
+                [-179.9, 0],
+                [179.9, 55],
+                [-179.9, -55],
+            ],
         ]
     )
     probes_xyz = Voronoi2DSphere.lonlat_to_xyz(probes)
     assigned = np.argmax(probes_xyz @ sites_xyz.T, axis=1)
     for probe, cell_idx in zip(probes, assigned):
-        assert cells[cell_idx].buffer(0.05).contains(
-            shapely.geometry.Point(probe)
+        assert (
+            cells[cell_idx].buffer(0.05).contains(shapely.geometry.Point(probe))
         ), f"probe {probe} not in the projected polygon of its nearest site"
     # the projected cells must tile the map: their areas sum to the full frame
     total_area = sum(cell.area for cell in cells)
@@ -326,7 +445,33 @@ def test_plot_tessellation_sphere():
     cells, lon_bounds = Voronoi2DSphere._cell_map_polygons(sites_shifted)
     assert lon_bounds == (0.0, 360.0)
     ax, cbar = Voronoi2DSphere.plot_tessellation(sites_shifted, values)
+    with pytest.warns(DeprecationWarning, match="densify_deg"):
+        ax, cbar = Voronoi2DSphere.plot_tessellation(sites, values, resolution=2)
     plt.close("all")
+
+
+def test_spherical_plot_filters_geometry_collections():
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    sites = np.array([[0, 45], [90, -20], [-90, -20], [170, 10]], dtype=float)
+    cells, _ = Voronoi2DSphere._cell_map_polygons(sites)
+    assert all(
+        isinstance(cell, (shapely.geometry.Polygon, shapely.geometry.MultiPolygon))
+        for cell in cells
+    )
+    ax, cbar = Voronoi2DSphere.plot_tessellation(sites, np.arange(4))
+    assert cbar is not None
+    plt.close(ax.figure)
+
+
+def test_spherical_plot_documents_minimum_site_count():
+    with pytest.raises(ValueError, match="at least 4"):
+        Voronoi2DSphere.plot_tessellation(
+            np.array([[0.0, 0.0], [120.0, 0.0], [-120.0, 0.0]])
+        )
 
 
 def test_plot_tessellation_voronoi2d_clip():
@@ -373,7 +518,9 @@ def test_parallel_chains_smoke():
         return np.full(5, interp_vel.mean())
 
     parameterization = bb.parameterization.Parameterization(voronoi)
-    target = bb.likelihood.Target("d_obs", d_obs, std_min=0.01, std_max=1, std_perturb_std=0.05)
+    target = bb.likelihood.Target(
+        "d_obs", d_obs, std_min=0.01, std_max=1, std_perturb_std=0.05
+    )
     log_likelihood = bb.likelihood.LogLikelihood(targets=target, fwd_functions=forward)
     inversion = bb.BayesianInversion(
         parameterization=parameterization, log_likelihood=log_likelihood, n_chains=2

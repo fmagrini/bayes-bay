@@ -74,6 +74,9 @@ class BaseBayesianInversion:
         is None. Default to None
     n_chains: int, optional
         the number of chains in the McMC sampling. Default is 10
+    on_forward_error : {"reject", "raise"}, optional
+        policy for unexpected forward/likelihood errors during sampling.
+        ``"reject"`` rejects the proposal; ``"raise"`` propagates the error
     """
 
     def __init__(
@@ -85,7 +88,10 @@ class BaseBayesianInversion:
         log_like_func: Callable[[Any], Number] = None,
         n_chains: int = 10,
         save_dpred: bool = True,
+        on_forward_error: str = "reject",
     ):
+        if on_forward_error not in {"reject", "raise"}:
+            raise ValueError("`on_forward_error` should be either 'reject' or 'raise'")
         assert (
             len(walkers_starting_states) == n_chains
         ), f"`walkers_starting_states` doesn't match the number of chains: {len(walkers_starting_states)} != {n_chains}"
@@ -100,6 +106,7 @@ class BaseBayesianInversion:
             )
         self.n_chains = n_chains
         self.save_dpred = save_dpred
+        self.on_forward_error = on_forward_error
         self._chains = [
             BaseMarkovChain(
                 id=i,
@@ -108,6 +115,7 @@ class BaseBayesianInversion:
                 perturbation_weights=self.perturbation_weights,
                 log_likelihood=self.log_likelihood,
                 save_dpred=self.save_dpred,
+                on_forward_error=self.on_forward_error,
             )
             for i in range(n_chains)
         ]
@@ -136,8 +144,16 @@ class BaseBayesianInversion:
             if isinstance(func, (BirthPerturbation, DeathPerturbation)):
                 birth_death_pairs[func.param_space_name].append(ifunc)
         for ps_name, perturb_ifuncs in birth_death_pairs.items():
-            birth_func_indices = [i for i in perturb_ifuncs if isinstance(perturbation_funcs[i], BirthPerturbation)]
-            death_func_indices = [i for i in perturb_ifuncs if isinstance(perturbation_funcs[i], DeathPerturbation)]
+            birth_func_indices = [
+                i
+                for i in perturb_ifuncs
+                if isinstance(perturbation_funcs[i], BirthPerturbation)
+            ]
+            death_func_indices = [
+                i
+                for i in perturb_ifuncs
+                if isinstance(perturbation_funcs[i], DeathPerturbation)
+            ]
             if len(birth_func_indices) != 1:
                 raise ValueError(
                     "there should be exactly one birth perturbation function for each "
@@ -168,7 +184,9 @@ class BaseBayesianInversion:
         self.perturbation_weights = perturbation_weights
         if hasattr(self, "_chains"):
             for chain in self.chains:
-                chain.set_perturbation_funcs(self.perturbation_funcs, self.perturbation_weights)
+                chain.set_perturbation_funcs(
+                    self.perturbation_funcs, self.perturbation_weights
+                )
 
     @property
     def chains(self) -> List[BaseMarkovChain]:
@@ -190,7 +208,9 @@ class BaseBayesianInversion:
             when ``updated_chains` is not a list or the elements are not instances of
             :class:`BaseMarkovChain`
         """
-        if not isinstance(updated_chains, list) or all([isinstance(c, BaseMarkovChain) for c in updated_chains]):
+        if not isinstance(updated_chains, list) or all(
+            [isinstance(c, BaseMarkovChain) for c in updated_chains]
+        ):
             raise TypeError("make sure the `updated_chains` is a list of chains")
         self._chains = updated_chains
         self.n_chains = len(updated_chains)
@@ -332,6 +352,7 @@ class BaseBayesianInversion:
             "log_likelihood": self.log_likelihood,
             "n_chains": self.n_chains,
             "save_dpred": self.save_dpred,
+            "on_forward_error": self.on_forward_error,
             "chains": self.chains,
         }
 
@@ -388,6 +409,9 @@ class BayesianInversion(BaseBayesianInversion):
         ``parameterization``.
     save_dpred : bool, optional
         Whether to store predicted data in saved chain states. Default is ``True``.
+    on_forward_error : {"reject", "raise"}, optional
+        policy for unexpected forward/likelihood errors during sampling.
+        ``"reject"`` rejects the proposal; ``"raise"`` propagates the error
 
     Raises
     ------
@@ -406,11 +430,18 @@ class BayesianInversion(BaseBayesianInversion):
         n_chains: int = 10,
         walkers_starting_states: List[State] = None,
         save_dpred: bool = True,
+        on_forward_error: str = "reject",
     ):
+        if on_forward_error not in {"reject", "raise"}:
+            raise ValueError("`on_forward_error` should be either 'reject' or 'raise'")
         if not isinstance(log_likelihood, LogLikelihood):
-            raise TypeError("`log_likelihood` should be an instance of `bayesbay.likelihood.LogLikelihood`")
+            raise TypeError(
+                "`log_likelihood` should be an instance of `bayesbay.likelihood.LogLikelihood`"
+            )
 
-        if walkers_starting_states is not None and n_chains != len(walkers_starting_states):
+        if walkers_starting_states is not None and n_chains != len(
+            walkers_starting_states
+        ):
             raise ValueError(
                 f"Length of `walkers_starting_states` ({len(walkers_starting_states)})"
                 f" does not match `n_chains` ({n_chains})."
@@ -420,6 +451,7 @@ class BayesianInversion(BaseBayesianInversion):
         self.log_likelihood = log_likelihood
         self.n_chains = n_chains
         self.save_dpred = save_dpred
+        self.on_forward_error = on_forward_error
         (
             self.perturbation_funcs,
             self.perturbation_weights,
@@ -435,6 +467,7 @@ class BayesianInversion(BaseBayesianInversion):
                 perturbation_weights=self.perturbation_weights,
                 starting_state=starting_states[i],
                 saved_dpred=self.save_dpred,
+                on_forward_error=self.on_forward_error,
             )
             for i in range(n_chains)
         ]
@@ -447,11 +480,16 @@ class BayesianInversion(BaseBayesianInversion):
             "log_likelihood": self.log_likelihood,
             "n_chains": self.n_chains,
             "save_dpred": self.save_dpred,
+            "on_forward_error": self.on_forward_error,
             "chains": self.chains,
         }
         _parameterization = dict()
         for ps_name, ps in self.parameterization.parameter_spaces.items():
-            _parameterization[ps_name] = {k: v for k, v in ps._repr_args.items() if k not in {"parameters", "name"}}
+            _parameterization[ps_name] = {
+                k: v
+                for k, v in ps._repr_args.items()
+                if k not in {"parameters", "name"}
+            }
             _parameterization[ps_name]["parameters"] = list(ps.parameters.values())
         self._repr_args["parameterization"] = _parameterization
 
@@ -484,5 +522,7 @@ class BayesianInversion(BaseBayesianInversion):
             self.perturbation_weights,
         ) = self._init_perturbation_funcs()
         for chain in self.chains:
-            chain.set_perturbation_funcs(self.perturbation_funcs, self.perturbation_weights)
+            chain.set_perturbation_funcs(
+                self.perturbation_funcs, self.perturbation_weights
+            )
             chain.update_targets(targets)

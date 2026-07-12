@@ -2,6 +2,22 @@
 
 <!--next-version-placeholder-->
 
+- Added public ``InvalidProposalException`` for deliberately inadmissible
+  proposals. These now produce one counted rejected iteration instead of a
+  state-dependent redraw, preserving detailed balance.
+- Added ``on_forward_error={"reject", "raise"}`` to Markov chains and inversion
+  interfaces. Unexpected forward errors reject proposals by default and can be
+  configured to raise for debugging.
+- Unexpected errors raised by user perturbation functions now propagate instead
+  of being silently retried. Raise ``InvalidProposalException`` for deliberate
+  proposal rejection.
+- Fixed scalar initialization of position-dependent Gaussian, Laplace, and
+  custom priors in multidimensional and spherical domains.
+- Hardened Voronoi polygon validation and sampling, completed KD-tree/cache
+  lifecycle handling, and validated tessellation-ensemble input lengths.
+- Fixed spherical plotting of ``GeometryCollection`` seam results and retained
+  ``resolution`` as a deprecated alias for ``densify_deg``.
+
 ## v0.3.11 (30/06/2026)
 - Bug fix: replaced deprecated `np.row_stack` with `np.vstack` in Voronoi birth perturbations, fixing `Voronoi2D.birth()` compatibility with NumPy >= 2.5
 

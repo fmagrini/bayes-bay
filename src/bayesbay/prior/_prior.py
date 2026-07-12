@@ -627,10 +627,12 @@ class GaussianPrior(Prior):
             chosen according to the normal distribution defined
             by :attr:`mean` and :attr:`std` at the given positions
         """
-        mean = self.get_mean(positions)
-        std = self.get_std(positions)
-        values = np.random.normal(mean, std, len(positions))
-        return values
+        # Position interpolators currently expose a scalar-query API. Evaluate
+        # them point by point, as UniformPrior does, rather than passing an
+        # (n, d) array to interpolators whose exact-hit/out-of-domain checks are
+        # scalar.
+        mean, std = np.array([(self.get_mean(p), self.get_std(p)) for p in positions]).T
+        return np.random.normal(mean, std, len(positions))
 
     def perturb_value(
         self,
@@ -838,10 +840,10 @@ class LaplacePrior(Prior):
             chosen according to the Laplace distribution defined
             by :attr:`mean` and :attr:`scale` at the given positions
         """
-        mean = self.get_mean(positions)
-        scale = self.get_scale(positions)
-        values = np.random.laplace(mean, scale, len(positions))
-        return values
+        mean, scale = np.array(
+            [(self.get_mean(p), self.get_scale(p)) for p in positions]
+        ).T
+        return np.random.laplace(mean, scale, len(positions))
 
     def perturb_value(
         self,
@@ -988,7 +990,10 @@ class CustomPrior(Prior):
         return self._sample(position)
 
     def initialize(self, positions: np.ndarray = None) -> np.ndarray:
-        result = np.empty_like(positions)
+        # A Prior contributes one scalar per parameter-space dimension. Using
+        # empty_like(positions) produced an (n, d) array for multidimensional
+        # positions and silently broadcast each scalar sample across d columns.
+        result = np.empty(len(positions), dtype=float)
         for i, position in enumerate(positions):
             result[i] = self._sample(position)
         return result

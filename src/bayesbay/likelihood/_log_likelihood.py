@@ -3,7 +3,7 @@ from typing import Any, List, Callable, Tuple, Union
 from numbers import Number
 import numpy as np
 
-from ..exceptions import ForwardException
+from ..exceptions import ForwardException, InvalidProposalException
 from .._state import State
 from ._target import Target
 from ..perturbations._data_noise import NoisePerturbation
@@ -41,22 +41,22 @@ class LogLikelihood:
         Each function takes in a state and produces a numpy array of data predictions.
         Default to None.
     log_like_ratio_func: Callable[[Any, Any], Number], optional
-        a function to calculate the log likelihood ratio 
+        a function to calculate the log likelihood ratio
         :math:`\log(\frac{p(\mathbf{d}_{obs} \mid \mathbf{m}')}{p(\mathbf{d}_{obs} \mid \mathbf{m})})`.
-        It takes the current and proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`, 
-        whose type should be consistent with the other arguments of this class, and returns a scalar. 
-        This is utilised in the calculation of the acceptance probability 
-        
+        It takes the current and proposed models, :math:`\mathbf{m}` and :math:`\mathbf{m'}`,
+        whose type should be consistent with the other arguments of this class, and returns a scalar.
+        This is utilised in the calculation of the acceptance probability
+
         .. math::
-            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} = 
-            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}} 
-            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}  
+            \underbrace{\alpha_{p}}_{\begin{array}{c} \text{Partial} \\ \text{acceptance} \\ \text{probability} \end{array}} =
+            \underbrace{\frac{p\left({\bf m'}\right)}{p\left({\bf m}\right)}}_{\text{Prior ratio}}
+            \underbrace{\frac{q\left({\bf m} \mid {\bf m'}\right)}{q\left({\bf m'} \mid {\bf m}\right)}}_{\text{Proposal ratio}}
             \underbrace{\lvert \mathbf{J} \rvert}_{\begin{array}{c} \text{Jacobian} \\ \text{determinant} \end{array}},
-        
-        where :math:`\mathbf{J}` denotes the Jacobian of the transformation.        
+
+        where :math:`\mathbf{J}` denotes the Jacobian of the transformation.
         If None, ``log_like_func`` gets used instead. Default to None
     log_like_func: Callable[[Any], Number], optional
-        a function to calculate the log likelihood 
+        a function to calculate the log likelihood
         :math:`\log(p(\mathbf{d}_{obs} \mid \mathbf{m}))`.
         It takes in a model :math:`\mathbf{m}` (any type is allowed, as long as it is
         consistent with the other arguments of this class) and returns a
@@ -76,7 +76,7 @@ class LogLikelihood:
         self.log_like_ratio_func = log_like_ratio_func
         self.log_like_func = log_like_func
         self._init_log_likelihood_ratio()
-        
+
     def __repr__(self):
         _repr_args = []
         if self.targets is not None:
@@ -90,19 +90,17 @@ class LogLikelihood:
             _repr_args.append(
                 f"log_likelihood_ratio_func={self.log_like_ratio_func.__name__!r}"
             )
-        elif self.log_like_func is not None:  
-            _repr_args.append(
-                f"log_likelihood_func={self.log_like_func.__name__!r}"
-            )
+        elif self.log_like_func is not None:
+            _repr_args.append(f"log_likelihood_func={self.log_like_func.__name__!r}")
         return f"{self.__class__.__name__}({', '.join(_repr_args)})"
-            
+
     @property
     def targets(self) -> List[Target]:
         """list of targets associated with the current log likelihood instance"""
         if not hasattr(self, "_targets"):
             self._targets = []
         return self._targets
-    
+
     @property
     def fwd_functions(self) -> List[Callable]:
         """list of forward functions associated with the current log likelihood
@@ -120,21 +118,21 @@ class LogLikelihood:
         the target(s) is explicitly set to be unknown(s).
         """
         return self._perturbation_funcs
-    
+
     @property
     def perturbation_weights(self) -> List[Number]:
-        """a list of perturbation weights, corresponding to each of the 
+        """a list of perturbation weights, corresponding to each of the
         :meth:`perturbation_funcs` that determines the probability of each of them
         to be chosen during each step
-        
-        The weights are not normalized and have a following default value of 1 for 
-        the data noise perturbation that perturbs all the target unknown noises 
+
+        The weights are not normalized and have a following default value of 1 for
+        the data noise perturbation that perturbs all the target unknown noises
         together.
         """
         return self._perturbation_weights
 
     def initialize(self, state: State):
-        """initialize the starting state of data noise associated with the targets in 
+        """initialize the starting state of data noise associated with the targets in
         current log likelihood that are hierarchical (i.e. having unknown data noise)
 
         Parameters
@@ -145,11 +143,11 @@ class LogLikelihood:
         if self.targets is not None:
             for target in self.targets:
                 target.initialize(state)
-    
+
     def add_targets_observer(self, inversion):
-        """add an observer (typically an instance of the high level 
+        """add an observer (typically an instance of the high level
         :class:`BayesianInversion`). When the data targets are extended with
-        new observations, the observers will be notified by being called 
+        new observations, the observers will be notified by being called
         ``update_log_likelihood_targets`` method
 
         Parameters
@@ -158,11 +156,11 @@ class LogLikelihood:
             the observer to be added to the notification list
         """
         self._perturbation_funcs_observers.append(inversion)
-    
+
     def add_targets(
-        self, 
-        targets: Union[Target, List[Target]] = None, 
-        fwd_functions: Union[Callable, List[Callable[[State], np.ndarray]]] = None
+        self,
+        targets: Union[Target, List[Target]] = None,
+        fwd_functions: Union[Callable, List[Callable[[State], np.ndarray]]] = None,
     ):
         """add new target(s) and its/their associated forward function(s)
 
@@ -176,8 +174,8 @@ class LogLikelihood:
         Raises
         ------
         TypeError
-            when the ``targets`` isn't a list of Target of a single Target instance, 
-            or when the ``fwd_functions`` isn't a list of functions or a single 
+            when the ``targets`` isn't a list of Target of a single Target instance,
+            or when the ``fwd_functions`` isn't a list of functions or a single
             function
         """
         if targets is not None:
@@ -185,17 +183,21 @@ class LogLikelihood:
                 targets = [targets]
             for target in targets:
                 if not isinstance(target, Target):
-                    raise TypeError("`targets` should either be a list of Target instances or a Target")
+                    raise TypeError(
+                        "`targets` should either be a list of Target instances or a Target"
+                    )
             self.targets.extend(targets)
-        
+
         if fwd_functions is not None:
             if not isinstance(fwd_functions, list):
                 fwd_functions = [fwd_functions]
             for func in fwd_functions:
                 if not isinstance(func, (Callable, tuple)):
-                    raise TypeError("`fwd_functions` should be a Callable/tuple or a list of Callables/tuples")
+                    raise TypeError(
+                        "`fwd_functions` should be a Callable/tuple or a list of Callables/tuples"
+                    )
             self.fwd_functions.extend(fwd_functions)
-        
+
         self._check_duplicate_target_names()
         self._init_perturbation_funcs()
         for inversion in self._perturbation_funcs_observers:
@@ -315,6 +317,8 @@ class LogLikelihood:
             else:
                 try:
                     dpred = fwd_func(state)
+                except InvalidProposalException:
+                    raise
                 except Exception as e:
                     raise ForwardException(e)
                 state.save_to_cache(_dpred_key, dpred)

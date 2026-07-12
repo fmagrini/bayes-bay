@@ -86,11 +86,16 @@ axes[1, 0].axhline(
 axes[1, 0].set_xlabel("Number of Voronoi cells")
 axes[1, 0].legend()
 
+iplot = next(
+    i
+    for i in range(len(results["my_voronoi.discretization"]) - 1, -1, -1)
+    if len(results["my_voronoi.discretization"][i]) >= 4
+)
 Voronoi2DSphere.plot_tessellation(
-    results["my_voronoi.discretization"][-1],
-    results["my_voronoi.vel"][-1],
+    results["my_voronoi.discretization"][iplot],
+    results["my_voronoi.vel"][iplot],
     ax=axes[1, 1],
-    resolution=0.5,
+    densify_deg=0.5,
 )
 axes[1, 1].set_xlim(-10, 40)
 axes[1, 1].set_ylim(25, 50)

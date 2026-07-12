@@ -1,5 +1,6 @@
 import math
 import random
+import warnings
 from bisect import bisect_left
 from numbers import Number
 from typing import Callable, List, Tuple, Union
@@ -29,6 +30,81 @@ from ..prior import Prior
 from ._discretization import Discretization
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
+_MAX_POLYGON_SAMPLING_ATTEMPTS = 1_000_000
+
+
+def _validate_polygon(polygon, argument_name="polygon"):
+    """Return a valid Polygon/MultiPolygon or raise a clear input error."""
+    if not isinstance(
+        polygon, (shapely.geometry.Polygon, shapely.geometry.MultiPolygon)
+    ):
+        try:
+            polygon = shapely.geometry.Polygon(polygon)
+        except Exception as exc:
+            raise ValueError(
+                f"`{argument_name}` should define a valid polygonal geometry"
+            ) from exc
+
+    parts = (
+        list(polygon.geoms)
+        if isinstance(polygon, shapely.geometry.MultiPolygon)
+        else [polygon]
+    )
+    bounds = np.asarray(polygon.bounds, dtype=float)
+    if (
+        polygon.is_empty
+        or not polygon.is_valid
+        or polygon.area <= 0
+        or bounds.shape != (4,)
+        or not np.isfinite(bounds).all()
+        or any(part.is_empty or not part.is_valid or part.area <= 0 for part in parts)
+    ):
+        raise ValueError(
+            f"`{argument_name}` should be non-empty, valid, finite, and have positive "
+            "area; consider repairing invalid input with `shapely.make_valid`"
+        )
+    return polygon
+
+
+def _validate_tessellation_samples(samples_cells, samples_values):
+    if len(samples_cells) != len(samples_values):
+        raise ValueError(
+            "`samples_voronoi_cells` and `samples_param_values` should have "
+            "the same number of samples"
+        )
+    for i, (cells, values) in enumerate(zip(samples_cells, samples_values)):
+        if len(cells) != len(values):
+            raise ValueError(
+                f"Voronoi cells/sites and parameter values in sample {i} should "
+                "have the same length"
+            )
+
+
+def _polygonal_only(geometry):
+    """Return only the areal components of an arbitrary Shapely geometry."""
+    if geometry.is_empty:
+        return shapely.geometry.Polygon()
+    if isinstance(geometry, shapely.geometry.Polygon):
+        return geometry
+    if isinstance(geometry, shapely.geometry.MultiPolygon):
+        polygons = [geom for geom in geometry.geoms if not geom.is_empty]
+    elif hasattr(geometry, "geoms"):
+        polygons = []
+        for geom in geometry.geoms:
+            polygonal = _polygonal_only(geom)
+            if isinstance(polygonal, shapely.geometry.Polygon):
+                if not polygonal.is_empty:
+                    polygons.append(polygonal)
+            elif isinstance(polygonal, shapely.geometry.MultiPolygon):
+                polygons.extend(g for g in polygonal.geoms if not g.is_empty)
+    else:
+        polygons = []
+    if not polygons:
+        return shapely.geometry.Polygon()
+    union = shapely.ops.unary_union(polygons)
+    if isinstance(union, (shapely.geometry.Polygon, shapely.geometry.MultiPolygon)):
+        return union
+    return _polygonal_only(union)
 
 
 def _plot(x, y, ax, swap_xy_axes=False, **kwargs):
@@ -69,7 +145,7 @@ class Voronoi(Discretization):
         ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is
 
-            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_min)
 
     parameters : List[Prior], optional
         a list of free parameters, by default None
@@ -111,11 +187,20 @@ class Voronoi(Discretization):
             raise ValueError(f"Use {subclass} for {spatial_dimensions}D tessellations")
         self.vmin = vmin
         self.vmax = vmax
+        try:
+            perturb_std_values = np.asarray(perturb_std, dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("`perturb_std` should contain finite positive values") from exc
+        if (
+            perturb_std_values.size == 0
+            or not np.isfinite(perturb_std_values).all()
+            or np.any(perturb_std_values <= 0)
+        ):
+            raise ValueError("`perturb_std` should contain finite positive values")
         msg = "The %s number of Voronoi cells, "
         if n_dimensions is not None:
             assert n_dimensions > 0, msg % "minimum" + "`n_dimensions`, should be greater than zero"
             assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
-            assert isinstance(n_dimensions, int), msg % "maximum" + "`n_dimensions`, should be an integer"
 
     def sample_site(self) -> np.ndarray:
         """draws a Voronoi-site position at random within the discretization domain"""
@@ -324,6 +409,14 @@ class Voronoi(Discretization):
             and surface wave dispersion
         .. [2] Hawkins and Sambridge 2015, Geophysical imaging using trans-dimensional
             trees
+
+        Notes
+        -----
+        Subclasses with polygonal domains draw the newborn site by rejection
+        sampling from the position prior restricted to the polygon. Redrawing is
+        valid here because the birth-position proposal is state independent and
+        exactly equals that restricted prior; unlike a move proposal centred on
+        the current site, it introduces no state-dependent normalization.
         """
         # prepare for birth perturbation
         n_cells = old_ps_state.n_dimensions
@@ -503,7 +596,7 @@ class Voronoi1D(Voronoi):
         ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is::
 
-            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_min)
 
     parameters : List[Prior], optional
         a list of free parameters, by default None
@@ -747,6 +840,7 @@ class Voronoi1D(Voronoi):
         interp_positions,
         input_type="nuclei",
     ):
+        _validate_tessellation_samples(samples_voronoi_cells, samples_param_values)
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
         for i, (sample_cells, sample_values) in enumerate(zip(samples_voronoi_cells, samples_param_values)):
             interp_params[i, :] = Voronoi1D.interpolate_tessellation(
@@ -1307,6 +1401,7 @@ class _NearestSiteInterpolation:
 
     _interp_positions = None
     _interp_coords = None
+    _interp_version = 0
 
     def set_interpolation_positions(self, positions: np.ndarray):
         """registers a fixed set of positions onto which the tessellation is
@@ -1326,6 +1421,8 @@ class _NearestSiteInterpolation:
         affects the assignments of the positions within the perturbed Voronoi
         cells), which is much faster than a nearest-neighbour query of all
         the registered positions at every Markov chain iteration.
+        Registering a new set of positions increments an internal version;
+        existing state caches are then recomputed automatically on first use.
 
         Parameters
         ----------
@@ -1338,6 +1435,21 @@ class _NearestSiteInterpolation:
         )
         self._interp_positions = positions
         self._interp_coords = self._interp_position_coords(positions)
+        self._interp_version = getattr(self, "_interp_version", 0) + 1
+
+    def _interp_cache_is_current(self, ps_state: ParameterSpaceState) -> bool:
+        return (
+            ps_state.saved_in_cache("interp_nearest")
+            and ps_state.saved_in_cache("interp_affinity")
+            and ps_state.saved_in_cache("interp_version")
+            and ps_state.load_from_cache("interp_version") == self._interp_version
+        )
+
+    def _save_interp_cache(self, ps_state, nearest, affinity):
+        ps_state.save_to_cache("interp_nearest", nearest)
+        ps_state.save_to_cache("interp_affinity", affinity)
+        ps_state.save_to_cache("interp_version", self._interp_version)
+        return ps_state
 
     def get_nearest_site_indices(self, ps_state: ParameterSpaceState) -> np.ndarray:
         r"""returns, for each of the positions registered through
@@ -1368,7 +1480,7 @@ class _NearestSiteInterpolation:
                 "`interpolation_positions` to the constructor or call "
                 "`set_interpolation_positions`"
             )
-        if not ps_state.saved_in_cache("interp_nearest"):
+        if not self._interp_cache_is_current(ps_state):
             self.initialize_interpolation(ps_state)
         return ps_state.load_from_cache("interp_nearest")
 
@@ -1433,9 +1545,7 @@ class _NearestSiteInterpolation:
         kdtree = scipy.spatial.KDTree(sites_coords)
         nearest = kdtree.query(self._interp_coords)[1].astype(np.int32)
         affinity = self._interp_affinity_pairs(self._interp_coords, sites_coords[nearest])
-        ps_state.save_to_cache("interp_nearest", nearest)
-        ps_state.save_to_cache("interp_affinity", affinity)
-        return ps_state
+        return self._save_interp_cache(ps_state, nearest, affinity)
 
     def _update_interp_move(
         self, old_ps_state: ParameterSpaceState, new_ps_state: ParameterSpaceState, isite: int
@@ -1445,7 +1555,7 @@ class _NearestSiteInterpolation:
         currently assigned to the moved site (re-assigned against all sites)
         and those with a higher affinity to the moved site than to their
         current one. The update is exact"""
-        if not old_ps_state.saved_in_cache("interp_nearest"):
+        if not self._interp_cache_is_current(old_ps_state):
             return self.initialize_interpolation(new_ps_state)
         old_nearest = old_ps_state.load_from_cache("interp_nearest")
         old_affinity = old_ps_state.load_from_cache("interp_affinity")
@@ -1463,9 +1573,7 @@ class _NearestSiteInterpolation:
             sub_nearest = sub_affinities.argmax(axis=1)
             nearest[in_cell] = sub_nearest
             affinity[in_cell] = sub_affinities[np.arange(in_cell.size), sub_nearest]
-        new_ps_state.save_to_cache("interp_nearest", nearest)
-        new_ps_state.save_to_cache("interp_affinity", affinity)
-        return new_ps_state
+        return self._save_interp_cache(new_ps_state, nearest, affinity)
 
     def _update_interp_birth(
         self, old_ps_state: ParameterSpaceState, new_ps_state: ParameterSpaceState
@@ -1474,7 +1582,7 @@ class _NearestSiteInterpolation:
         (appended at the end of the discretization): the only positions that
         change assignment are those with a higher affinity to the newborn site
         than to their current one. The update is exact"""
-        if not old_ps_state.saved_in_cache("interp_nearest"):
+        if not self._interp_cache_is_current(old_ps_state):
             return self.initialize_interpolation(new_ps_state)
         new_site_idx = new_ps_state.n_dimensions - 1
         new_site_coords = self._interp_position_coords(
@@ -1487,9 +1595,7 @@ class _NearestSiteInterpolation:
         gained = affinity_new > old_affinity
         nearest[gained] = new_site_idx
         affinity[gained] = affinity_new[gained]
-        new_ps_state.save_to_cache("interp_nearest", nearest)
-        new_ps_state.save_to_cache("interp_affinity", affinity)
-        return new_ps_state
+        return self._save_interp_cache(new_ps_state, nearest, affinity)
 
     def _update_interp_death(
         self, old_ps_state: ParameterSpaceState, new_ps_state: ParameterSpaceState
@@ -1498,7 +1604,7 @@ class _NearestSiteInterpolation:
         positions orphaned by the removed site are re-assigned against all
         remaining sites, and site indices above the removed one are shifted
         down by one. The update is exact"""
-        if not old_ps_state.saved_in_cache("interp_nearest"):
+        if not self._interp_cache_is_current(old_ps_state):
             return self.initialize_interpolation(new_ps_state)
         old_sites = old_ps_state["discretization"]
         new_sites = new_ps_state["discretization"]
@@ -1520,9 +1626,7 @@ class _NearestSiteInterpolation:
             sub_nearest = sub_affinities.argmax(axis=1)
             nearest[orphans] = sub_nearest
             affinity[orphans] = sub_affinities[np.arange(orphans.size), sub_nearest]
-        new_ps_state.save_to_cache("interp_nearest", nearest)
-        new_ps_state.save_to_cache("interp_affinity", affinity)
-        return new_ps_state
+        return self._save_interp_cache(new_ps_state, nearest, affinity)
 
 
 class Voronoi2D(_NearestSiteInterpolation, Voronoi):
@@ -1536,7 +1640,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
     vmin, vmax : Union[Number, np.ndarray]
         minimum/maximum value bounding each dimension. Ignored when
         ``polygon`` is not ``None``
-    polygon: Union[np.ndarray, shapely.geometry.Polygon], optional
+    polygon: Union[np.ndarray, shapely.geometry.Polygon, shapely.geometry.MultiPolygon], optional
         polygon defining the domain of the Voronoi tessellation; Voronoi sites
         outside this polygon are not allowed
     perturb_std : Union[Number, np.ndarray]
@@ -1557,7 +1661,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is::
 
-            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_min)
 
     parameters : List[Parameter], optional
         a list of free parameters, by default None
@@ -1588,7 +1692,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         name: str,
         vmin: Number = None,
         vmax: Number = None,
-        polygon: Union[np.ndarray, shapely.geometry.Polygon] = None,
+        polygon: Union[np.ndarray, shapely.geometry.Polygon, shapely.geometry.MultiPolygon] = None,
         perturb_std: Union[Number, np.ndarray] = 1,
         n_dimensions: int = None,
         n_dimensions_min: int = 2,
@@ -1605,10 +1709,13 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             "Either `vmin`/`vmax` or `polygon` must not be None to properly define the discretization domain."
         )
         if polygon is not None:
-            polygon = shapely.geometry.Polygon(polygon)
+            polygon = _validate_polygon(polygon)
             vmin = polygon.bounds[:2]
             vmax = polygon.bounds[2:]
         self.polygon = polygon
+        self._prepared_polygon = (
+            shapely.prepared.prep(polygon) if polygon is not None else None
+        )
         super().__init__(
             name=name,
             spatial_dimensions=2,
@@ -1641,13 +1748,40 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         return -np.einsum("ij,ij->i", deviates, deviates)
 
     def sample_site(self) -> np.ndarray:
+        """Draw a site uniformly from the rectangular or polygonal position prior.
+
+        For a polygon, rejection sampling redraws from the state-independent
+        bounding-box proposal until the site lies inside. The result is exactly
+        the uniform prior restricted to the polygon, so it is suitable as the
+        birth proposal without a Hastings correction.
+        """
         if self.polygon is not None:
-            while True:
+            for _ in range(_MAX_POLYGON_SAMPLING_ATTEMPTS):
                 new_site = super().sample_site()
-                point = shapely.geometry.Point(new_site)
-                if self.polygon.contains(point):
+                if self._prepared_polygon.contains(shapely.geometry.Point(new_site)):
                     return new_site
+            raise RuntimeError(
+                "failed to sample a site inside `polygon` after "
+                f"{_MAX_POLYGON_SAMPLING_ATTEMPTS} attempts; check that the "
+                "polygon has a reasonable area relative to its bounding box"
+            )
         return super().sample_site()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["_prepared_polygon"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if self.polygon is not None:
+            self._prepared_polygon = shapely.prepared.prep(self.polygon)
+
+    def sample_discretization(self) -> ParameterSpaceState:
+        ps_state = super().sample_discretization()
+        if self.compute_kdtree:
+            ps_state = self._add_kdtree_to_ps_state(ps_state)
+        return ps_state
 
     def _initialize(self) -> ParameterSpaceState:
         ps_state = super()._initialize()
@@ -1662,6 +1796,12 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         kdtree = scipy.spatial.KDTree(voronoi_sites)
         ps_state.save_to_cache("kdtree", kdtree)
         return ps_state
+
+    def get_kdtree(self, ps_state: ParameterSpaceState) -> scipy.spatial.KDTree:
+        """Return the state's site KD-tree, building and caching it on demand."""
+        if not ps_state.saved_in_cache("kdtree"):
+            self._add_kdtree_to_ps_state(ps_state)
+        return ps_state.load_from_cache("kdtree")
 
     def _perturb_site(self, site: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
         """perturbes a Voronoi  site
@@ -1684,7 +1824,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
         new_site = site + random_deviate
         point = shapely.geometry.Point(new_site)
-        if self.polygon.contains(point):
+        if self._prepared_polygon.contains(point):
             return new_site
         return None
 
@@ -1741,6 +1881,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
 
     @staticmethod
     def _interpolate_tessellations(samples_voronoi_sites, samples_param_values, interp_positions):
+        _validate_tessellation_samples(samples_voronoi_sites, samples_param_values)
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
         for i, (sample_sites, sample_values) in enumerate(zip(samples_voronoi_sites, samples_param_values)):
             interp_params[i, :] = Voronoi2D.interpolate_tessellation(
@@ -1961,7 +2102,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             cell = shapely.geometry.Polygon(voronoi.vertices[region])
             if not cell.is_valid:
                 cell = cell.buffer(0)
-            cell = cell.intersection(clip_polygon)
+            cell = _polygonal_only(cell.intersection(clip_polygon))
             if cell.is_empty:
                 continue
             geoms = cell.geoms if isinstance(cell, shapely.geometry.MultiPolygon) else [cell]
@@ -2069,17 +2210,15 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         name attributed to the Voronoi tessellation, for display and storing
         purposes
     perturb_std : Number
-        angular standard deviation of the perturbations applied to the
-        Voronoi sites, **expressed in degrees** like the site coordinates
-        (the conversion to radians needed internally is handled by this
-        class). Site perturbations are proposed through a von Mises--Fisher
-        distribution centered on the current site, whose concentration
-        parameter is set to :math:`\kappa = 1 / \sigma_{rad}^2`, with
-        :math:`\sigma_{rad}` denoting ``perturb_std`` after the internal
-        conversion to radians. The density of such a proposal only depends
-        on the angular distance between the current and the proposed site;
-        the proposal is therefore symmetric and needs no correction to the
-        acceptance probability
+        per-axis standard deviation of the local tangent-plane displacement,
+        **expressed in degrees** like the site coordinates (the conversion to
+        radians needed internally is handled by this class). Site perturbations
+        follow a von Mises--Fisher distribution centered on the current site,
+        with concentration :math:`\kappa = 1 / \sigma_{rad}^2`. For small
+        ``perturb_std``, the total angular displacement is approximately
+        Rayleigh distributed, with mean :math:`1.25\sigma` and standard
+        deviation :math:`0.66\sigma`. The proposal density depends only on the
+        angular distance, so it is symmetric and needs no acceptance correction
     polygon : Union[np.ndarray, shapely.geometry.Polygon, shapely.geometry.MultiPolygon], optional
         region of interest delimiting the domain of the discretization;
         Voronoi sites outside it are not allowed. The polygon is defined in
@@ -2130,6 +2269,8 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         nearest neighbours in Euclidean distance coincide with nearest
         neighbours in great-circle distance: use :meth:`lonlat_to_xyz` to
         convert longitude-latitude query points before calling ``kdtree.query``.
+        Access the tree through :meth:`get_kdtree`, which builds it lazily for
+        custom, sampled, or nested-birth states that do not yet carry the cache.
         Use this when the forward function needs distances, multiple nearest
         neighbours, or query points that vary between iterations; when it
         only interpolates the tessellation onto a fixed set of points, prefer
@@ -2151,10 +2292,11 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
         compute_kdtree: bool = False,
     ):
-        assert np.isscalar(perturb_std), (
-            "`perturb_std` should be a scalar, interpreted as the angular"
-            " standard deviation (in degrees) of the site perturbations"
-        )
+        if not np.isscalar(perturb_std):
+            raise ValueError(
+                "`perturb_std` should be a finite positive scalar, interpreted "
+                "as the per-axis tangent-plane scale (in degrees)"
+            )
         self._lon_shift = lon_shift
         self._lon_min = lon_shift - 180.0
         self._init_polygon(polygon)
@@ -2198,8 +2340,7 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         self._polygon_sampling_bounds = None
         if polygon is None:
             return
-        if not isinstance(polygon, (shapely.geometry.Polygon, shapely.geometry.MultiPolygon)):
-            polygon = shapely.geometry.Polygon(polygon)
+        polygon = _validate_polygon(polygon)
         lon_min, lat_min, lon_max, lat_max = polygon.bounds
         if lon_min < self._lon_min or lon_max > self._lon_min + 360:
             raise ValueError(
@@ -2285,19 +2426,31 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
     def sample_site(self) -> np.ndarray:
         """draws a Voronoi-site position at random from the uniform (per unit
         area) distribution on the sphere or, when :attr:`polygon` is given,
-        on the region of interest it delimits"""
+        on the region of interest it delimits
+
+        Rejection sampling within a polygon redraws from a state-independent
+        uniform-per-area bounding-box proposal. The returned draw is therefore
+        exactly distributed according to the position prior restricted to the
+        polygon and can be used for birth proposals without a Hastings
+        correction.
+        """
         if self.polygon is None:
             lon = random.uniform(self._lon_min, self._lon_min + 360.0)
             lat = math.degrees(math.asin(random.uniform(-1, 1)))
             return np.array([lon, lat])
         lon_min, lon_max, sin_lat_min, sin_lat_max = self._polygon_sampling_bounds
-        while True:
+        for _ in range(_MAX_POLYGON_SAMPLING_ATTEMPTS):
             # uniform per unit area within the polygon's bounding box; the
             # rejection step below restricts it to the polygon itself
             lon = random.uniform(lon_min, lon_max)
             lat = math.degrees(math.asin(random.uniform(sin_lat_min, sin_lat_max)))
             if self._prepared_polygon.contains(shapely.geometry.Point(lon, lat)):
                 return np.array([lon, lat])
+        raise RuntimeError(
+            "failed to sample a site inside `polygon` after "
+            f"{_MAX_POLYGON_SAMPLING_ATTEMPTS} attempts; check that the "
+            "polygon has a reasonable spherical area relative to its bounding box"
+        )
 
     def _perturb_site(self, site: np.ndarray) -> np.ndarray:
         r"""perturbes a Voronoi site through a von Mises--Fisher proposal
@@ -2324,7 +2477,10 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         kappa = 1 / sigma**2
         # cosine of the angular distance between the current and the proposed
         # site, drawn from the von Mises-Fisher distribution
-        u = random.random()
+        # random.random() may return exactly zero; using 1-u keeps the draw
+        # uniform while guaranteeing a strictly positive logarithm argument
+        # even when exp(-2*kappa) underflows for concentrated proposals.
+        u = 1.0 - random.random()
         cos_gamma = 1 + math.log(u + (1 - u) * math.exp(-2 * kappa)) / kappa
         cos_gamma = min(1.0, max(-1.0, cos_gamma))
         sin_gamma = math.sqrt(1 - cos_gamma**2)
@@ -2384,11 +2540,28 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             ps_state = self.initialize_interpolation(ps_state)
         return ps_state
 
+    def sample_discretization(self) -> ParameterSpaceState:
+        ps_state = super().sample_discretization()
+        if self.compute_kdtree:
+            ps_state = self._add_kdtree_to_ps_state(ps_state)
+        return ps_state
+
     def _add_kdtree_to_ps_state(self, ps_state: ParameterSpaceState) -> ParameterSpaceState:
         voronoi_sites = ps_state.get_param_values("discretization")
         kdtree = scipy.spatial.KDTree(self.lonlat_to_xyz(voronoi_sites))
         ps_state.save_to_cache("kdtree", kdtree)
         return ps_state
+
+    def get_kdtree(self, ps_state: ParameterSpaceState) -> scipy.spatial.KDTree:
+        """Return the state's spherical site KD-tree, caching it on demand.
+
+        Query points should first be converted with :meth:`lonlat_to_xyz`.
+        This accessor is safe for states created through every lifecycle path,
+        including :meth:`sample`, nested births, and custom starting states.
+        """
+        if not ps_state.saved_in_cache("kdtree"):
+            self._add_kdtree_to_ps_state(ps_state)
+        return ps_state.load_from_cache("kdtree")
 
     def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
         new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
@@ -2454,6 +2627,7 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
 
     @staticmethod
     def _interpolate_tessellations(samples_voronoi_sites, samples_param_values, interp_positions):
+        _validate_tessellation_samples(samples_voronoi_sites, samples_param_values)
         interp_params = np.zeros((len(samples_param_values), len(interp_positions)))
         interp_positions = np.asarray(interp_positions, dtype=float)
         if interp_positions.shape[-1] != 3:  # convert to unit vectors only once
@@ -2509,6 +2683,12 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         boundary. The geodesic edges of each cell are densified so that
         consecutive boundary points are at most ``densify_deg`` degrees apart
         """
+        if (
+            not np.isscalar(densify_deg)
+            or not np.isfinite(densify_deg)
+            or densify_deg <= 0
+        ):
+            raise ValueError("`densify_deg` should be a finite positive scalar")
         xyz = Voronoi2DSphere.lonlat_to_xyz(voronoi_sites)
         if len(xyz) < 4:
             raise ValueError(
@@ -2603,10 +2783,14 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
                 shifted = shapely.geometry.Polygon(base_ring + [offset, 0.0])
                 if not shifted.is_valid:
                     shifted = shifted.buffer(0)
-                piece = shifted.intersection(clip_target)
+                piece = _polygonal_only(shifted.intersection(clip_target))
                 if not piece.is_empty:
                     pieces.append(piece)
-            cell_polygons.append(shapely.ops.unary_union(pieces) if pieces else shapely.geometry.Polygon())
+            cell_polygons.append(
+                _polygonal_only(shapely.ops.unary_union(pieces))
+                if pieces
+                else shapely.geometry.Polygon()
+            )
         return cell_polygons, lon_bounds
 
     @staticmethod
@@ -2616,6 +2800,8 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         ax=None,
         clip_polygon=None,
         lon_bounds: Tuple[Number, Number] = None,
+        densify_deg: Number = 1.0,
+        resolution: Number = None,
         cmap="viridis",
         norm=None,
         vmin=None,
@@ -2654,6 +2840,11 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             longitude range of the map frame. By default, (-180, 180), or
             (0, 360) when the site longitudes exceed 180 degrees (see the
             argument ``lon_shift`` of this class)
+        densify_deg : Number, optional
+            maximum angular spacing, in degrees, between consecutive points
+            used to draw each geodesic cell edge. Default is 1 degree
+        resolution : Number, optional
+            deprecated alias for ``densify_deg``
         cmap : Union[str, matplotlib.colors.Colormap]
             the Colormap instance or registered colormap name used to map scalar
             data to colors
@@ -2678,6 +2869,12 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             additional keyword arguments passed to ``matplotlib.axes.Axes.fill``
             (e.g., ``transform``, ``alpha``, ``zorder``)
 
+        Notes
+        -----
+        At least four non-degenerate sites are required by
+        :class:`scipy.spatial.SphericalVoronoi`. Polygon holes are preserved by
+        the clipping geometry but are not currently rendered by ``Axes.fill``.
+
         Returns
         -------
         ax : matplotlib.axes.Axes
@@ -2685,8 +2882,18 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         cbar : Union[Colorbar, None]
             The Colorbar object associated with the tessellation
         """
+        if resolution is not None:
+            warnings.warn(
+                "`resolution` is deprecated; use `densify_deg` instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            densify_deg = resolution
         cell_polygons, lon_bounds = Voronoi2DSphere._cell_map_polygons(
-            voronoi_sites, clip_polygon=clip_polygon, lon_bounds=lon_bounds
+            voronoi_sites,
+            clip_polygon=clip_polygon,
+            lon_bounds=lon_bounds,
+            densify_deg=densify_deg,
         )
         if ax is None:
             _, ax = plt.subplots()

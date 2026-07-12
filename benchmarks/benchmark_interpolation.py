@@ -32,20 +32,29 @@ def random_lonlat(n):
     )
 
 
-print(f"{'class':>16} {'n sites':>8} {'m grid':>8} {'kdtree pattern':>16} {'incremental':>13} {'speedup':>8}")
+print(
+    f"{'class':>16} {'n sites':>8} {'m grid':>8} {'kdtree pattern':>16} {'incremental':>13} {'speedup':>8}"
+)
 for n in (100, 1500):
     for m in (10_000, 100_000):
         for sphere in (False, True):
             if sphere:
                 grid = random_lonlat(m)
                 voronoi = Voronoi2DSphere(
-                    name="v", perturb_std=5, n_dimensions=n, interpolation_positions=grid
+                    name="v",
+                    perturb_std=5,
+                    n_dimensions=n,
+                    interpolation_positions=grid,
                 )
             else:
                 grid = np.random.uniform(0, 10, (m, 2))
                 voronoi = Voronoi2D(
-                    name="v", vmin=[0, 0], vmax=[10, 10], perturb_std=0.3,
-                    n_dimensions=n, interpolation_positions=grid,
+                    name="v",
+                    vmin=[0, 0],
+                    vmax=[10, 10],
+                    perturb_std=0.3,
+                    n_dimensions=n,
+                    interpolation_positions=grid,
                 )
             ps_state = voronoi._initialize()
             grid_coords = voronoi._interp_coords

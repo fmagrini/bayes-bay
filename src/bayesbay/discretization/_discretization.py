@@ -41,7 +41,7 @@ class Discretization(Prior, ParameterSpace):
 
         .. code-block:: python
 
-            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_max)
+            int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_min)
 
     parameters : List[Prior], optional
         a list of free parameters, by default None

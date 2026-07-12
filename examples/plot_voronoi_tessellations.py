@@ -24,7 +24,9 @@ def random_sites_on_sphere(n):
 # correctly.
 # ----------------------------------------------------------------------------
 sites = random_sites_on_sphere(80)
-values = 3 + 0.3 * np.sin(np.radians(3 * sites[:, 0])) * np.sin(np.radians(2 * sites[:, 1]))
+values = 3 + 0.3 * np.sin(np.radians(3 * sites[:, 0])) * np.sin(
+    np.radians(2 * sites[:, 1])
+)
 
 fig, ax = plt.subplots(figsize=(11, 5.5))
 Voronoi2DSphere.plot_tessellation(sites, values, ax=ax, cmap=scm.roma)
@@ -58,7 +60,9 @@ polygon = shapely.geometry.Polygon(
 med_sites = []
 while len(med_sites) < 60:  # sites uniform per unit area within the polygon
     lon = rng.uniform(-10, 40)
-    lat = np.degrees(np.arcsin(rng.uniform(np.sin(np.radians(30)), np.sin(np.radians(47)))))
+    lat = np.degrees(
+        np.arcsin(rng.uniform(np.sin(np.radians(30)), np.sin(np.radians(47))))
+    )
     if polygon.contains(shapely.geometry.Point(lon, lat)):
         med_sites.append([lon, lat])
 med_sites = np.array(med_sites)

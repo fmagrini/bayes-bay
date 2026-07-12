@@ -72,9 +72,14 @@ fig.tight_layout()
 fig.savefig("23_prior_voronoi_2d_sphere")
 
 # display one of the sampled tessellations
+iplot = next(
+    i
+    for i in range(len(results["my_voronoi.discretization"]) - 1, -1, -1)
+    if len(results["my_voronoi.discretization"][i]) >= 4
+)
 ax, cbar = Voronoi2DSphere.plot_tessellation(
-    results["my_voronoi.discretization"][-1],
-    results["my_voronoi.vel"][-1],
-    resolution=1,
+    results["my_voronoi.discretization"][iplot],
+    results["my_voronoi.vel"][iplot],
+    densify_deg=1,
 )
 ax.figure.savefig("23_prior_voronoi_2d_sphere_tessellation")
