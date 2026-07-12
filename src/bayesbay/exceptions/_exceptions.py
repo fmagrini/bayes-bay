@@ -42,16 +42,23 @@ class UserFunctionException(Exception):
         return self.message
 
 
-class OutOfDomainException(Exception):
+class OutOfDomainException(UserFunctionException):
     """Exception raised when a position-dependent prior is evaluated at a position
-    outside of the specified domain"""
+    outside of the specified domain
+
+    This is a subclass of ``UserFunctionException``: the Markov chains treat an
+    out-of-domain evaluation as a rejected proposal (counted in the chain
+    statistics under ``exceptions``) rather than interrupting the sampling.
+    """
 
     def __init__(self, variable_name, x):
         self.variable_name = variable_name
         self.x = x
-        
-    def __str__(self):
-        return (
-            f"the position-dependent prior '{self.variable_name}' was evaluated at "
-            f"a position ({self.x}) outside of the domain specific earlier"
+        self.message = (
+            f"the position-dependent prior '{variable_name}' was evaluated at "
+            f"a position ({x}) outside of the domain specified earlier"
         )
+        Exception.__init__(self, self.message)
+
+    def __str__(self):
+        return self.message

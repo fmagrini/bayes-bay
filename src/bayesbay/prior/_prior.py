@@ -34,6 +34,20 @@ class Prior(ABC):
             self.position = np.array(kwargs["position"], dtype=float)
         else:
             self.position = None
+        # the metric of the position space is part of the definition of a
+        # position-dependent prior: it determines how the hyper parameters
+        # are interpolated between the control points
+        self.spherical_position = bool(kwargs.pop("spherical_position", False))
+        if self.spherical_position:
+            assert (
+                self.position is not None
+                and self.position.ndim == 2
+                and self.position.shape[1] == 2
+            ), (
+                "`position` should be an array of (longitude, latitude) pairs, "
+                "in degrees, when `spherical_position` is True"
+            )
+            kwargs["spherical_position"] = True
         assert "perturb_std" in kwargs
         self._repr_args = kwargs
 
@@ -284,9 +298,11 @@ class Prior(ABC):
             )
 
     def _init_hyper_param(self, hyper_param: Union[Number, np.ndarray]):
-        # to be called after self.position is assigned
+        # to be called after self.position and self.spherical_position are assigned
         if np.isscalar(hyper_param):
             return hyper_param
+        elif getattr(self, "spherical_position", False):
+            return _interpolate_sphere_idw(self.position, hyper_param)
         elif np.ndim(self.position) == 1:
             return partial(interpolate_linear_1d, x=self.position, y=hyper_param)
         else:
@@ -320,6 +336,14 @@ class UniformPrior(Prior):
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
         probability distribution. None by default
+    spherical_position : bool, optional
+        whether ``position`` should be interpreted as an array of
+        longitude-latitude pairs, in degrees, on a sphere, in which case all
+        position-dependent hyper parameters are interpolated in terms of
+        great-circle distances, seamlessly across the +/-180 meridian and
+        near the poles (see
+        :class:`bayesbay.discretization.Voronoi2DSphere`). False by default,
+        i.e. planar interpolation
     """
 
     def __init__(
@@ -330,10 +354,12 @@ class UniformPrior(Prior):
         perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None,
+        spherical_position: bool = False,
     ):
         super().__init__(
             name=name,
             position=position,
+            spherical_position=spherical_position,
             vmin=vmin,
             vmax=vmax,
             perturb_std=perturb_std,
@@ -505,6 +531,14 @@ class GaussianPrior(Prior):
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
         probability distribution. None by default
+    spherical_position : bool, optional
+        whether ``position`` should be interpreted as an array of
+        longitude-latitude pairs, in degrees, on a sphere, in which case all
+        position-dependent hyper parameters are interpolated in terms of
+        great-circle distances, seamlessly across the +/-180 meridian and
+        near the poles (see
+        :class:`bayesbay.discretization.Voronoi2DSphere`). False by default,
+        i.e. planar interpolation
     """
 
     def __init__(
@@ -515,10 +549,12 @@ class GaussianPrior(Prior):
         perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None,
+        spherical_position: bool = False,
     ):
         super().__init__(
             name=name,
             position=position,
+            spherical_position=spherical_position,
             mean=mean,
             std=std,
             perturb_std=perturb_std,
@@ -707,6 +743,14 @@ class LaplacePrior(Prior):
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
         probability distribution. None by default
+    spherical_position : bool, optional
+        whether ``position`` should be interpreted as an array of
+        longitude-latitude pairs, in degrees, on a sphere, in which case all
+        position-dependent hyper parameters are interpolated in terms of
+        great-circle distances, seamlessly across the +/-180 meridian and
+        near the poles (see
+        :class:`bayesbay.discretization.Voronoi2DSphere`). False by default,
+        i.e. planar interpolation
     """
 
     def __init__(
@@ -717,10 +761,12 @@ class LaplacePrior(Prior):
         perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None,
+        spherical_position: bool = False,
     ):
         super().__init__(
             name=name,
             position=position,
+            spherical_position=spherical_position,
             mean=mean,
             scale=scale,
             perturb_std=perturb_std,
@@ -899,6 +945,14 @@ class CustomPrior(Prior):
     position : np.ndarray, optional
         position in the discretization domain, used to define a position-dependent
         probability distribution. None by default
+    spherical_position : bool, optional
+        whether ``position`` should be interpreted as an array of
+        longitude-latitude pairs, in degrees, on a sphere, in which case all
+        position-dependent hyper parameters are interpolated in terms of
+        great-circle distances, seamlessly across the +/-180 meridian and
+        near the poles (see
+        :class:`bayesbay.discretization.Voronoi2DSphere`). False by default,
+        i.e. planar interpolation
     """
 
     def __init__(
@@ -909,6 +963,7 @@ class CustomPrior(Prior):
         perturb_std: Union[Number, np.ndarray],
         perturb_std_birth: Union[Number, np.ndarray] = None,
         position: np.ndarray = None,
+        spherical_position: bool = False,
     ):
         super().__init__(
             name=name,
@@ -916,6 +971,7 @@ class CustomPrior(Prior):
             sample=sample,
             perturb_std=perturb_std,
             position=position,
+            spherical_position=spherical_position,
         )
         self.add_hyper_params(
             {
@@ -1020,5 +1076,45 @@ def _interpolate_linear_nd(variable_name, interpolator):
         if np.isnan(y_interp):
             raise OutOfDomainException(variable_name, x)
         return y_interp.item()
+
+    return func
+
+
+def _lonlat_to_xyz(lonlat):
+    # kept in sync with bayesbay.discretization.Voronoi2DSphere.lonlat_to_xyz;
+    # duplicated here to avoid a circular import with the discretization module
+    lonlat = np.asarray(lonlat, dtype=float)
+    lon = np.radians(lonlat[..., 0])
+    lat = np.radians(lonlat[..., 1])
+    coslat = np.cos(lat)
+    return np.stack((coslat * np.cos(lon), coslat * np.sin(lon), np.sin(lat)), axis=-1)
+
+
+def _interpolate_sphere_idw(positions, values, k=4):
+    """returns an interpolator of the given control values that averages the
+    ``k`` nearest control points, weighted by inverse great-circle distance
+
+    Parameters
+    ----------
+    positions : (n, 2) np.ndarray
+        control points, i.e. longitude-latitude pairs in degrees
+    values : (n,) np.ndarray
+        control values
+    k : int
+        number of nearest control points used in the weighted average
+    """
+    values = np.asarray(values, dtype=float)
+    kdtree = scipy.spatial.KDTree(_lonlat_to_xyz(positions))
+    k = int(min(k, len(values)))
+
+    def func(position):
+        chord, inearest = kdtree.query(_lonlat_to_xyz(position), k=k)
+        chord = np.atleast_1d(chord)
+        inearest = np.atleast_1d(inearest)
+        if chord[0] < 1e-9:  # exact hit on a control point
+            return values[inearest[0]].item()
+        gc_distance = 2 * np.arcsin(np.clip(chord / 2, 0.0, 1.0))
+        weights = 1.0 / gc_distance
+        return (np.sum(weights * values[inearest]) / np.sum(weights)).item()
 
     return func

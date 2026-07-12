@@ -32,3 +32,7 @@ Examples in this documentation using :class:`Voronoi1D <bayesbay.discretization.
 Examples using :class:`Voronoi2D <bayesbay.discretization.Voronoi2D>` include:
 
 * :doc:`Surface-Wave Tomography <../tutorials/31_sw_tomography>`
+
+Examples using :class:`Voronoi2DSphere <bayesbay.discretization.Voronoi2DSphere>` include:
+
+* :doc:`Surface-Wave Tomography on the Sphere <../tutorials/32_sw_tomography_sphere>`

@@ -18,8 +18,9 @@ This tutorial comprises:
    :maxdepth: 1
 
    31_sw_tomography
-   
-   
+   32_sw_tomography_sphere
+
+
 
 .. rubric:: References
 .. [1] Cervený 2001, Seismic Ray Theory, `Cambridge University Press`
