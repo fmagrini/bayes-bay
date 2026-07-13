@@ -6,7 +6,7 @@
 - Added ``Voronoi2DSphere`` for trans-dimensional tessellations on the sphere,
   with great-circle nearest-site geometry, uniform-per-area site sampling,
   isotropic spherical perturbations, polygon and ``MultiPolygon`` domains,
-  configurable longitude seams, and exact spherical-cell plotting.
+  configurable longitude seams, and 2-D map and 3-D sphere plotting.
 - Added exact incremental nearest-site interpolation for fixed query positions
   to ``Voronoi2D`` and ``Voronoi2DSphere``, avoiding a full-grid nearest-neighbour
   query on every Markov-chain iteration.
@@ -23,8 +23,8 @@
   custom priors in multidimensional and spherical domains.
 - Hardened Voronoi polygon validation and sampling, completed KD-tree/cache
   lifecycle handling, and validated tessellation-ensemble input lengths.
-- Fixed spherical plotting of ``GeometryCollection`` seam results and retained
-  ``resolution`` as a deprecated alias for ``densify_deg``.
+- Fixed spherical plotting of ``GeometryCollection`` seam results and added a
+  user-controlled surface-mesh spacing for three-dimensional rendering.
 
 ## v0.3.12 (10/07/2026)
 - Bug fix: Voronoi-site perturbations in `Voronoi`, `Voronoi1D`, and `Voronoi2D` now reject proposals falling outside the discretization domain rather than redrawing them until valid. The redraw scheme made the effective proposal a truncated Gaussian whose normalization depends on the current site position, breaking detailed balance and biasing the sampled site positions within a few `perturb_std` of the domain boundaries (or of the polygon edges in `Voronoi2D`)

@@ -1,6 +1,5 @@
 import math
 import random
-import warnings
 from bisect import bisect_left
 from numbers import Number
 from typing import Callable, List, Tuple, Union
@@ -31,6 +30,7 @@ from ._discretization import Discretization
 
 SQRT_TWO_PI = math.sqrt(2 * math.pi)
 _MAX_POLYGON_SAMPLING_ATTEMPTS = 1_000_000
+_SPHERICAL_BOUNDARY_SPACING_DEG = 1.0
 
 
 def _validate_polygon(polygon, argument_name="polygon"):
@@ -1983,6 +1983,14 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         -------
         ax : matplotlib.axes.Axes
             The Axes object containing the 2D histogram
+
+        Notes
+        -----
+        ``Voronoi2D`` cell edges are straight segments in Cartesian
+        coordinates, so they are drawn exactly and require no boundary-spacing
+        setting. Spherical Voronoi edges are curved and therefore the plotting
+        methods of :class:`Voronoi2DSphere` sample those curves internally at
+        a fixed angular spacing suitable for plotting.
         """
         voronoi_plot_2d_kwargs = voronoi_plot_2d_kwargs if voronoi_plot_2d_kwargs is not None else {}
         interfaces_style = {
@@ -2677,18 +2685,12 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         return statistics
 
     @staticmethod
-    def _cell_boundaries_xyz(voronoi_sites: np.ndarray, densify_deg: Number = 1.0) -> list:
+    def _cell_boundaries_xyz(voronoi_sites: np.ndarray) -> list:
         """computes, for each Voronoi site, the closed boundary of its cell on
         the unit sphere, as an array of unit vectors ordered along the
-        boundary. The geodesic edges of each cell are densified so that
-        consecutive boundary points are at most ``densify_deg`` degrees apart
+        boundary. Geodesic edges are sampled internally at a fixed angular
+        spacing suitable for plotting.
         """
-        if (
-            not np.isscalar(densify_deg)
-            or not np.isfinite(densify_deg)
-            or densify_deg <= 0
-        ):
-            raise ValueError("`densify_deg` should be a finite positive scalar")
         xyz = Voronoi2DSphere.lonlat_to_xyz(voronoi_sites)
         if len(xyz) < 4:
             raise ValueError(
@@ -2704,7 +2706,14 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
                 start = verts[ivert]
                 end = verts[(ivert + 1) % len(verts)]
                 angle = math.acos(min(1.0, max(-1.0, float(start @ end))))
-                n_samples = max(1, int(math.ceil(math.degrees(angle) / densify_deg)))
+                n_samples = max(
+                    1,
+                    int(
+                        math.ceil(
+                            math.degrees(angle) / _SPHERICAL_BOUNDARY_SPACING_DEG
+                        )
+                    ),
+                )
                 fractions = np.linspace(0, 1, n_samples, endpoint=False)[:, None]
                 if angle < 1e-12:
                     segments.append(start[None, :])
@@ -2723,7 +2732,6 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         voronoi_sites: np.ndarray,
         clip_polygon=None,
         lon_bounds: Tuple[Number, Number] = None,
-        densify_deg: Number = 1.0,
     ) -> Tuple[list, Tuple[Number, Number]]:
         """projects the spherical Voronoi cells onto the longitude-latitude
         plane, returning one shapely (Multi)Polygon per Voronoi site (empty
@@ -2747,7 +2755,7 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         else:
             clip_target = shapely.geometry.Polygon(clip_polygon)
 
-        boundaries = Voronoi2DSphere._cell_boundaries_xyz(voronoi_sites, densify_deg)
+        boundaries = Voronoi2DSphere._cell_boundaries_xyz(voronoi_sites)
         sites_xyz = Voronoi2DSphere.lonlat_to_xyz(voronoi_sites)
         # the north (south) pole belongs to the cell of the site closest to it
         i_north = int(np.argmax(sites_xyz[:, 2]))
@@ -2800,8 +2808,6 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         ax=None,
         clip_polygon=None,
         lon_bounds: Tuple[Number, Number] = None,
-        densify_deg: Number = 1.0,
-        resolution: Number = None,
         cmap="viridis",
         norm=None,
         vmin=None,
@@ -2840,11 +2846,6 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             longitude range of the map frame. By default, (-180, 180), or
             (0, 360) when the site longitudes exceed 180 degrees (see the
             argument ``lon_shift`` of this class)
-        densify_deg : Number, optional
-            maximum angular spacing, in degrees, between consecutive points
-            used to draw each geodesic cell edge. Default is 1 degree
-        resolution : Number, optional
-            deprecated alias for ``densify_deg``
         cmap : Union[str, matplotlib.colors.Colormap]
             the Colormap instance or registered colormap name used to map scalar
             data to colors
@@ -2874,6 +2875,10 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         At least four non-degenerate sites are required by
         :class:`scipy.spatial.SphericalVoronoi`. Polygon holes are preserved by
         the clipping geometry but are not currently rendered by ``Axes.fill``.
+        Unlike the straight Cartesian edges of :class:`Voronoi2D`, spherical
+        edges must be sampled for display. This is handled internally with a
+        fixed one-degree maximum angular spacing and does not affect the
+        tessellation geometry.
 
         Returns
         -------
@@ -2882,18 +2887,10 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         cbar : Union[Colorbar, None]
             The Colorbar object associated with the tessellation
         """
-        if resolution is not None:
-            warnings.warn(
-                "`resolution` is deprecated; use `densify_deg` instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            densify_deg = resolution
         cell_polygons, lon_bounds = Voronoi2DSphere._cell_map_polygons(
             voronoi_sites,
             clip_polygon=clip_polygon,
             lon_bounds=lon_bounds,
-            densify_deg=densify_deg,
         )
         if ax is None:
             _, ax = plt.subplots()
@@ -2957,4 +2954,182 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             else:
                 ax.set_xlim(*lon_bounds)
                 ax.set_ylim(-90, 90)
+        return ax, cbar
+
+    @staticmethod
+    def plot_tessellation_3d(
+        voronoi_sites: np.ndarray,
+        param_values: np.ndarray = None,
+        ax=None,
+        surface_spacing_deg: Number = 2.0,
+        cmap="viridis",
+        norm=None,
+        vmin=None,
+        vmax=None,
+        colorbar=True,
+        edgecolor="k",
+        linewidth=0.5,
+        alpha=1.0,
+        voronoi_sites_kwargs=None,
+        **kwargs,
+    ):
+        """Display a global Voronoi tessellation on a three-dimensional sphere.
+
+        Cell boundaries are the exact geodesic boundaries computed through
+        :class:`scipy.spatial.SphericalVoronoi` and sampled internally for
+        display. When ``param_values`` are supplied, cell colours are rendered
+        on a regular spherical surface mesh; decrease ``surface_spacing_deg``
+        for a finer representation of the colour transitions.
+
+        This method uses Matplotlib's built-in 3-D toolkit and introduces no
+        dependency beyond those already required by BayesBay.
+
+        Parameters
+        ----------
+        voronoi_sites : np.ndarray of shape (m, 2)
+            Voronoi-site longitude-latitude pairs in degrees. At least four
+            non-degenerate sites are required.
+        param_values : np.ndarray of shape (m,), optional
+            Parameter value associated with each cell. If omitted, only the
+            cell boundaries are drawn.
+        ax : matplotlib.axes.Axes, optional
+            Matplotlib 3-D axes. A new one is created when omitted.
+        surface_spacing_deg : Number, optional
+            Approximate angular spacing of the coloured surface mesh. Smaller
+            values reduce pixelation along colour transitions but increase the
+            number of surface patches approximately with the inverse square of
+            the spacing. Default is 2 degrees.
+        cmap, norm, vmin, vmax
+            Matplotlib colour-mapping arguments.
+        colorbar : bool, optional
+            Whether to add a colourbar when ``param_values`` are supplied.
+        edgecolor : color, optional
+            Cell-boundary colour.
+        linewidth : Number, optional
+            Cell-boundary line width.
+        alpha : Number, optional
+            Opacity of the coloured sphere surface.
+        voronoi_sites_kwargs : dict, optional
+            Styling passed to :meth:`matplotlib.axes.Axes.scatter` when
+            drawing the Voronoi sites. Sites are hidden by default.
+        **kwargs
+            Additional arguments passed to
+            :meth:`matplotlib.axes.Axes.plot_surface`.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The three-dimensional axes containing the plot.
+        cbar : Union[Colorbar, None]
+            The colourbar, or ``None`` when it was not requested.
+        """
+        voronoi_sites = np.asarray(voronoi_sites, dtype=float)
+        if voronoi_sites.ndim != 2 or voronoi_sites.shape[1] != 2:
+            raise ValueError("`voronoi_sites` should have shape (m, 2)")
+        if (
+            not np.isscalar(surface_spacing_deg)
+            or not np.isfinite(surface_spacing_deg)
+            or surface_spacing_deg <= 0
+        ):
+            raise ValueError(
+                "`surface_spacing_deg` should be a finite positive scalar"
+            )
+
+        boundaries = Voronoi2DSphere._cell_boundaries_xyz(voronoi_sites)
+        sites_xyz = Voronoi2DSphere.lonlat_to_xyz(voronoi_sites)
+
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.add_subplot(projection="3d")
+        elif not hasattr(ax, "plot_surface"):
+            raise ValueError("`ax` should be a Matplotlib 3-D axes")
+
+        cbar = None
+        if param_values is not None:
+            param_values = np.asarray(param_values)
+            if param_values.ndim != 1 or len(param_values) != len(voronoi_sites):
+                raise ValueError(
+                    "`param_values` should contain one value per Voronoi site"
+                )
+            vmin = vmin if vmin is not None else param_values.min()
+            vmax = vmax if vmax is not None else param_values.max()
+            norm = norm if norm is not None else plt.Normalize(vmin=vmin, vmax=vmax)
+            cmap = (
+                cmap if isinstance(cmap, mpl.colors.Colormap) else mpl.colormaps[cmap]
+            )
+
+            n_lon = max(4, int(math.ceil(360 / surface_spacing_deg)) + 1)
+            n_lat = max(3, int(math.ceil(180 / surface_spacing_deg)) + 1)
+            lon = np.linspace(-180, 180, n_lon)
+            lat = np.linspace(-90, 90, n_lat)
+            lon_grid, lat_grid = np.meshgrid(lon, lat)
+            surface_xyz = Voronoi2DSphere.lonlat_to_xyz(
+                np.stack((lon_grid, lat_grid), axis=-1)
+            )
+            nearest = scipy.spatial.KDTree(sites_xyz).query(
+                surface_xyz.reshape(-1, 3)
+            )[1].reshape(surface_xyz.shape[:2])
+            facecolors = cmap(norm(param_values[nearest]))
+            # Mark surface-mesh patches crossed by a cell interface. This
+            # keeps boundaries visible under Matplotlib's 3-D depth sorting;
+            # the geodesic curves plotted below provide the exact location.
+            interfaces = (
+                (nearest[:-1, :-1] != nearest[1:, :-1])
+                | (nearest[:-1, :-1] != nearest[:-1, 1:])
+            )
+            facecolors[:-1, :-1][interfaces] = mpl.colors.to_rgba(edgecolor)
+            surface_style = {
+                "rstride": 1,
+                "cstride": 1,
+                "linewidth": 0,
+                "antialiased": False,
+                "shade": False,
+            }
+            surface_style.update(kwargs)
+            ax.plot_surface(
+                surface_xyz[..., 0],
+                surface_xyz[..., 1],
+                surface_xyz[..., 2],
+                facecolors=facecolors,
+                alpha=alpha,
+                **surface_style,
+            )
+            if colorbar:
+                cbar = plt.colorbar(
+                    mpl.cm.ScalarMappable(cmap=cmap, norm=norm),
+                    ax=ax,
+                    aspect=35,
+                    pad=0.02,
+                    shrink=0.7,
+                )
+                cbar.set_label("Parameter Values")
+
+        # Move boundaries and sites very slightly above the surface to avoid
+        # z-fighting with the coloured mesh.
+        plot_radius = 1.01
+        for boundary in boundaries:
+            boundary = boundary * plot_radius
+            closed = np.vstack((boundary, boundary[0]))
+            ax.plot(
+                closed[:, 0],
+                closed[:, 1],
+                closed[:, 2],
+                color=edgecolor,
+                linewidth=linewidth,
+            )
+
+        if voronoi_sites_kwargs is not None:
+            sites_style = {"color": "k", "s": 10}
+            sites_style.update(voronoi_sites_kwargs)
+            points = sites_xyz * (plot_radius + 0.002)
+            ax.scatter(points[:, 0], points[:, 1], points[:, 2], **sites_style)
+
+        limit = 1.05
+        ax.set_xlim(-limit, limit)
+        ax.set_ylim(-limit, limit)
+        ax.set_zlim(-limit, limit)
+        ax.set_box_aspect((1, 1, 1))
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
         return ax, cbar

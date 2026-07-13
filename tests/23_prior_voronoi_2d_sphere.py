@@ -80,6 +80,5 @@ iplot = next(
 ax, cbar = Voronoi2DSphere.plot_tessellation(
     results["my_voronoi.discretization"][iplot],
     results["my_voronoi.vel"][iplot],
-    densify_deg=1,
 )
 ax.figure.savefig("23_prior_voronoi_2d_sphere_tessellation")

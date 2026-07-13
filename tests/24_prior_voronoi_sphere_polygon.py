@@ -95,7 +95,6 @@ Voronoi2DSphere.plot_tessellation(
     results["my_voronoi.discretization"][iplot],
     results["my_voronoi.vel"][iplot],
     ax=axes[1, 1],
-    densify_deg=0.5,
 )
 axes[1, 1].set_xlim(-10, 40)
 axes[1, 1].set_ylim(25, 50)

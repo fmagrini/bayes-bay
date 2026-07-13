@@ -445,8 +445,6 @@ def test_plot_tessellation_sphere():
     cells, lon_bounds = Voronoi2DSphere._cell_map_polygons(sites_shifted)
     assert lon_bounds == (0.0, 360.0)
     ax, cbar = Voronoi2DSphere.plot_tessellation(sites_shifted, values)
-    with pytest.warns(DeprecationWarning, match="densify_deg"):
-        ax, cbar = Voronoi2DSphere.plot_tessellation(sites, values, resolution=2)
     plt.close("all")
 
 
@@ -472,6 +470,44 @@ def test_spherical_plot_documents_minimum_site_count():
         Voronoi2DSphere.plot_tessellation(
             np.array([[0.0, 0.0], [120.0, 0.0], [-120.0, 0.0]])
         )
+
+
+def test_plot_tessellation_sphere_3d():
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    rng = np.random.default_rng(14)
+    sites = _random_lonlat(20, rng)
+    values = rng.uniform(2, 4, len(sites))
+
+    ax, cbar = Voronoi2DSphere.plot_tessellation_3d(
+        sites,
+        values,
+        surface_spacing_deg=20,
+        voronoi_sites_kwargs={"s": 4},
+    )
+    assert ax.name == "3d"
+    assert cbar is not None
+    assert len(ax.lines) == len(sites)
+    assert ax.collections
+    ax.figure.canvas.draw()
+
+    fig = plt.figure()
+    supplied_ax = fig.add_subplot(projection="3d")
+    returned_ax, cbar = Voronoi2DSphere.plot_tessellation_3d(sites, ax=supplied_ax)
+    assert returned_ax is supplied_ax
+    assert cbar is None
+
+    with pytest.raises(ValueError, match="one value per Voronoi site"):
+        Voronoi2DSphere.plot_tessellation_3d(sites, values[:-1])
+    with pytest.raises(ValueError, match="surface_spacing_deg"):
+        Voronoi2DSphere.plot_tessellation_3d(sites, surface_spacing_deg=0)
+    with pytest.raises(ValueError, match="3-D axes"):
+        _, planar_ax = plt.subplots()
+        Voronoi2DSphere.plot_tessellation_3d(sites, ax=planar_ax)
+    plt.close("all")
 
 
 def test_plot_tessellation_voronoi2d_clip():
