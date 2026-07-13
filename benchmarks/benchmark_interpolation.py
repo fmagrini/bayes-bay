@@ -1,15 +1,14 @@
 """Benchmark: per-iteration cost of interpolating the Voronoi tessellation
 onto a fixed grid, comparing
 
-1. the `compute_kdtree` pattern (tutorial 31): rebuild the kd-tree at every
-   discretization change and query the full grid in the forward function at
-   every iteration;
+1. the `compute_kdtree` pattern: rebuild the kd-tree at every discretization
+   change and query the full grid in the forward function at every iteration;
 2. the incremental interpolation cache (`interpolation_positions`, available
    in both Voronoi2D and Voronoi2DSphere): assignments updated only where a
    perturbation can change them; the forward reads them with an array lookup.
 
-Both approaches are exact; the incremental one is expected to be >= 40x
-faster on the worst perturbation type (site move) at typical problem sizes."""
+Both approaches are exact; the speedup from incremental interpolation depends
+on the number of sites, grid size, and hardware."""
 
 import random
 import timeit
