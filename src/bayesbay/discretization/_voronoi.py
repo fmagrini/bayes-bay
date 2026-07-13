@@ -1763,7 +1763,7 @@ class _NearestSiteCacheMixin:
 
 
 class Voronoi2D(_NearestSiteCacheMixin, Voronoi):
-    r"""Utility class for Voronoi tessellation in 2D
+    r"""Utility class for Voronoi tessellation in two-dimensional Cartesian space
 
     Parameters
     ----------
@@ -2270,13 +2270,17 @@ class Voronoi2D(_NearestSiteCacheMixin, Voronoi):
 class Voronoi2DSphere(_NearestSiteCacheMixin, Voronoi):
     r"""Utility class for Voronoi tessellation on the surface of a sphere
 
-    The Voronoi sites are stored as longitude-latitude pairs, in degrees, with
-    longitudes in the range [``lon_shift`` - 180, ``lon_shift`` + 180) (i.e.,
-    [-180, 180) by default) and latitudes in the range [-90, 90]. The
-    tessellation is defined in terms of great-circle distances: each point
+    The Voronoi sites are specified as ``(longitude, latitude)`` pairs, in
+    degrees. Valid latitudes lie within [-90, 90], while longitude is periodic,
+    so values that differ by 360 degrees represent the same meridian. Sites are
+    stored with longitudes in the range [``lon_shift`` - 180, ``lon_shift`` +
+    180), i.e. [-180, 180) by default. Changing ``lon_shift`` moves the map seam
+    without changing the spherical geometry.
+
+    The tessellation is defined in terms of great-circle distances: each point
     on the sphere belongs to the Voronoi cell whose site is nearest in angular
-    distance. The prior probability of a site position is uniform per unit
-    area on the sphere, or on the region of interest when ``polygon`` is given.
+    distance. The prior probability of a site position is uniform per unit area
+    on the sphere, or on the region of interest when ``polygon`` is given.
 
     A fixed set of positions onto which the tessellation is repeatedly
     interpolated (e.g., the spatial grid used by the forward function) can be
@@ -2293,6 +2297,29 @@ class Voronoi2DSphere(_NearestSiteCacheMixin, Voronoi):
             voronoi_state = state["voronoi"]
             interp_vel = voronoi.get_interpolated_values(voronoi_state, "vel")
             ...
+
+    The :meth:`plot_tessellation` and :meth:`plot_tessellation_3d` methods
+    render the curved great-circle cell boundaries by sampling them internally
+    with a fixed one-degree maximum angular spacing. This is sufficiently fine
+    for normal and publication-scale figures and does not change the
+    tessellation itself. By comparison, the straight Cartesian cell boundaries
+    of :class:`Voronoi2D` are drawn exactly and need no plotting-resolution or
+    boundary-spacing argument.
+
+    :meth:`plot_tessellation_3d` accepts any finite site longitude because
+    three-dimensional geometry has no map seam. Its ``center_lonlat`` argument
+    sets the initial camera direction in ``(longitude, latitude)`` order. The
+    camera longitude is normalized to [-180, 180); for example, 190 degrees is
+    treated as -170 degrees. ``center_lonlat=(12.5, 42.5)`` centres the initial
+    view on Italy.
+
+    The ``surface_spacing_deg`` argument controls the angular spacing of the
+    coloured sphere mesh. Smaller values make colour transitions less
+    pixelated, but the number of mesh patches grows approximately with the
+    inverse square of the spacing; halving ``surface_spacing_deg`` creates
+    roughly four times as many patches. By contrast, Cartopy's ``resolution``
+    selects the detail level of a geographic dataset, such as Natural Earth
+    coastlines, and does not control the Voronoi boundaries or coloured mesh.
 
     .. note::
         Position-dependent priors (see, e.g., the argument ``position`` of
