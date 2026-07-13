@@ -48,3 +48,20 @@ Local setup
           cd docs
           make html
      fi
+
+Voronoi cache validation
+------------------------
+
+Changes to the planar or spherical Voronoi cache lifecycle can be checked with the
+standalone numerical validator:
+
+.. code-block:: console
+
+   $ python benchmarks/validate_voronoi_cache_equivalence.py
+
+The script runs seeded move, birth, and death sequences for ``Voronoi2D`` and
+``Voronoi2DSphere``. It checks every incremental interpolation cache and KD-tree
+against a full nearest-site calculation. To compare implementations, run the same
+command before and after a change and compare the reported SHA-256 fingerprints.
+The number of proposals and interpolation positions can be increased with
+``--n-proposals`` and ``--n-positions``.

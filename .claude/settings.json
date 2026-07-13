@@ -77,7 +77,20 @@
       "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- src/bayesbay/prior/_prior.py src/bayesbay/_bayes_inversion.py noxfile.py CHANGELOG.md)",
       "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- tests/test_sphere_incremental_interp.py tests/23_prior_voronoi_2d_sphere.py tests/24_prior_voronoi_sphere_polygon.py)",
       "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- tests/test_sphere_incremental_interp.py)",
-      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- docs/)"
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay diff HEAD -- docs/)",
+      "Bash(git -C /home/fabrizio/Documents/GitHub/bayes-bay log --oneline -8)",
+      "Bash(python -c \"import shapely; print\\(shapely.__version__\\)\")",
+      "Bash(pip download *)",
+      "Bash(tar xzf *)",
+      "Bash(curl -s https://raw.githubusercontent.com/shapely/shapely/2.0.0/CHANGES.txt)",
+      "Bash(curl -s https://raw.githubusercontent.com/shapely/shapely/main/CHANGES.txt)",
+      "Bash(curl -s https://raw.githubusercontent.com/shapely/shapely/2.0.0/shapely/predicates.py)",
+      "Bash(curl -s https://raw.githubusercontent.com/shapely/shapely/2.0.1/shapely/predicates.py)",
+      "Bash(python benchmarks/validate_voronoi_cache_equivalence.py)",
+      "Bash(python -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(awk '{print $1, $2}')",
+      "Bash(git worktree *)",
+      "Bash(python -m sphinx -b html source /tmp/claude-1000/-home-fabrizio-Documents-GitHub-bayes-bay/c65039d3-77d1-4b4c-9ab7-e9e1d06b9143/scratchpad/docs_html)"
     ],
     "additionalDirectories": [
       "/tmp/claude-1000/-home-fabrizio-Documents-GitHub-bayes-bay/32223778-21c4-4062-a385-80398af4bbd8/scratchpad"

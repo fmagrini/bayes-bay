@@ -1,16 +1,16 @@
 import math
 import random
 from bisect import bisect_left
-from numbers import Number
+from numbers import Integral, Number
 from typing import Callable, List, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
+import shapely
 import shapely.geometry
 import shapely.ops
-import shapely.prepared
 
 from .._state import ParameterSpaceState, State
 from .._utils_1d import (
@@ -130,18 +130,18 @@ class Voronoi(Discretization):
     perturb_std : Union[Number, np.ndarray]
         standard deviation of the Gaussians used to randomly perturb the Voronoi
         sites in each dimension.
-    n_dimensions : Number, optional
+    n_dimensions : int, optional
         number of dimensions. None (default) results in a trans-dimensional
         discretization, with the dimensionality of the parameter space allowed
         to vary in the range ``n_dimensions_min``-``n_dimensions_max``
     n_dimensions_min, n_dimensions_max : Number, optional
-        minimum and maximum number of dimensions, by default 1 and 10. These
+        minimum and maximum number of dimensions, by default 2 and 10. These
         parameters are ignored if ``n_dimensions`` is not None, i.e. if the
         discretization is not trans-dimensional
     n_dimensions_init_range : Number, optional
-        percentage of the range `n_dimensions_min`` - ``n_dimensions_max`` used to
+        percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if
-        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and
+        ``n_dimensions_min`` = 2, ``n_dimensions_max`` = 10, and
         ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is
 
@@ -169,6 +169,12 @@ class Voronoi(Discretization):
         parameters: List[Prior] = None,
         birth_from: str = "neighbour",  # either "neighbour" or "prior"
     ):
+        if n_dimensions is not None:
+            if not isinstance(n_dimensions, Integral):
+                raise TypeError("`n_dimensions` should be an integer")
+            n_dimensions = int(n_dimensions)
+            if n_dimensions <= 0:
+                raise ValueError("`n_dimensions` should be greater than zero")
         super().__init__(
             name=name,
             spatial_dimensions=spatial_dimensions,
@@ -197,10 +203,62 @@ class Voronoi(Discretization):
             or np.any(perturb_std_values <= 0)
         ):
             raise ValueError("`perturb_std` should contain finite positive values")
-        msg = "The %s number of Voronoi cells, "
-        if n_dimensions is not None:
-            assert n_dimensions > 0, msg % "minimum" + "`n_dimensions`, should be greater than zero"
-            assert isinstance(n_dimensions, int), msg % "minimum" + "`n_dimensions`, should be an integer"
+
+    def _after_state_created(
+        self, ps_state: ParameterSpaceState, eager_interp: bool
+    ) -> None:
+        """Populate state-local derived data after creating a state.
+
+        ``eager_interp`` distinguishes states used to initialize a Markov chain
+        from states sampled directly from the prior. Overrides should only
+        update ``ps_state.cache``. In particular, they should not mutate the
+        discretization object, which may be shared by concurrently running
+        chains.
+        """
+        return None
+
+    def _after_site_move(
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+        isite: int,
+    ) -> None:
+        """Update state-local derived data after an accepted site move.
+
+        Multidimensional Voronoi sites retain their indices during a move.
+        Overrides should only update the cache of ``new_ps_state`` and must
+        leave ``old_ps_state`` and the discretization object unchanged.
+        """
+        return None
+
+    def _after_birth(
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+    ) -> None:
+        """Update state-local derived data after an accepted site birth.
+
+        The multidimensional lifecycle appends the newborn site to the end of
+        the discretization. Overrides should only update the cache of
+        ``new_ps_state`` and must leave the old state and configuration
+        unchanged.
+        """
+        return None
+
+    def _after_death(
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+        iremove: int,
+    ) -> None:
+        """Update state-local derived data after an accepted site death.
+
+        ``iremove`` is the index removed by the multidimensional lifecycle;
+        subsequent site indices shift down by one. Overrides should only
+        update the cache of ``new_ps_state`` and leave the old state and
+        configuration unchanged.
+        """
+        return None
 
     def sample_site(self) -> np.ndarray:
         """draws a Voronoi-site position at random within the discretization domain"""
@@ -220,7 +278,9 @@ class Voronoi(Discretization):
 
         # initialize parameter values
         parameter_vals = {"discretization": voronoi_sites}
-        return ParameterSpaceState(n_voronoi_cells, parameter_vals)
+        ps_state = ParameterSpaceState(n_voronoi_cells, parameter_vals)
+        self._after_state_created(ps_state, eager_interp=False)
+        return ps_state
 
     def initialize(self, position: np.ndarray = None) -> Union[ParameterSpaceState, List[ParameterSpaceState]]:
         """initializes the parameter space linked to the Voronoi tessellation
@@ -253,7 +313,9 @@ class Voronoi(Discretization):
         parameter_vals = {"discretization": voronoi_sites}
         for name, param in self.parameters.items():
             parameter_vals[name] = param.initialize(voronoi_sites)
-        return ParameterSpaceState(n_voronoi_cells, parameter_vals)
+        ps_state = ParameterSpaceState(n_voronoi_cells, parameter_vals)
+        self._after_state_created(ps_state, eager_interp=True)
+        return ps_state
 
     def _perturb_site(self, site: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
         """perturbes a Voronoi  site
@@ -318,6 +380,7 @@ class Voronoi(Discretization):
             new_values[param_name] = values
 
         new_ps_state = ParameterSpaceState(old_ps_state.n_dimensions, new_values)
+        self._after_site_move(old_ps_state, new_ps_state, isite)
         return (
             new_ps_state,
             log_prior_ratio,
@@ -436,6 +499,7 @@ class Voronoi(Discretization):
             else:
                 new_values[name] = old_values + [value]
         new_ps_state = ParameterSpaceState(n_cells + 1, new_values)
+        self._after_birth(old_ps_state, new_ps_state)
         return new_ps_state, log_prob_ratio
 
     def death(self, old_ps_state: ParameterSpaceState):
@@ -482,7 +546,11 @@ class Voronoi(Discretization):
             else:  # ParameterSpace
                 new_values[name] = old_values[:iremove] + old_values[iremove + 1 :]
         new_ps_state = ParameterSpaceState(n_cells - 1, new_values)
-        return new_ps_state, self._log_prob_death_parameters(old_ps_state, new_ps_state, iremove)
+        log_prob_ratio = self._log_prob_death_parameters(
+            old_ps_state, new_ps_state, iremove
+        )
+        self._after_death(old_ps_state, new_ps_state, iremove)
+        return new_ps_state, log_prob_ratio
 
     def log_prior(self, *args):
         r"""
@@ -581,7 +649,7 @@ class Voronoi1D(Voronoi):
     perturb_std : Union[Number, np.ndarray]
         standard deviation of the Gaussians used to randomly perturb the Voronoi
         sites in each dimension.
-    n_dimensions : Number, optional
+    n_dimensions : int, optional
         number of dimensions. None (default) results in a trans-dimensional
         discretization, with the dimensionality of the parameter space allowed
         to vary in the range ``n_dimensions_min``-``n_dimensions_max``
@@ -880,7 +948,8 @@ class Voronoi1D(Voronoi):
         Returns
         -------
         dict
-            a dictionary with these keys: "mean", "median", "std" and "percentile"
+            a dictionary with these keys: "mean", "median", "std" and
+            "percentiles"
         """
         interp_params = Voronoi1D._interpolate_tessellations(
             samples_voronoi_cells,
@@ -1383,12 +1452,13 @@ class Voronoi1D(Voronoi):
         return ax
 
 
-class _NearestSiteInterpolation:
-    r"""Mixin maintaining, for a fixed set of registered positions, the index
-    of the Voronoi site each position belongs to (i.e., the nearest site),
-    stored in the cache of every parameter space state and kept up to date
-    through exact incremental updates at each perturbation of the
-    discretization.
+class _NearestSiteCacheMixin:
+    r"""Maintain state-local nearest-site data for 2-D Voronoi geometries.
+
+    The mixin stores optional KD-trees and, for a fixed set of registered
+    positions, the index of the nearest Voronoi site in each parameter-space
+    state. Interpolation assignments are kept up to date through exact
+    incremental updates at each perturbation of the discretization.
 
     Subclasses define the geometry through :meth:`_interp_position_coords`,
     which maps positions onto the coordinates in which distances are
@@ -1424,18 +1494,84 @@ class _NearestSiteInterpolation:
         Registering a new set of positions increments an internal version;
         existing state caches are then recomputed automatically on first use.
 
+        Configure the interpolation positions before starting the first
+        sampling run. Process-based workers receive a serialized copy of the
+        discretization configuration, so later changes to the original object
+        do not propagate to workers that are already running.
+
         Parameters
         ----------
         positions : np.ndarray of shape (m, 2)
             the interpolation positions
         """
         positions = np.atleast_2d(np.asarray(positions, dtype=float))
-        assert positions.ndim == 2 and positions.shape[1] == 2, (
-            "`positions` should be an array of shape (m, 2)"
-        )
+        if positions.ndim != 2 or positions.shape[1] != 2:
+            raise ValueError("`positions` should be an array of shape (m, 2)")
         self._interp_positions = positions
         self._interp_coords = self._interp_position_coords(positions)
         self._interp_version = getattr(self, "_interp_version", 0) + 1
+
+    def _after_state_created(
+        self, ps_state: ParameterSpaceState, eager_interp: bool
+    ) -> None:
+        if getattr(self, "compute_kdtree", False):
+            self._add_kdtree_to_ps_state(ps_state)
+        if eager_interp and self._interp_coords is not None:
+            self.initialize_interpolation(ps_state)
+
+    def _after_site_move(
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+        isite: int,
+    ) -> None:
+        if getattr(self, "compute_kdtree", False):
+            self._add_kdtree_to_ps_state(new_ps_state)
+        if self._interp_coords is not None:
+            self._update_interp_move(old_ps_state, new_ps_state, isite)
+
+    def _after_birth(
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+    ) -> None:
+        if getattr(self, "compute_kdtree", False):
+            self._add_kdtree_to_ps_state(new_ps_state)
+        if self._interp_coords is not None:
+            self._update_interp_birth(old_ps_state, new_ps_state)
+
+    def _after_death(
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+        iremove: int,
+    ) -> None:
+        if getattr(self, "compute_kdtree", False):
+            self._add_kdtree_to_ps_state(new_ps_state)
+        if self._interp_coords is not None:
+            self._update_interp_death(old_ps_state, new_ps_state, iremove)
+
+    def _add_kdtree_to_ps_state(
+        self, ps_state: ParameterSpaceState
+    ) -> ParameterSpaceState:
+        sites = ps_state.get_param_values("discretization")
+        sites_coords = self._interp_position_coords(sites)
+        ps_state.save_to_cache("kdtree", scipy.spatial.KDTree(sites_coords))
+        return ps_state
+
+    def get_kdtree(self, ps_state: ParameterSpaceState) -> scipy.spatial.KDTree:
+        """Return the state's site KD-tree, building it on demand when needed.
+
+        The tree uses the coordinates appropriate to the tessellation geometry:
+        planar coordinates for :class:`Voronoi2D` and 3-D unit vectors for
+        :class:`Voronoi2DSphere`. Spherical longitude-latitude query positions
+        must therefore be converted with :meth:`Voronoi2DSphere.lonlat_to_xyz`
+        before calling ``query``. The accessor supports initialized, sampled,
+        nested-birth, and user-created parameter-space states.
+        """
+        if not ps_state.saved_in_cache("kdtree"):
+            self._add_kdtree_to_ps_state(ps_state)
+        return ps_state.load_from_cache("kdtree")
 
     def _interp_cache_is_current(self, ps_state: ParameterSpaceState) -> bool:
         return (
@@ -1598,7 +1734,10 @@ class _NearestSiteInterpolation:
         return self._save_interp_cache(new_ps_state, nearest, affinity)
 
     def _update_interp_death(
-        self, old_ps_state: ParameterSpaceState, new_ps_state: ParameterSpaceState
+        self,
+        old_ps_state: ParameterSpaceState,
+        new_ps_state: ParameterSpaceState,
+        iremove: int,
     ) -> ParameterSpaceState:
         """updates the nearest-site assignments after the death of a site: the
         positions orphaned by the removed site are re-assigned against all
@@ -1606,13 +1745,7 @@ class _NearestSiteInterpolation:
         down by one. The update is exact"""
         if not self._interp_cache_is_current(old_ps_state):
             return self.initialize_interpolation(new_ps_state)
-        old_sites = old_ps_state["discretization"]
         new_sites = new_ps_state["discretization"]
-        n_new = new_ps_state.n_dimensions
-        # recover the index of the removed site: first row at which the old
-        # and new discretizations differ (or the last old row if none do)
-        differing = np.flatnonzero((old_sites[:n_new] != new_sites).any(axis=1))
-        iremove = int(differing[0]) if differing.size else n_new
         old_nearest = old_ps_state.load_from_cache("interp_nearest")
         nearest = old_nearest.copy()
         affinity = old_ps_state.load_from_cache("interp_affinity").copy()
@@ -1629,7 +1762,7 @@ class _NearestSiteInterpolation:
         return self._save_interp_cache(new_ps_state, nearest, affinity)
 
 
-class Voronoi2D(_NearestSiteInterpolation, Voronoi):
+class Voronoi2D(_NearestSiteCacheMixin, Voronoi):
     r"""Utility class for Voronoi tessellation in 2D
 
     Parameters
@@ -1646,24 +1779,24 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
     perturb_std : Union[Number, np.ndarray]
         standard deviation of the Gaussians used to randomly perturb the Voronoi
         sites in each dimension.
-    n_dimensions : Number, optional
+    n_dimensions : int, optional
         number of dimensions. None (default) results in a trans-dimensional
         discretization, with the dimensionality of the parameter space allowed
         to vary in the range ``n_dimensions_min``-``n_dimensions_max``
     n_dimensions_min, n_dimensions_max : Number, optional
-        minimum and maximum number of dimensions, by default 1 and 10. These
+        minimum and maximum number of dimensions, by default 2 and 100. These
         parameters are ignored if ``n_dimensions`` is not None, i.e. if the
         discretization is not trans-dimensional
     n_dimensions_init_range : Number, optional
         percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if
-        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and
+        ``n_dimensions_min`` = 2, ``n_dimensions_max`` = 100, and
         ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is::
 
             int((n_dimensions_max - n_dimensions_min) * n_dimensions_init_range + n_dimensions_min)
 
-    parameters : List[Parameter], optional
+    parameters : List[Prior], optional
         a list of free parameters, by default None
     birth_from : {"prior", "neighbour"}, optional
         whether to initialize the free parameters associated with the newborn
@@ -1684,7 +1817,8 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         exact incremental updates, so that forward functions can interpolate
         the tessellation through :meth:`get_interpolated_values` (see also
         :meth:`get_nearest_site_indices` and
-        :meth:`set_interpolation_positions`)
+        :meth:`set_interpolation_positions`). Configure these positions before
+        starting the first sampling run
     """
 
     def __init__(
@@ -1703,19 +1837,20 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         compute_kdtree: bool = False,
         interpolation_positions: np.ndarray = None,
     ):
-        assert (
-            vmin is not None and vmax is not None
-        ) or polygon is not None, (
-            "Either `vmin`/`vmax` or `polygon` must not be None to properly define the discretization domain."
-        )
+        if (vmin is None or vmax is None) and polygon is None:
+            raise ValueError(
+                "Either both `vmin` and `vmax`, or `polygon`, should define "
+                "the discretization domain"
+            )
         if polygon is not None:
             polygon = _validate_polygon(polygon)
             vmin = polygon.bounds[:2]
             vmax = polygon.bounds[2:]
         self.polygon = polygon
-        self._prepared_polygon = (
-            shapely.prepared.prep(polygon) if polygon is not None else None
-        )
+        if polygon is not None:
+            # Preparation builds an internal query index in place without
+            # changing the polygon's coordinates or topology.
+            shapely.prepare(polygon)
         super().__init__(
             name=name,
             spatial_dimensions=2,
@@ -1758,7 +1893,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         if self.polygon is not None:
             for _ in range(_MAX_POLYGON_SAMPLING_ATTEMPTS):
                 new_site = super().sample_site()
-                if self._prepared_polygon.contains(shapely.geometry.Point(new_site)):
+                if shapely.contains_xy(self.polygon, new_site[0], new_site[1]):
                     return new_site
             raise RuntimeError(
                 "failed to sample a site inside `polygon` after "
@@ -1767,41 +1902,11 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             )
         return super().sample_site()
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        state["_prepared_polygon"] = None
-        return state
-
     def __setstate__(self, state):
         self.__dict__.update(state)
         if self.polygon is not None:
-            self._prepared_polygon = shapely.prepared.prep(self.polygon)
-
-    def sample_discretization(self) -> ParameterSpaceState:
-        ps_state = super().sample_discretization()
-        if self.compute_kdtree:
-            ps_state = self._add_kdtree_to_ps_state(ps_state)
-        return ps_state
-
-    def _initialize(self) -> ParameterSpaceState:
-        ps_state = super()._initialize()
-        if self.compute_kdtree:
-            ps_state = self._add_kdtree_to_ps_state(ps_state)
-        if self._interp_coords is not None:
-            ps_state = self.initialize_interpolation(ps_state)
-        return ps_state
-
-    def _add_kdtree_to_ps_state(self, ps_state: ParameterSpaceState):
-        voronoi_sites = ps_state.get_param_values("discretization")
-        kdtree = scipy.spatial.KDTree(voronoi_sites)
-        ps_state.save_to_cache("kdtree", kdtree)
-        return ps_state
-
-    def get_kdtree(self, ps_state: ParameterSpaceState) -> scipy.spatial.KDTree:
-        """Return the state's site KD-tree, building and caching it on demand."""
-        if not ps_state.saved_in_cache("kdtree"):
-            self._add_kdtree_to_ps_state(ps_state)
-        return ps_state.load_from_cache("kdtree")
+            # GEOS preparation metadata is not preserved by serialization.
+            shapely.prepare(self.polygon)
 
     def _perturb_site(self, site: Union[Number, np.ndarray]) -> Union[Number, np.ndarray]:
         """perturbes a Voronoi  site
@@ -1823,34 +1928,9 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             return super()._perturb_site(site)
         random_deviate = np.random.normal(0, self.perturb_std, self.spatial_dimensions)
         new_site = site + random_deviate
-        point = shapely.geometry.Point(new_site)
-        if self._prepared_polygon.contains(point):
+        if shapely.contains_xy(self.polygon, new_site[0], new_site[1]):
             return new_site
         return None
-
-    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
-        new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
-        if self.compute_kdtree and new_ps_state is not old_ps_state:
-            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
-        if self._interp_coords is not None and new_ps_state is not old_ps_state:
-            new_ps_state = self._update_interp_move(old_ps_state, new_ps_state, isite)
-        return new_ps_state, log_prior_ratio
-
-    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
-        new_ps_state, log_prob_ratio_birth = super().birth(old_ps_state)
-        if self.compute_kdtree:
-            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
-        if self._interp_coords is not None and new_ps_state is not old_ps_state:
-            new_ps_state = self._update_interp_birth(old_ps_state, new_ps_state)
-        return new_ps_state, log_prob_ratio_birth
-
-    def death(self, old_ps_state: ParameterSpaceState):
-        new_ps_state, log_prob_ratio_death = super().death(old_ps_state)
-        if self.compute_kdtree:
-            new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
-        if self._interp_coords is not None and new_ps_state is not old_ps_state:
-            new_ps_state = self._update_interp_death(old_ps_state, new_ps_state)
-        return new_ps_state, log_prob_ratio_death
 
     @staticmethod
     def interpolate_tessellation(
@@ -1867,7 +1947,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             the positions of the Voronoi sites
         param_values : (n,) np.ndarray
             the parameter values associated with each Voronoi cell
-        query_points : (m, 2) np.ndarray
+        interp_positions : (m, 2) np.ndarray
             the positions where interpolation is performed
 
         Returns
@@ -1901,8 +1981,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         Parameters
         ----------
         samples_voronoi_cells : list
-            either a list of Voronoi-cell extents or of Voronoi-site positions
-            (see ``input_type``)
+            a list of arrays containing the Voronoi-site positions
         samples_param_values : list
             a list of parameter values to draw statistics from
         interp_positions : np.ndarray
@@ -1913,7 +1992,8 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         Returns
         -------
         dict
-            a dictionary with these keys: "mean", "median", "std" and "percentile"
+            a dictionary with these keys: "mean", "median", "std" and
+            "percentiles"
         """
         interp_params = Voronoi2D._interpolate_tessellations(
             samples_voronoi_cells, samples_param_values, interp_positions
@@ -1982,7 +2062,9 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         Returns
         -------
         ax : matplotlib.axes.Axes
-            The Axes object containing the 2D histogram
+            The axes containing the tessellation.
+        cbar : Union[matplotlib.colorbar.Colorbar, None]
+            The colourbar, or ``None`` when ``param_values`` is omitted.
 
         Notes
         -----
@@ -2013,18 +2095,20 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         else:
             sites_style = None
 
-        xmax = np.max(np.abs(voronoi_sites[:, 0]))
-        ymax = np.max(np.abs(voronoi_sites[:, 1]))
-        sites = np.append(
-            voronoi_sites,
-            [
-                [xmax * 100, ymax * 100],
-                [-xmax * 100, ymax * 100],
-                [xmax * 100, -ymax * 100],
-                [-xmax * 100, -ymax * 100],
-            ],
-            axis=0,
+        # Distant points make the displayed cells finite. Place them relative
+        # to the data rather than the origin, using one scale for both axes so
+        # axis-aligned and far-from-origin site clouds remain well conditioned.
+        bounds_min = voronoi_sites.min(axis=0)
+        bounds_max = voronoi_sites.max(axis=0)
+        center = (bounds_min + bounds_max) / 2
+        coordinate_scale = max(float(np.max(np.abs(voronoi_sites))), 1.0)
+        site_scale = max(
+            float(np.max(bounds_max - bounds_min)), 1e-6 * coordinate_scale
         )
+        dummy_offsets = 100 * site_scale * np.array(
+            [[1, 1], [-1, 1], [1, -1], [-1, -1]], dtype=float
+        )
+        sites = np.vstack((voronoi_sites, center + dummy_offsets))
 
         voronoi = scipy.spatial.Voronoi(sites)
         if ax is None:
@@ -2048,11 +2132,9 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             )
 
         if param_values is not None:
-            # make sure scipy.spatial.Voronoi didn't resort the original sites
-            isort = [np.flatnonzero(np.all(p == voronoi.points, axis=1)).item() for i, p in enumerate(sites[:-4])]
             ax, cbar = Voronoi2D._fill_tessellation(
                 voronoi,
-                param_values[isort],
+                param_values,
                 ax=ax,
                 vmin=vmin,
                 vmax=vmax,
@@ -2067,8 +2149,17 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
             ax.plot(voronoi_sites[:, 0], voronoi_sites[:, 1], **sites_style)
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ax.set_xlim(voronoi_sites[:, 0].min(), voronoi_sites[:, 0].max())
-        ax.set_ylim(voronoi_sites[:, 1].min(), voronoi_sites[:, 1].max())
+        xlim = [voronoi_sites[:, 0].min(), voronoi_sites[:, 0].max()]
+        ylim = [voronoi_sites[:, 1].min(), voronoi_sites[:, 1].max()]
+        axis_padding = 0.01 * site_scale
+        if xlim[0] == xlim[1]:
+            xlim[0] -= axis_padding
+            xlim[1] += axis_padding
+        if ylim[0] == ylim[1]:
+            ylim[0] -= axis_padding
+            ylim[1] += axis_padding
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
         return ax, cbar
 
     @staticmethod
@@ -2176,7 +2267,7 @@ class Voronoi2D(_NearestSiteInterpolation, Voronoi):
         return ax, cbar
 
 
-class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
+class Voronoi2DSphere(_NearestSiteCacheMixin, Voronoi):
     r"""Utility class for Voronoi tessellation on the surface of a sphere
 
     The Voronoi sites are stored as longitude-latitude pairs, in degrees, with
@@ -2237,16 +2328,18 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         should lie within [``lon_shift`` - 180, ``lon_shift`` + 180), and the
         polygon should not touch or include the poles
     lon_shift : Number, optional
-        shifts the longitude convention: all site longitudes are expressed
-        within [``lon_shift`` - 180, ``lon_shift`` + 180), i.e. [-180, 180)
-        by default. Use this for regions of interest crossing the +/-180
-        meridian: for example, ``lon_shift=180`` expresses all longitudes
-        within [0, 360), moving the coordinate seam to the Greenwich meridian
+        finite scalar offset that shifts the longitude convention: all site
+        longitudes are expressed within [``lon_shift`` - 180, ``lon_shift`` +
+        180), i.e. [-180, 180) by default. Use this for regions of interest
+        crossing the +/-180 meridian: for example, ``lon_shift=180`` expresses
+        all longitudes within [0, 360), moving the coordinate seam to the
+        Greenwich meridian
     interpolation_positions : np.ndarray of shape (m, 2), optional
         fixed positions (longitude-latitude pairs, in degrees) onto which the
         tessellation is interpolated during the sampling; see
-        :meth:`set_interpolation_positions`
-    n_dimensions : Number, optional
+        :meth:`set_interpolation_positions`. Configure these positions before
+        starting the first sampling run
+    n_dimensions : int, optional
         number of dimensions. None (default) results in a trans-dimensional
         discretization, with the dimensionality of the parameter space allowed
         to vary in the range ``n_dimensions_min``-``n_dimensions_max``
@@ -2257,7 +2350,7 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
     n_dimensions_init_range : Number, optional
         percentage of the range ``n_dimensions_min`` - ``n_dimensions_max`` used to
         initialize the number of dimensions (0.3. by default). For example, if
-        ``n_dimensions_min`` = 1, ``n_dimensions_max`` = 10, and
+        ``n_dimensions_min`` = 2, ``n_dimensions_max`` = 100, and
         ``n_dimensions_init_range`` = 0.5,
         the maximum number of dimensions at the initialization is::
 
@@ -2305,6 +2398,13 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
                 "`perturb_std` should be a finite positive scalar, interpreted "
                 "as the per-axis tangent-plane scale (in degrees)"
             )
+        try:
+            lon_shift_value = np.asarray(lon_shift, dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("`lon_shift` should be a finite scalar") from exc
+        if lon_shift_value.ndim != 0 or not np.isfinite(lon_shift_value):
+            raise ValueError("`lon_shift` should be a finite scalar")
+        lon_shift = float(lon_shift_value)
         self._lon_shift = lon_shift
         self._lon_min = lon_shift - 180.0
         self._init_polygon(polygon)
@@ -2344,7 +2444,6 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
 
     def _init_polygon(self, polygon):
         self.polygon = None
-        self._prepared_polygon = None
         self._polygon_sampling_bounds = None
         if polygon is None:
             return
@@ -2364,7 +2463,9 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
                 "of interest cannot be represented as a longitude-latitude polygon"
             )
         self.polygon = polygon
-        self._prepared_polygon = shapely.prepared.prep(polygon)
+        # Preparation builds an internal query index in place without changing
+        # the polygon's coordinates or topology.
+        shapely.prepare(polygon)
         self._polygon_sampling_bounds = (
             lon_min,
             lon_max,
@@ -2376,18 +2477,11 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         """wraps longitude(s) into the interval [lon_shift - 180, lon_shift + 180)"""
         return (lon - self._lon_min) % 360.0 + self._lon_min
 
-    def __getstate__(self):
-        # shapely prepared geometries cannot be pickled: drop the prepared
-        # polygon before pickling (e.g. when chains run in parallel processes)
-        # and rebuild it upon unpickling
-        state = self.__dict__.copy()
-        state["_prepared_polygon"] = None
-        return state
-
     def __setstate__(self, state):
         self.__dict__.update(state)
         if self.polygon is not None:
-            self._prepared_polygon = shapely.prepared.prep(self.polygon)
+            # GEOS preparation metadata is not preserved by serialization.
+            shapely.prepare(self.polygon)
 
     @staticmethod
     def lonlat_to_xyz(lonlat: np.ndarray) -> np.ndarray:
@@ -2452,7 +2546,7 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             # rejection step below restricts it to the polygon itself
             lon = random.uniform(lon_min, lon_max)
             lat = math.degrees(math.asin(random.uniform(sin_lat_min, sin_lat_max)))
-            if self._prepared_polygon.contains(shapely.geometry.Point(lon, lat)):
+            if shapely.contains_xy(self.polygon, lon, lat):
                 return np.array([lon, lat])
         raise RuntimeError(
             "failed to sample a site inside `polygon` after "
@@ -2502,8 +2596,8 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         new_xyz = cos_gamma * xyz + sin_gamma * (math.cos(azimuth) * e1 + math.sin(azimuth) * e2)
         new_site = self.xyz_to_lonlat(new_xyz)
         new_site[0] = self._wrap_lon(new_site[0])
-        if self.polygon is not None and not self._prepared_polygon.contains(
-            shapely.geometry.Point(new_site[0], new_site[1])
+        if self.polygon is not None and not shapely.contains_xy(
+            self.polygon, new_site[0], new_site[1]
         ):
             return None
         return new_site
@@ -2539,64 +2633,6 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
 
     def _interp_affinity_pairs(self, points_coords: np.ndarray, site_coords: np.ndarray) -> np.ndarray:
         return np.einsum("ij,ij->i", points_coords, site_coords)
-
-    def _initialize(self) -> ParameterSpaceState:
-        ps_state = super()._initialize()
-        if self.compute_kdtree:
-            ps_state = self._add_kdtree_to_ps_state(ps_state)
-        if self._interp_coords is not None:
-            ps_state = self.initialize_interpolation(ps_state)
-        return ps_state
-
-    def sample_discretization(self) -> ParameterSpaceState:
-        ps_state = super().sample_discretization()
-        if self.compute_kdtree:
-            ps_state = self._add_kdtree_to_ps_state(ps_state)
-        return ps_state
-
-    def _add_kdtree_to_ps_state(self, ps_state: ParameterSpaceState) -> ParameterSpaceState:
-        voronoi_sites = ps_state.get_param_values("discretization")
-        kdtree = scipy.spatial.KDTree(self.lonlat_to_xyz(voronoi_sites))
-        ps_state.save_to_cache("kdtree", kdtree)
-        return ps_state
-
-    def get_kdtree(self, ps_state: ParameterSpaceState) -> scipy.spatial.KDTree:
-        """Return the state's spherical site KD-tree, caching it on demand.
-
-        Query points should first be converted with :meth:`lonlat_to_xyz`.
-        This accessor is safe for states created through every lifecycle path,
-        including :meth:`sample`, nested births, and custom starting states.
-        """
-        if not ps_state.saved_in_cache("kdtree"):
-            self._add_kdtree_to_ps_state(ps_state)
-        return ps_state.load_from_cache("kdtree")
-
-    def perturb_value(self, old_ps_state: ParameterSpaceState, isite: int):
-        new_ps_state, log_prior_ratio = super().perturb_value(old_ps_state, isite)
-        if new_ps_state is not old_ps_state:
-            if self.compute_kdtree:
-                new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
-            if self._interp_coords is not None:
-                new_ps_state = self._update_interp_move(old_ps_state, new_ps_state, isite)
-        return new_ps_state, log_prior_ratio
-
-    def birth(self, old_ps_state: ParameterSpaceState) -> Tuple[ParameterSpaceState, float]:
-        new_ps_state, log_prob_ratio_birth = super().birth(old_ps_state)
-        if new_ps_state is not old_ps_state:
-            if self.compute_kdtree:
-                new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
-            if self._interp_coords is not None:
-                new_ps_state = self._update_interp_birth(old_ps_state, new_ps_state)
-        return new_ps_state, log_prob_ratio_birth
-
-    def death(self, old_ps_state: ParameterSpaceState):
-        new_ps_state, log_prob_ratio_death = super().death(old_ps_state)
-        if new_ps_state is not old_ps_state:
-            if self.compute_kdtree:
-                new_ps_state = self._add_kdtree_to_ps_state(new_ps_state)
-            if self._interp_coords is not None:
-                new_ps_state = self._update_interp_death(old_ps_state, new_ps_state)
-        return new_ps_state, log_prob_ratio_death
 
     @staticmethod
     def interpolate_tessellation(
@@ -2671,7 +2707,8 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         Returns
         -------
         dict
-            a dictionary with these keys: "mean", "median", "std" and "percentile"
+            a dictionary with these keys: "mean", "median", "std" and
+            "percentiles"
         """
         interp_params = Voronoi2DSphere._interpolate_tessellations(
             samples_voronoi_cells, samples_param_values, interp_positions

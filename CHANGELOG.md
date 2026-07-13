@@ -21,10 +21,22 @@
   proposal rejection.
 - Fixed scalar initialization of position-dependent Gaussian, Laplace, and
   custom priors in multidimensional and spherical domains.
-- Hardened Voronoi polygon validation and sampling, completed KD-tree/cache
-  lifecycle handling, and validated tessellation-ensemble input lengths.
+- Unified the state-local KD-tree and fixed-position interpolation lifecycle of
+  ``Voronoi2D`` and ``Voronoi2DSphere`` while preserving their public API and
+  eager/lazy cache behaviour. Cache updates now also use the exact removed-site
+  index, including when a tessellation contains duplicate sites.
+- Completed cache handling for initialized, prior-sampled, nested-birth,
+  user-created, and pickled states, including process- and thread-based parallel
+  chains. NumPy integer scalars are now accepted for fixed ``n_dimensions``.
+- Hardened Voronoi polygon validation and bounded polygon sampling, restored
+  Shapely's internal query preparation after pickling, and validated
+  tessellation-ensemble input lengths.
 - Fixed spherical plotting of ``GeometryCollection`` seam results and added a
-  user-controlled surface-mesh spacing for three-dimensional rendering.
+  user-controlled surface-mesh spacing and ``center_lonlat`` camera control for
+  three-dimensional rendering.
+- Fixed planar Voronoi plotting for duplicate, axis-aligned, and far-offset
+  sites; avoided redundant KD-tree rebuilds for rejected dimension changes;
+  and accelerated polygon containment checks with Shapely's coordinate API.
 
 ## v0.3.12 (10/07/2026)
 - Bug fix: Voronoi-site perturbations in `Voronoi`, `Voronoi1D`, and `Voronoi2D` now reject proposals falling outside the discretization domain rather than redrawing them until valid. The redraw scheme made the effective proposal a truncated Gaussian whose normalization depends on the current site position, breaking detailed balance and biasing the sampled site positions within a few `perturb_std` of the domain boundaries (or of the polygon edges in `Voronoi2D`)

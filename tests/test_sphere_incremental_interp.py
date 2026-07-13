@@ -10,10 +10,11 @@ import random
 import numpy as np
 import pytest
 import scipy.spatial
+import shapely
 import shapely.geometry
 
 import bayesbay as bb
-from bayesbay.discretization import Voronoi1D, Voronoi2D, Voronoi2DSphere
+from bayesbay.discretization import Voronoi, Voronoi1D, Voronoi2D, Voronoi2DSphere
 from bayesbay.exceptions import InvalidProposalException, OutOfDomainException
 from bayesbay.prior import UniformPrior
 
@@ -138,6 +139,43 @@ def test_voronoi2d_default_behaviour_untouched():
         assert set(ps_state.cache.keys()) <= {"kdtree"}
 
 
+def test_generic_multidimensional_voronoi_lifecycle_has_no_cache_side_effects():
+    np.random.seed(19)
+    random.seed(19)
+    voronoi = Voronoi(
+        name="v",
+        spatial_dimensions=3,
+        vmin=np.zeros(3),
+        vmax=np.ones(3),
+        perturb_std=0.01,
+        n_dimensions_min=2,
+        n_dimensions_max=6,
+    )
+
+    assert not voronoi._initialize().cache
+    assert not voronoi.sample_discretization().cache
+
+    state = bb.ParameterSpaceState(
+        3,
+        {
+            "discretization": np.array(
+                [[0.25, 0.25, 0.25], [0.5, 0.5, 0.5], [0.75, 0.75, 0.75]]
+            )
+        },
+    )
+    moved, _ = voronoi.perturb_value(state, 1)
+    born, _ = voronoi.birth(moved)
+    reduced, _ = voronoi.death(born)
+
+    assert moved is not state
+    assert born is not moved
+    assert reduced is not born
+    assert not state.cache
+    assert not moved.cache
+    assert not born.cache
+    assert not reduced.cache
+
+
 def test_polygon_validation():
     with pytest.raises(ValueError, match="longitude"):
         Voronoi2DSphere(name="v", polygon=[(-190, 0), (0, 0), (0, 10)])
@@ -219,12 +257,23 @@ def test_lon_shift_dateline():
 
 @pytest.mark.parametrize("voronoi_cls", [Voronoi2D, Voronoi2DSphere])
 def test_polygon_pickle_roundtrip(voronoi_cls):
-    voronoi = voronoi_cls(name="v", perturb_std=4, polygon=MED_POLYGON, n_dimensions=3)
+    positions = np.array([[-2.0, 32.0], [10.0, 40.0], [30.0, 44.0]])
+    voronoi = voronoi_cls(
+        name="v",
+        perturb_std=4,
+        polygon=MED_POLYGON,
+        n_dimensions=3,
+        interpolation_positions=positions,
+        compute_kdtree=True,
+    )
     clone = pickle.loads(pickle.dumps(voronoi))
-    assert clone._prepared_polygon is not None
+    assert shapely.is_prepared(clone.polygon)
     assert clone.polygon.equals(voronoi.polygon)
     poly = shapely.geometry.Polygon(MED_POLYGON)
     assert poly.contains(shapely.geometry.Point(*clone.sample_site()))
+    state = clone._initialize()
+    _assert_interp_cache_correct(clone, state)
+    assert clone.get_kdtree(state) is state.load_from_cache("kdtree")
 
 
 def test_out_of_domain_is_invalid_proposal_exception():
@@ -352,6 +401,75 @@ def test_kdtree_available_for_every_state_creation_path(cls, kwargs):
     state = voronoi.sample()
     state.cache.pop("kdtree")
     assert voronoi.get_kdtree(state) is state.load_from_cache("kdtree")
+
+
+@pytest.mark.parametrize(
+    "cls, kwargs",
+    [
+        (Voronoi2D, {"vmin": [0, 0], "vmax": [1, 1]}),
+        (Voronoi2DSphere, {}),
+    ],
+)
+def test_rejected_dimension_change_keeps_current_kdtree(cls, kwargs):
+    voronoi = cls(name="v", n_dimensions=4, compute_kdtree=True, **kwargs)
+    state = voronoi._initialize()
+    current_kdtree = state.load_from_cache("kdtree")
+
+    born, birth_ratio = voronoi.birth(state)
+    assert born is state
+    assert birth_ratio == -math.inf
+    assert state.load_from_cache("kdtree") is current_kdtree
+
+    reduced, death_ratio = voronoi.death(state)
+    assert reduced is state
+    assert death_ratio == -math.inf
+    assert state.load_from_cache("kdtree") is current_kdtree
+
+
+@pytest.mark.parametrize(
+    "cls, kwargs, sites, positions",
+    [
+        (
+            Voronoi2D,
+            {"vmin": [0, 0], "vmax": [1, 1]},
+            np.array([[0.25, 0.25], [0.25, 0.25], [0.75, 0.25], [0.5, 0.8]]),
+            np.array([[0.2, 0.2], [0.3, 0.3], [0.8, 0.2], [0.5, 0.7]]),
+        ),
+        (
+            Voronoi2DSphere,
+            {},
+            np.array([[0, 0], [0, 0], [90, 0], [-90, 20]], dtype=float),
+            np.array([[0, 1], [5, 0], [85, 2], [-80, 20]], dtype=float),
+        ),
+    ],
+)
+def test_duplicate_site_death_uses_selected_index(
+    monkeypatch, cls, kwargs, sites, positions
+):
+    voronoi = cls(
+        name="v",
+        n_dimensions_min=2,
+        n_dimensions_max=6,
+        interpolation_positions=positions,
+        **kwargs,
+    )
+    state = bb.ParameterSpaceState(len(sites), {"discretization": sites})
+    voronoi.initialize_interpolation(state)
+
+    removed_indices = []
+    update_death = voronoi._update_interp_death
+
+    def record_removed_index(old_state, new_state, iremove):
+        removed_indices.append(iremove)
+        return update_death(old_state, new_state, iremove)
+
+    monkeypatch.setattr(voronoi, "_update_interp_death", record_removed_index)
+    monkeypatch.setattr(random, "randint", lambda lower, upper: 0)
+    reduced, _ = voronoi.death(state)
+
+    assert removed_indices == [0]
+    assert np.array_equal(reduced["discretization"], sites[1:])
+    _assert_interp_cache_correct(voronoi, reduced)
 
 
 def test_nested_birth_creates_kdtree_cache():
@@ -555,7 +673,55 @@ def test_plot_tessellation_voronoi2d_clip():
     plt.close("all")
 
 
-def test_parallel_chains_smoke():
+@pytest.mark.parametrize(
+    "sites",
+    [
+        np.array([[0, 0], [0, 0], [1, 0], [0, 1]], dtype=float),
+        np.array([[0, -2], [0, -1], [0, 1], [0, 2]], dtype=float),
+        np.array([[-2, 0], [-1, 0], [1, 0], [2, 0]], dtype=float),
+        np.array(
+            [[1e9, 1e9], [1e9 + 1, 1e9], [1e9, 1e9 + 1], [1e9 + 1, 1e9 + 1]],
+            dtype=float,
+        ),
+    ],
+)
+def test_plot_tessellation_voronoi2d_degenerate_site_layouts(sites):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    ax, cbar = Voronoi2D.plot_tessellation(sites, np.arange(len(sites)))
+    assert cbar is not None
+    plt.close(ax.figure)
+
+
+def test_voronoi2d_and_sphere_public_input_validation():
+    with pytest.raises(ValueError, match="discretization domain"):
+        Voronoi2D(name="v")
+    with pytest.raises(ValueError, match="greater than zero"):
+        Voronoi2D(name="v", vmin=[0, 0], vmax=[1, 1], n_dimensions=0)
+    with pytest.raises(TypeError, match="integer"):
+        Voronoi2D(name="v", vmin=[0, 0], vmax=[1, 1], n_dimensions=4.5)
+    for cls, kwargs in (
+        (Voronoi2D, {"vmin": [0, 0], "vmax": [1, 1]}),
+        (Voronoi2DSphere, {}),
+    ):
+        voronoi = cls(name="v", n_dimensions=np.int64(4), **kwargs)
+        assert type(voronoi._n_dimensions) is int
+        assert voronoi._n_dimensions == 4
+    with pytest.raises(ValueError, match=r"shape.*\(m, 2\)"):
+        Voronoi2D(name="v", vmin=[0, 0], vmax=[1, 1]).set_interpolation_positions(
+            np.ones((3, 3))
+        )
+    with pytest.raises(ValueError, match="lon_shift"):
+        Voronoi2DSphere(name="v", lon_shift=np.nan)
+    with pytest.raises(ValueError, match="lon_shift"):
+        Voronoi2DSphere(name="v", lon_shift=[0])
+
+
+@pytest.mark.parametrize("backend", ["loky", "threading"])
+def test_parallel_chains_smoke(backend):
     np.random.seed(4)
     random.seed(4)
     rng = np.random.default_rng(4)
@@ -590,7 +756,7 @@ def test_parallel_chains_smoke():
         burnin_iterations=500,
         save_every=50,
         verbose=False,
-        parallel_config={"n_jobs": 2},
+        parallel_config={"n_jobs": 2, "backend": backend},
     )
     results = inversion.get_results()
     assert len(results["voronoi.n_dimensions"]) == 2 * 30
