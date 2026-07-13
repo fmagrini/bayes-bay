@@ -2961,6 +2961,7 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         voronoi_sites: np.ndarray,
         param_values: np.ndarray = None,
         ax=None,
+        center_lonlat: Tuple[Number, Number] = None,
         surface_spacing_deg: Number = 2.0,
         cmap="viridis",
         norm=None,
@@ -2987,13 +2988,23 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         Parameters
         ----------
         voronoi_sites : np.ndarray of shape (m, 2)
-            Voronoi-site longitude-latitude pairs in degrees. At least four
-            non-degenerate sites are required.
+            Voronoi-site ``(longitude, latitude)`` pairs in degrees. Longitude
+            is periodic: any finite value is accepted and interpreted modulo
+            360 degrees. Latitude must lie within [-90, 90] degrees. At least
+            four non-degenerate sites are required.
         param_values : np.ndarray of shape (m,), optional
             Parameter value associated with each cell. If omitted, only the
             cell boundaries are drawn.
         ax : matplotlib.axes.Axes, optional
             Matplotlib 3-D axes. A new one is created when omitted.
+        center_lonlat : Tuple[Number, Number], optional
+            ``(longitude, latitude)`` in degrees to place at the centre of the
+            initial view. Longitude is periodic and is normalized to
+            [-180, 180); latitude must lie within [-90, 90]. For example,
+            ``(12.5, 42.5)`` centres the globe on Italy. This argument only
+            sets the initial camera orientation; the globe can still be
+            rotated interactively. When omitted, the existing orientation of
+            ``ax`` (or Matplotlib's default for a new axes) is preserved.
         surface_spacing_deg : Number, optional
             Approximate angular spacing of the coloured surface mesh. Smaller
             values reduce pixelation along colour transitions but increase the
@@ -3026,6 +3037,30 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
         voronoi_sites = np.asarray(voronoi_sites, dtype=float)
         if voronoi_sites.ndim != 2 or voronoi_sites.shape[1] != 2:
             raise ValueError("`voronoi_sites` should have shape (m, 2)")
+        if not np.isfinite(voronoi_sites).all():
+            raise ValueError("`voronoi_sites` should contain only finite values")
+        if np.any((voronoi_sites[:, 1] < -90) | (voronoi_sites[:, 1] > 90)):
+            raise ValueError(
+                "Voronoi-site latitudes should lie within [-90, 90] degrees"
+            )
+        if center_lonlat is not None:
+            try:
+                center_lonlat = np.asarray(center_lonlat, dtype=float)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "`center_lonlat` should be a (longitude, latitude) pair "
+                    "in degrees"
+                ) from exc
+            if center_lonlat.shape != (2,) or not np.isfinite(center_lonlat).all():
+                raise ValueError(
+                    "`center_lonlat` should be a pair of finite values: "
+                    "(longitude, latitude) in degrees"
+                )
+            if not -90 <= center_lonlat[1] <= 90:
+                raise ValueError(
+                    "The latitude in `center_lonlat` should lie within "
+                    "[-90, 90] degrees"
+                )
         if (
             not np.isscalar(surface_spacing_deg)
             or not np.isfinite(surface_spacing_deg)
@@ -3043,6 +3078,10 @@ class Voronoi2DSphere(_NearestSiteInterpolation, Voronoi):
             ax = fig.add_subplot(projection="3d")
         elif not hasattr(ax, "plot_surface"):
             raise ValueError("`ax` should be a Matplotlib 3-D axes")
+        if center_lonlat is not None:
+            longitude, latitude = center_lonlat
+            longitude = (longitude + 180.0) % 360.0 - 180.0
+            ax.view_init(elev=latitude, azim=longitude)
 
         cbar = None
         if param_values is not None:

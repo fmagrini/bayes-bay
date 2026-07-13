@@ -485,25 +485,49 @@ def test_plot_tessellation_sphere_3d():
     ax, cbar = Voronoi2DSphere.plot_tessellation_3d(
         sites,
         values,
+        center_lonlat=(12.5, 42.5),
         surface_spacing_deg=20,
         voronoi_sites_kwargs={"s": 4},
     )
     assert ax.name == "3d"
     assert cbar is not None
+    assert ax.azim == pytest.approx(12.5)
+    assert ax.elev == pytest.approx(42.5)
     assert len(ax.lines) == len(sites)
     assert ax.collections
     ax.figure.canvas.draw()
 
+    wrapped_ax, _ = Voronoi2DSphere.plot_tessellation_3d(
+        sites, center_lonlat=(190, -20)
+    )
+    assert wrapped_ax.azim == pytest.approx(-170)
+    assert wrapped_ax.elev == pytest.approx(-20)
+
     fig = plt.figure()
     supplied_ax = fig.add_subplot(projection="3d")
+    supplied_ax.view_init(elev=5, azim=6)
     returned_ax, cbar = Voronoi2DSphere.plot_tessellation_3d(sites, ax=supplied_ax)
     assert returned_ax is supplied_ax
     assert cbar is None
+    assert supplied_ax.azim == pytest.approx(6)
+    assert supplied_ax.elev == pytest.approx(5)
 
     with pytest.raises(ValueError, match="one value per Voronoi site"):
         Voronoi2DSphere.plot_tessellation_3d(sites, values[:-1])
     with pytest.raises(ValueError, match="surface_spacing_deg"):
         Voronoi2DSphere.plot_tessellation_3d(sites, surface_spacing_deg=0)
+    with pytest.raises(ValueError, match="center_lonlat"):
+        Voronoi2DSphere.plot_tessellation_3d(sites, center_lonlat=(0, 91))
+    with pytest.raises(ValueError, match="center_lonlat"):
+        Voronoi2DSphere.plot_tessellation_3d(sites, center_lonlat=(np.nan, 0))
+    with pytest.raises(ValueError, match="latitudes"):
+        invalid_sites = sites.copy()
+        invalid_sites[0, 1] = 91
+        Voronoi2DSphere.plot_tessellation_3d(invalid_sites)
+    with pytest.raises(ValueError, match="finite"):
+        invalid_sites = sites.copy()
+        invalid_sites[0, 0] = np.inf
+        Voronoi2DSphere.plot_tessellation_3d(invalid_sites)
     with pytest.raises(ValueError, match="3-D axes"):
         _, planar_ax = plt.subplots()
         Voronoi2DSphere.plot_tessellation_3d(sites, ax=planar_ax)

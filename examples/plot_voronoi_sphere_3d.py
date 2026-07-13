@@ -15,6 +15,8 @@ try:  # Cartopy is optional and is not a BayesBay dependency.
 except ImportError:
     shapereader = None
 
+ITALY_LONLAT = (12.5, 42.5)  # (longitude, latitude), in degrees
+
 
 def create_example_tessellation(seed=7, n_sites=60):
     """Create uniformly distributed sites and synthetic cell values."""
@@ -49,15 +51,13 @@ def create_tessellation_figure(
         values,
         ax=axes,
         cmap="viridis",
+        center_lonlat=ITALY_LONLAT,
         surface_spacing_deg=1,
         linewidth=boundary_linewidth,
         voronoi_sites_kwargs=site_style,
         zorder=1,
     )
     axes.set_title(title)
-    # On the unit sphere, Matplotlib's azimuth and elevation correspond to
-    # longitude and latitude. This initial view is centred on Italy.
-    axes.view_init(elev=42.5, azim=12.5)
     return figure, axes
 
 
