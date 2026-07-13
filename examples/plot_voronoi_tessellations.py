@@ -51,7 +51,8 @@ plt.close(fig)
 
 # ----------------------------------------------------------------------------
 # Example 3 -- REGIONAL tessellation clipped to a polygon (the Mediterranean
-# region of the tutorial "Surface-Wave Tomography on the Sphere"), on a
+# region of the tutorial "Continental-Scale Surface-Wave Tomography on the
+# Sphere"), on a
 # PlateCarree map with coastlines.
 # ----------------------------------------------------------------------------
 polygon = shapely.geometry.Polygon(

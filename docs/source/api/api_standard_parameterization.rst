@@ -23,5 +23,5 @@ Examples of trans-dimensional parameterizations can be found in:
 
 * :doc:`Gaussian Mixture Modelling: Part II <../tutorials/12_transd_gaussian_mixture>`
 * :doc:`Inversion of Surface-Wave Dispersion Curves: Part I <../tutorials/21_rayleigh>` and :doc:`Part II <../tutorials/22_rayleigh_love>`
-* :doc:`Surface-Wave Tomography <../tutorials/31_sw_tomography>`
+* :doc:`Local Surface-Wave Tomography in Cartesian Coordinates <../tutorials/31_sw_tomography>`
 * :doc:`Partition Modelling: Part II <../tutorials/42_transd_partition_mod>`

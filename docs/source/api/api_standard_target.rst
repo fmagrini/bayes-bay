@@ -17,5 +17,5 @@ All examples in this documentation make use of one or more ``Target`` instances 
 * :doc:`Polynomial Fitting: Part II <../tutorials/02_hierarchical_polyfit>`
 * :doc:`Gaussian Mixture Modelling: Part I <../tutorials/11_gaussian_mixture>` and :doc:`Part II <../tutorials/12_transd_gaussian_mixture>`
 * :doc:`Inversion of Surface-Wave Dispersion Curves: Part I <../tutorials/21_rayleigh>` and :doc:`Part II <../tutorials/22_rayleigh_love>`
-* :doc:`Surface-Wave Tomography <../tutorials/31_sw_tomography>`
+* :doc:`Local Surface-Wave Tomography in Cartesian Coordinates <../tutorials/31_sw_tomography>`
 * :doc:`Partition Modelling: Part I <../tutorials/41_simple_partition_mod>` and :doc:`Part II <../tutorials/42_transd_partition_mod>`

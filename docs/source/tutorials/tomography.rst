@@ -19,6 +19,7 @@ This tutorial comprises:
 
    31_sw_tomography
    32_sw_tomography_sphere
+   33_sw_tomography_sphere_global
 
 
 
